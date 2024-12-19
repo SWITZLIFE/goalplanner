@@ -18,6 +18,8 @@ export const tasks = pgTable("tasks", {
   title: text("title").notNull(),
   completed: boolean("completed").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  parentTaskId: integer("parent_task_id").references(() => tasks.id),
+  isSubtask: boolean("is_subtask").default(false).notNull(),
 });
 
 export const rewards = pgTable("rewards", {

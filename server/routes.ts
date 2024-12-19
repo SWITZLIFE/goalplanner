@@ -2,7 +2,8 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
 import { goals, tasks, rewards } from "@db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
+import { generateTaskBreakdown } from "./openai";
 
 export function registerRoutes(app: Express): Server {
   // Goals API
@@ -22,7 +23,13 @@ export function registerRoutes(app: Express): Server {
 
   app.post("/api/goals", async (req, res) => {
     try {
-      const { title, description, targetDate, totalTasks } = req.body;
+      const { title, description, targetDate } = req.body;
+      
+      // Generate task breakdown using AI
+      const taskBreakdown = await generateTaskBreakdown(title);
+      const totalTasks = taskBreakdown.length + taskBreakdown.length * 3; // Main tasks + subtasks
+      
+      // Create the goal
       const [newGoal] = await db.insert(goals)
         .values({
           title,
@@ -32,8 +39,40 @@ export function registerRoutes(app: Express): Server {
           progress: 0,
         })
         .returning();
-      res.json(newGoal);
+
+      // Create tasks and subtasks
+      for (const task of taskBreakdown) {
+        const [mainTask] = await db.insert(tasks)
+          .values({
+            goalId: newGoal.id,
+            title: task.title,
+            completed: false,
+            isSubtask: false,
+          })
+          .returning();
+
+        // Create subtasks
+        await db.insert(tasks)
+          .values(task.subtasks.map(subtask => ({
+            goalId: newGoal.id,
+            title: subtask,
+            completed: false,
+            isSubtask: true,
+            parentTaskId: mainTask.id,
+          })));
+      }
+
+      // Fetch the complete goal with tasks
+      const goalWithTasks = await db.query.goals.findFirst({
+        where: eq(goals.id, newGoal.id),
+        with: {
+          tasks: true,
+        },
+      });
+
+      res.json(goalWithTasks);
     } catch (error) {
+      console.error("Failed to create goal:", error);
       res.status(500).json({ error: "Failed to create goal" });
     }
   });

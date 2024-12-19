@@ -13,23 +13,49 @@ export function TaskList({ tasks }: TaskListProps) {
     await updateTask({ taskId, completed });
   };
 
+  const mainTasks = tasks.filter(task => !task.isSubtask);
+  
   return (
-    <div className="space-y-3">
-      {tasks.map((task) => (
-        <div key={task.id} className="flex items-center space-x-2">
-          <Checkbox
-            id={`task-${task.id}`}
-            checked={task.completed}
-            onCheckedChange={(checked) => handleTaskToggle(task.id, checked as boolean)}
-          />
-          <label
-            htmlFor={`task-${task.id}`}
-            className={`text-sm ${task.completed ? "line-through text-muted-foreground" : ""}`}
-          >
-            {task.title}
-          </label>
-        </div>
-      ))}
+    <div className="space-y-6">
+      {mainTasks.map((mainTask) => {
+        const subtasks = tasks.filter(task => task.parentTaskId === mainTask.id);
+        
+        return (
+          <div key={mainTask.id} className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id={`task-${mainTask.id}`}
+                checked={mainTask.completed}
+                onCheckedChange={(checked) => handleTaskToggle(mainTask.id, checked as boolean)}
+              />
+              <label
+                htmlFor={`task-${mainTask.id}`}
+                className={`font-medium ${mainTask.completed ? "line-through text-muted-foreground" : ""}`}
+              >
+                {mainTask.title}
+              </label>
+            </div>
+            
+            <div className="ml-6 space-y-2">
+              {subtasks.map((subtask) => (
+                <div key={subtask.id} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`task-${subtask.id}`}
+                    checked={subtask.completed}
+                    onCheckedChange={(checked) => handleTaskToggle(subtask.id, checked as boolean)}
+                  />
+                  <label
+                    htmlFor={`task-${subtask.id}`}
+                    className={`text-sm ${subtask.completed ? "line-through text-muted-foreground" : ""}`}
+                  >
+                    {subtask.title}
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
