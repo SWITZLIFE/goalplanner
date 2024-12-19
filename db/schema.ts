@@ -7,6 +7,8 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: text("email").unique().notNull(),
   password: text("password").notNull(),
+  resetToken: text("reset_token"),
+  resetTokenExpiry: timestamp("reset_token_expiry"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -16,6 +18,15 @@ const baseSchema = createInsertSchema(users);
 export const insertUserSchema = baseSchema.extend({
   email: z.string().email("Invalid email format"),
   password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string(),
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("Invalid email format"),
 });
 
 export const selectUserSchema = createSelectSchema(users);

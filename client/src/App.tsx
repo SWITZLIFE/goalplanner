@@ -30,6 +30,7 @@ function App() {
           <Route path="/" component={Dashboard} />
           <Route path="/goals/:id" component={GoalView} />
           <Route path="/rewards" component={RewardPage} />
+          <Route path="/reset-password" component={ResetPasswordPage} />
         </Switch>
       </main>
     </div>

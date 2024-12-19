@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ForgotPasswordDialog } from "@/components/auth/ForgotPasswordDialog";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -114,15 +115,18 @@ export default function AuthPage() {
                 <Button type="submit">
                   {isLogin ? "Login" : "Register"}
                 </Button>
-                <Button
-                  type="button"
-                  variant="link"
-                  onClick={() => setIsLogin(!isLogin)}
-                >
-                  {isLogin
-                    ? "Don't have an account? Register"
-                    : "Already have an account? Login"}
-                </Button>
+                <div className="flex flex-col items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="link"
+                    onClick={() => setIsLogin(!isLogin)}
+                  >
+                    {isLogin
+                      ? "Don't have an account? Register"
+                      : "Already have an account? Login"}
+                  </Button>
+                  {isLogin && <ForgotPasswordDialog />}
+                </div>
               </div>
             </form>
           </Form>
