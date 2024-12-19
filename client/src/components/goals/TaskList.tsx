@@ -28,15 +28,19 @@ export function TaskList({ tasks, goalId }: TaskListProps) {
 
   const handleAddTask = async () => {
     if (newTaskTitle.trim()) {
-      await createTask({
-        goalId,
-        title: newTaskTitle.trim(),
-        isSubtask: !!addingSubtaskFor,
-        parentTaskId: addingSubtaskFor || undefined,
-      });
-      setNewTaskTitle("");
-      setShowAddDialog(false);
-      setAddingSubtaskFor(null);
+      try {
+        await createTask({
+          goalId,
+          title: newTaskTitle.trim(),
+          isSubtask: !!addingSubtaskFor,
+          parentTaskId: addingSubtaskFor || undefined,
+        });
+        setNewTaskTitle("");
+        setShowAddDialog(false);
+        setAddingSubtaskFor(null);
+      } catch (error) {
+        console.error("Failed to create task:", error);
+      }
     }
   };
 

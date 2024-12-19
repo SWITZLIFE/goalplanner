@@ -86,16 +86,21 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/goals/:goalId/tasks", async (req, res) => {
     try {
       const { goalId } = req.params;
-      const { title } = req.body;
+      const { title, isSubtask, parentTaskId } = req.body;
+      
       const [newTask] = await db.insert(tasks)
         .values({
           goalId: parseInt(goalId),
           title,
           completed: false,
+          isSubtask: isSubtask || false,
+          parentTaskId: parentTaskId || null,
         })
         .returning();
+      
       res.json(newTask);
     } catch (error) {
+      console.error("Failed to create task:", error);
       res.status(500).json({ error: "Failed to create task" });
     }
   });
