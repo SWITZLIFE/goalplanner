@@ -18,7 +18,7 @@ export const users = pgTable("users", {
 
 export const goals = pgTable("goals", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("userId").notNull().references(() => users.id),
   title: text("title").notNull(),
   description: text("description"),
   targetDate: timestamp("target_date").notNull(),
@@ -40,7 +40,7 @@ export const tasks = pgTable("tasks", {
 
 export const rewards = pgTable("rewards", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("userId").notNull().references(() => users.id),
   coins: integer("coins").default(0).notNull(),
   lastUpdated: timestamp("last_updated").defaultNow().notNull(),
 });
