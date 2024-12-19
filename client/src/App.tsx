@@ -4,6 +4,7 @@ import Dashboard from "./pages/Dashboard";
 import GoalView from "./pages/GoalView";
 import RewardPage from "./pages/RewardPage";
 import AuthPage from "./pages/AuthPage";
+import { Header } from "@/components/Header";
 import { useUser } from "@/hooks/use-user";
 
 function App() {
@@ -23,11 +24,14 @@ function App() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Switch>
-        <Route path="/" component={Dashboard} />
-        <Route path="/goals/:id" component={GoalView} />
-        <Route path="/rewards" component={RewardPage} />
-      </Switch>
+      <Header />
+      <main className="container py-6">
+        <Switch>
+          <Route path="/" component={Dashboard} />
+          <Route path="/goals/:id" component={GoalView} />
+          <Route path="/rewards" component={RewardPage} />
+        </Switch>
+      </main>
     </div>
   );
 }
