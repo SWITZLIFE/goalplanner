@@ -27,10 +27,12 @@ Conversation guidelines:
 5. Keep responses conversational and brief (1-2 sentences)
 6. Ask follow-up questions to better understand their needs
 
-Response format:
+Please provide your response in the following JSON format:
 {
-  "messages": ["your response", "follow up question"]
+  "messages": ["your response", "optional follow up question"]
 }
+
+The response MUST be valid JSON with the exact format shown above.
 
 Example good responses:
 User: "I need help"
@@ -67,9 +69,18 @@ Remember:
   }
 
   try {
-    return JSON.parse(content);
+    const parsed = JSON.parse(content);
+    if (!Array.isArray(parsed.messages)) {
+      console.error("Invalid response format:", content);
+      return {
+        messages: ["I apologize, but I'm having trouble processing your request right now. Could you please try asking your question again?"]
+      };
+    }
+    return parsed;
   } catch (error) {
     console.error("Failed to parse OpenAI response:", error);
-    throw new Error("Failed to parse coaching advice");
+    return {
+      messages: ["I apologize, but I'm having trouble understanding right now. Could you please rephrase your question?"]
+    };
   }
 }
