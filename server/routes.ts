@@ -153,7 +153,7 @@ export function registerRoutes(app: Express): Server {
 
       const coaching = await getCoachingAdvice(goal, goal.tasks);
       res.json({
-        message: coaching.advice,
+        message: coaching.message,
         type: "response"
       });
     } catch (error) {
