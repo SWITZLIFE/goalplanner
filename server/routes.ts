@@ -1,85 +1,28 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { goals, tasks, rewards, rewardItems, type User } from "@db/schema";
-import { eq, and, isNull, desc } from "drizzle-orm";
+import { goals, tasks, rewards } from "@db/schema";
+import { eq, and, isNull } from "drizzle-orm";
 import { generateTaskBreakdown } from "./openai";
 import { getCoachingAdvice } from "./coaching";
-import { setupAuth } from "./auth";
-
-// Extend Express.User with our User type
-// Import the type from auth.ts
-import type { AuthUser } from "./auth";
-
-declare global {
-  namespace Express {
-    interface User extends AuthUser {}
-  }
-}
 
 export function registerRoutes(app: Express): Server {
-  // Setup authentication routes and middleware
-  setupAuth(app);
   // Goals API
   app.get("/api/goals", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
     try {
-      // Fetch all goals for the authenticated user
-      const userGoals = await db
-        .select({
-          id: goals.id,
-          title: goals.title,
-          description: goals.description,
-          targetDate: goals.targetDate,
-          progress: goals.progress,
-          totalTasks: goals.totalTasks,
-          createdAt: goals.createdAt,
-        })
-        .from(goals)
-        .where(eq(goals.userId, req.user.id))
-        .orderBy(desc(goals.createdAt));
-
-      // For each goal, fetch its tasks
-      const goalsWithTasks = await Promise.all(
-        userGoals.map(async (goal) => {
-          const goalTasks = await db
-            .select({
-              id: tasks.id,
-              title: tasks.title,
-              completed: tasks.completed,
-              estimatedMinutes: tasks.estimatedMinutes,
-              createdAt: tasks.createdAt,
-              isSubtask: tasks.isSubtask,
-              parentTaskId: tasks.parentTaskId,
-            })
-            .from(tasks)
-            .where(eq(tasks.goalId, goal.id));
-
-          return {
-            ...goal,
-            tasks: goalTasks,
-          };
-        })
-      );
-
-      res.json(goalsWithTasks);
-    } catch (error: any) {
-      console.error("Failed to fetch goals:", error);
-      res.status(500).json({ 
-        error: "Failed to fetch goals",
-        details: error.message 
+      const allGoals = await db.query.goals.findMany({
+        with: {
+          tasks: true,
+        },
+        orderBy: (goals, { desc }) => [desc(goals.createdAt)],
       });
+      res.json(allGoals);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch goals" });
     }
   });
 
   app.post("/api/goals", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
     try {
       const { title, description, targetDate, totalTasks } = req.body;
       
@@ -90,7 +33,6 @@ export function registerRoutes(app: Express): Server {
       // Create the goal
       const [newGoal] = await db.insert(goals)
         .values({
-          userId: req.user.id,
           title,
           description,
           targetDate: new Date(targetDate),
@@ -225,28 +167,12 @@ export function registerRoutes(app: Express): Server {
 
   // Rewards API
   app.get("/api/rewards", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
     try {
       const [userRewards] = await db.select()
         .from(rewards)
-        .where(eq(rewards.userId, req.user.id))
+        .where(eq(rewards.userId, 1)) // TODO: Replace with actual user ID when auth is added
         .limit(1);
-      
-      if (!userRewards) {
-        // Create initial rewards for new user
-        const [newRewards] = await db.insert(rewards)
-          .values({
-            userId: req.user.id,
-            coins: 0,
-          })
-          .returning();
-        return res.json(newRewards);
-      }
-      
-      res.json(userRewards);
+      res.json(userRewards || { coins: 0 });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch rewards" });
     }
@@ -262,13 +188,9 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.post("/api/rewards/purchase/:itemId", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
     try {
       const itemId = parseInt(req.params.itemId);
-      const userId = req.user.id;
+      const userId = 1; // TODO: Replace with actual user ID when auth is added
 
       // Get the reward item
       const [item] = await db.select()
