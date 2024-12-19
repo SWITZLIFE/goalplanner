@@ -8,12 +8,12 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  emailVerified: boolean("email_verified").default(false).notNull(),
-  verificationToken: text("verification_token"),
-  resetPasswordToken: text("reset_password_token"),
-  resetPasswordExpires: timestamp("reset_password_expires"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  emailVerified: boolean("emailVerified").default(false).notNull(),
+  verificationToken: text("verificationToken"),
+  resetPasswordToken: text("resetPasswordToken"),
+  resetPasswordExpires: text("resetPasswordExpires"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export const goals = pgTable("goals", {
