@@ -5,7 +5,7 @@ const openai = new OpenAI({
 });
 
 export async function generateTaskBreakdown(goalTitle: string, numTasks: number): Promise<{ title: string; subtasks: string[] }[]> {
-  const prompt = `Break down the following goal into actionable tasks with subtasks:
+  const prompt = `Break down the following goal into ${numTasks} actionable tasks with subtasks:
 Goal: "${goalTitle}"
 
 Please provide a JSON array where each task has a title and exactly 3 subtasks with time estimates. Format:
@@ -22,9 +22,14 @@ Please provide a JSON array where each task has a title and exactly 3 subtasks w
   ]
 }
 
-Each subtask should include a realistic time estimate in minutes based on its complexity.
+Requirements:
+1. Generate EXACTLY ${numTasks} main tasks (no more, no less)
+2. Each main task MUST have EXACTLY 3 subtasks
+3. Each subtask MUST have an estimatedMinutes field with a realistic time estimate
+4. Tasks and subtasks should be specific, actionable, and measurable
+5. Time estimates should be realistic and based on task complexity
 
-Generate exactly ${numTasks} main tasks, each with exactly 3 subtasks that are specific, actionable, and measurable.`;
+Remember: The response MUST contain exactly ${numTasks} main tasks.`;
 
   const response = await openai.chat.completions.create({
     model: "gpt-3.5-turbo",

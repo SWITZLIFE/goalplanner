@@ -45,13 +45,11 @@ export function TaskList({ tasks }: TaskListProps) {
                   {mainTask.title}
                 </label>
               </div>
-              {tasks.filter(task => task.parentTaskId === mainTask.id).some(task => task.estimatedMinutes) && (
+              {subtasks.some(task => task.estimatedMinutes) && (
                 <div className="text-xs text-muted-foreground ml-6">
                   Total estimated time: {
                     formatTime(
-                      tasks
-                        .filter(task => task.parentTaskId === mainTask.id)
-                        .reduce((sum, task) => sum + (task.estimatedMinutes || 0), 0)
+                      subtasks.reduce((sum, task) => sum + (task.estimatedMinutes || 0), 0)
                     )
                   }
                 </div>
