@@ -15,10 +15,10 @@ export function CoachingCard({ goalId }: CoachingCardProps) {
   const [inputValue, setInputValue] = useState("");
   const [messages, setMessages] = useState<Array<{ type: 'welcome' | 'user' | 'response', message: string }>>([]);
 
-  const { data: initialMessage, isLoading } = useQuery({
+  const { data: initialMessage, isLoading } = useQuery<{ message: string; type: string }>({
     queryKey: [`/api/goals/${goalId}/coaching`],
     onSuccess: (data) => {
-      if (data && messages.length === 0) {
+      if (!messages.some(m => m.type === 'welcome')) {
         setMessages([{ type: 'welcome', message: data.message }]);
       }
     }
