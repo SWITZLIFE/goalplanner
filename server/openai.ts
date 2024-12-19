@@ -8,13 +8,21 @@ export async function generateTaskBreakdown(goalTitle: string, numTasks: number)
   const prompt = `Break down the following goal into actionable tasks with subtasks:
 Goal: "${goalTitle}"
 
-Please provide a JSON array where each task has a title and exactly 3 subtasks. Format:
-[
-  {
-    "title": "Main task 1",
-    "subtasks": ["Subtask 1", "Subtask 2", "Subtask 3"]
-  }
-]
+Please provide a JSON array where each task has a title and exactly 3 subtasks with time estimates. Format:
+{
+  "tasks": [
+    {
+      "title": "Main task 1",
+      "subtasks": [
+        { "title": "Subtask 1", "estimatedMinutes": 30 },
+        { "title": "Subtask 2", "estimatedMinutes": 45 },
+        { "title": "Subtask 3", "estimatedMinutes": 60 }
+      ]
+    }
+  ]
+}
+
+Each subtask should include a realistic time estimate in minutes based on its complexity.
 
 Generate exactly ${numTasks} main tasks, each with exactly 3 subtasks that are specific, actionable, and measurable.`;
 

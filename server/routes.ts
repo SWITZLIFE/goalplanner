@@ -55,8 +55,9 @@ export function registerRoutes(app: Express): Server {
         await db.insert(tasks)
           .values(task.subtasks.map(subtask => ({
             goalId: newGoal.id,
-            title: subtask,
+            title: subtask.title,
             completed: false,
+            estimatedMinutes: subtask.estimatedMinutes,
             isSubtask: true,
             parentTaskId: mainTask.id,
           })));

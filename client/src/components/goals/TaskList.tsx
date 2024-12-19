@@ -44,12 +44,19 @@ export function TaskList({ tasks }: TaskListProps) {
                     checked={subtask.completed}
                     onCheckedChange={(checked) => handleTaskToggle(subtask.id, checked as boolean)}
                   />
-                  <label
-                    htmlFor={`task-${subtask.id}`}
-                    className={`text-sm ${subtask.completed ? "line-through text-muted-foreground" : ""}`}
-                  >
-                    {subtask.title}
-                  </label>
+                  <div className="flex flex-col">
+                    <label
+                      htmlFor={`task-${subtask.id}`}
+                      className={`text-sm ${subtask.completed ? "line-through text-muted-foreground" : ""}`}
+                    >
+                      {subtask.title}
+                    </label>
+                    {subtask.estimatedMinutes && (
+                      <span className="text-xs text-muted-foreground ml-4">
+                        Estimated time: {subtask.estimatedMinutes} minutes
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
