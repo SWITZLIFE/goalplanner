@@ -4,6 +4,7 @@ import { db } from "@db";
 import { goals, tasks, rewards } from "@db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { generateTaskBreakdown } from "./openai";
+import { getCoachingAdvice } from "./coaching";
 
 export function registerRoutes(app: Express): Server {
   // Goals API
@@ -123,6 +124,29 @@ export function registerRoutes(app: Express): Server {
       res.json(updatedTask);
     } catch (error) {
       res.status(500).json({ error: "Failed to update task" });
+    }
+  });
+
+  // AI Coaching API
+  app.get("/api/goals/:goalId/coaching", async (req, res) => {
+    try {
+      const { goalId } = req.params;
+      const goal = await db.query.goals.findFirst({
+        where: eq(goals.id, parseInt(goalId)),
+        with: {
+          tasks: true,
+        },
+      });
+
+      if (!goal) {
+        return res.status(404).json({ error: "Goal not found" });
+      }
+
+      const coaching = await getCoachingAdvice(goal, goal.tasks);
+      res.json(coaching);
+    } catch (error) {
+      console.error("Failed to get coaching advice:", error);
+      res.status(500).json({ error: "Failed to get coaching advice" });
     }
   });
 

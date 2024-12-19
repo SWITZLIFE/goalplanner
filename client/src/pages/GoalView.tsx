@@ -2,6 +2,7 @@ import { useRoute } from "wouter";
 import { useGoals } from "@/hooks/use-goals";
 import { GoalProgress } from "@/components/goals/GoalProgress";
 import { TaskList } from "@/components/goals/TaskList";
+import { CoachingCard } from "@/components/coaching/CoachingCard";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
@@ -41,9 +42,14 @@ export default function GoalView() {
             <p className="text-sm text-muted-foreground">{goal.progress}% completed</p>
           </div>
 
-          <div className="space-y-4">
-            <h2 className="text-lg font-medium">Tasks</h2>
-            <TaskList tasks={goal.tasks || []} />
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-4">
+              <h2 className="text-lg font-medium">Tasks</h2>
+              <TaskList tasks={goal.tasks || []} />
+            </div>
+            <div>
+              <CoachingCard goalId={goal.id} />
+            </div>
           </div>
         </div>
       </div>
