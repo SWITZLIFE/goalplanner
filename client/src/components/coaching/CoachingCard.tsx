@@ -13,7 +13,8 @@ interface CoachingCardProps {
 export function CoachingCard({ goalId }: CoachingCardProps) {
   const [isMinimized, setIsMinimized] = useState(false);
   const [inputValue, setInputValue] = useState("");
-  const [messages, setMessages] = useState<Array<{ type: 'welcome' | 'user' | 'response', message: string }>>([]);
+  const [messages, setMessages] = useState<Array<{ type: 'welcome' | 'user' | 'response' | 'typing', message: string }>>([]);
+  const [isTyping, setIsTyping] = useState(false);
 
   const { data: initialMessage, isLoading } = useQuery<{ message: string; type: string }>({
     queryKey: [`/api/goals/${goalId}/coaching`],
@@ -35,6 +36,9 @@ export function CoachingCard({ goalId }: CoachingCardProps) {
     setMessages(prev => [...prev, { type: 'user', message: userMessage }]);
 
     try {
+      setIsTyping(true);
+      setMessages(prev => [...prev, { type: 'typing', message: '...' }]);
+      
       const response = await fetch(`/api/goals/${goalId}/coaching/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -44,9 +48,21 @@ export function CoachingCard({ goalId }: CoachingCardProps) {
       if (!response.ok) throw new Error('Failed to get response');
       
       const data = await response.json();
-      setMessages(prev => [...prev, { type: 'response', message: data.message }]);
+      setMessages(prev => {
+        const withoutTyping = prev.filter(m => m.type !== 'typing');
+        return [
+          ...withoutTyping,
+          ...(data.messages || [data.message]).map((msg: string) => ({
+            type: 'response' as const,
+            message: msg
+          }))
+        ];
+      });
     } catch (error) {
       console.error('Failed to send message:', error);
+      setMessages(prev => prev.filter(m => m.type !== 'typing'));
+    } finally {
+      setIsTyping(false);
     }
   };
 
@@ -92,10 +108,22 @@ export function CoachingCard({ goalId }: CoachingCardProps) {
               className={`${
                 msg.type === 'user' 
                   ? 'ml-auto bg-primary text-primary-foreground' 
+                  : msg.type === 'typing'
+                  ? 'bg-muted animate-pulse'
                   : 'bg-muted'
-              } rounded-lg p-3 max-w-[80%]`}
+              } rounded-lg p-3 max-w-[80%] ${
+                msg.type === 'typing' ? 'flex gap-2 items-center' : ''
+              }`}
             >
-              <p className="text-sm">{msg.message}</p>
+              {msg.type === 'typing' ? (
+                <>
+                  <div className="w-2 h-2 bg-foreground rounded-full animate-bounce" />
+                  <div className="w-2 h-2 bg-foreground rounded-full animate-bounce [animation-delay:0.2s]" />
+                  <div className="w-2 h-2 bg-foreground rounded-full animate-bounce [animation-delay:0.4s]" />
+                </>
+              ) : (
+                <p className="text-sm">{msg.message}</p>
+              )}
             </div>
           ))
         )}

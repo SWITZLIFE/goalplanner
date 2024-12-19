@@ -152,8 +152,11 @@ export function registerRoutes(app: Express): Server {
       }
 
       const coaching = await getCoachingAdvice(goal, goal.tasks);
+      
+      // If response is an array of messages, send them one by one
+      const messages = Array.isArray(coaching.messages) ? coaching.messages : [coaching.message];
       res.json({
-        message: coaching.message,
+        messages: messages,
         type: "response"
       });
     } catch (error) {
