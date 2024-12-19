@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Laptop, MinimizeIcon, MaximizeIcon, SendHorizontal } from "lucide-react";
+import { Laptop, MinimizeIcon, SendHorizontal } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,11 +20,11 @@ export function CoachingCard({ goalId }: CoachingCardProps) {
   });
 
   // Set initial welcome message
-  React.useEffect(() => {
+  useEffect(() => {
     if (initialMessage && !messages.some(m => m.type === 'welcome')) {
       setMessages([{ type: 'welcome', message: initialMessage.message }]);
     }
-  }, [initialMessage]);
+  }, [initialMessage, messages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
