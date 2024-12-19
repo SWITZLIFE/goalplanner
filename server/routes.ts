@@ -1,11 +1,21 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { goals, tasks, rewards, rewardItems } from "@db/schema";
-import { eq, and, isNull } from "drizzle-orm";
+import { goals, tasks, rewards, rewardItems, type User } from "@db/schema";
+import { eq, and, isNull, desc } from "drizzle-orm";
 import { generateTaskBreakdown } from "./openai";
 import { getCoachingAdvice } from "./coaching";
 import { setupAuth } from "./auth";
+
+// Extend Express.User with our User type
+// Import the type from auth.ts
+import type { AuthUser } from "./auth";
+
+declare global {
+  namespace Express {
+    interface User extends AuthUser {}
+  }
+}
 
 export function registerRoutes(app: Express): Server {
   // Setup authentication routes and middleware
@@ -17,16 +27,51 @@ export function registerRoutes(app: Express): Server {
     }
 
     try {
-      const allGoals = await db.query.goals.findMany({
-        where: eq(goals.userId, req.user.id),
-        with: {
-          tasks: true,
-        },
-        orderBy: (goals, { desc }) => [desc(goals.createdAt)],
+      // Fetch all goals for the authenticated user
+      const userGoals = await db
+        .select({
+          id: goals.id,
+          title: goals.title,
+          description: goals.description,
+          targetDate: goals.targetDate,
+          progress: goals.progress,
+          totalTasks: goals.totalTasks,
+          createdAt: goals.createdAt,
+        })
+        .from(goals)
+        .where(eq(goals.userId, req.user.id))
+        .orderBy(desc(goals.createdAt));
+
+      // For each goal, fetch its tasks
+      const goalsWithTasks = await Promise.all(
+        userGoals.map(async (goal) => {
+          const goalTasks = await db
+            .select({
+              id: tasks.id,
+              title: tasks.title,
+              completed: tasks.completed,
+              estimatedMinutes: tasks.estimatedMinutes,
+              createdAt: tasks.createdAt,
+              isSubtask: tasks.isSubtask,
+              parentTaskId: tasks.parentTaskId,
+            })
+            .from(tasks)
+            .where(eq(tasks.goalId, goal.id));
+
+          return {
+            ...goal,
+            tasks: goalTasks,
+          };
+        })
+      );
+
+      res.json(goalsWithTasks);
+    } catch (error: any) {
+      console.error("Failed to fetch goals:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch goals",
+        details: error.message 
       });
-      res.json(allGoals);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch goals" });
     }
   });
 

@@ -30,9 +30,19 @@ const crypto = {
 };
 
 // extend express user object with our schema
+// Define the structure of our authenticated user
+type AuthUser = {
+  id: number;
+  email: string;
+  username: string;
+  emailVerified: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 declare global {
   namespace Express {
-    interface User extends User {}
+    interface User extends AuthUser {}
   }
 }
 
