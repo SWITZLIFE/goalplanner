@@ -103,15 +103,19 @@ export function registerRoutes(app: Express): Server {
   app.patch("/api/tasks/:taskId", async (req, res) => {
     try {
       const { taskId } = req.params;
-      const { completed } = req.body;
+      const { completed, title } = req.body;
       
+      const updateData: Partial<typeof tasks.$inferInsert> = {};
+      if (typeof completed !== 'undefined') updateData.completed = completed;
+      if (title) updateData.title = title;
+
       const [updatedTask] = await db.update(tasks)
-        .set({ completed })
+        .set(updateData)
         .where(eq(tasks.id, parseInt(taskId)))
         .returning();
 
       // Update goal progress
-      if (updatedTask) {
+      if (updatedTask && typeof completed !== 'undefined') {
         const goalTasks = await db.select()
           .from(tasks)
           .where(eq(tasks.goalId, updatedTask.goalId));
@@ -127,6 +131,45 @@ export function registerRoutes(app: Express): Server {
       res.json(updatedTask);
     } catch (error) {
       res.status(500).json({ error: "Failed to update task" });
+    }
+  });
+
+  // Delete task endpoint
+  app.delete("/api/tasks/:taskId", async (req, res) => {
+    try {
+      const { taskId } = req.params;
+      const taskIdInt = parseInt(taskId);
+
+      // First, delete any subtasks
+      await db.delete(tasks)
+        .where(eq(tasks.parentTaskId, taskIdInt));
+
+      // Then delete the main task
+      const [deletedTask] = await db.delete(tasks)
+        .where(eq(tasks.id, taskIdInt))
+        .returning();
+
+      if (!deletedTask) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      // Update goal progress
+      const goalTasks = await db.select()
+        .from(tasks)
+        .where(eq(tasks.goalId, deletedTask.goalId));
+      
+      if (goalTasks.length > 0) {
+        const completedTasks = goalTasks.filter(t => t.completed).length;
+        const progress = Math.round((completedTasks / goalTasks.length) * 100);
+        
+        await db.update(goals)
+          .set({ progress })
+          .where(eq(goals.id, deletedTask.goalId));
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete task" });
     }
   });
 

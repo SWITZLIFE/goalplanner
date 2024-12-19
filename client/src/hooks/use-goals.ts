@@ -39,13 +39,26 @@ export function useGoals() {
   });
 
   const updateTaskMutation = useMutation({
-    mutationFn: async ({ taskId, completed }: { taskId: number; completed: boolean }) => {
+    mutationFn: async ({ taskId, completed, title }: { taskId: number; completed?: boolean; title?: string }) => {
       const res = await fetch(`/api/tasks/${taskId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ completed }),
+        body: JSON.stringify({ completed, title }),
       });
       if (!res.ok) throw new Error("Failed to update task");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+    },
+  });
+
+  const deleteTaskMutation = useMutation({
+    mutationFn: async (taskId: number) => {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete task");
       return res.json();
     },
     onSuccess: () => {
@@ -59,5 +72,6 @@ export function useGoals() {
     createGoal: createGoalMutation.mutateAsync,
     createTask: createTaskMutation.mutateAsync,
     updateTask: updateTaskMutation.mutateAsync,
+    deleteTask: deleteTaskMutation.mutateAsync,
   };
 }

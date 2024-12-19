@@ -65,7 +65,7 @@ export default function GoalView() {
 
           <div className="space-y-4">
             <h2 className="text-lg font-medium mb-4">Tasks</h2>
-            <TaskList tasks={goal.tasks || []} />
+            <TaskList tasks={goal.tasks || []} goalId={goal.id} />
           </div>
           
           {/* Floating AI Coach */}
