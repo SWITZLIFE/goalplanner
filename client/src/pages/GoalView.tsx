@@ -19,35 +19,53 @@ export default function GoalView() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-2xl mx-auto">
-        <Link href="/">
-          <Button variant="ghost" className="mb-4">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Goals
-          </Button>
-        </Link>
+    <div className="min-h-screen flex">
+      {/* Left Sidebar */}
+      <div className="w-96 border-r p-6 bg-gray-50">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-xl font-semibold">Goal Planner</h1>
+          <CoinBalance />
+        </div>
 
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-2xl font-semibold mb-2">{goal.title}</h1>
-            <p className="text-muted-foreground">
-              Target completion: {format(new Date(goal.targetDate), "MMMM d, yyyy")}
-            </p>
+        <CreateGoalDialog />
+        
+        <div className="mt-8 space-y-4">
+          <h2 className="text-sm font-medium text-gray-600">Your Goals</h2>
+          {goals.map((g) => (
+            <GoalCard key={g.id} goal={g} />
+          ))}
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 p-8 bg-white">
+        <div className="max-w-3xl mx-auto space-y-8">
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-2xl font-semibold mb-2">{goal.title}</h1>
+              <p className="text-muted-foreground">
+                Target completion: {format(new Date(goal.targetDate), "MMMM d, yyyy")}
+              </p>
+            </div>
+            <Link href="/">
+              <Button variant="ghost" size="sm">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+            </Link>
           </div>
 
           <div className="space-y-2">
-            <h2 className="text-lg font-medium">Progress</h2>
             <GoalProgress progress={goal.progress} />
             <p className="text-sm text-muted-foreground">{goal.progress}% completed</p>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="space-y-4">
-              <h2 className="text-lg font-medium">Tasks</h2>
+          <div className="grid gap-8 grid-cols-5">
+            <div className="col-span-3">
+              <h2 className="text-lg font-medium mb-4">Tasks</h2>
               <TaskList tasks={goal.tasks || []} />
             </div>
-            <div>
+            <div className="col-span-2">
               <CoachingCard goalId={goal.id} />
             </div>
           </div>
