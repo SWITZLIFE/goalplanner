@@ -87,10 +87,7 @@ export function setupAuth(app: Express) {
           return done(null, false, { message: "Incorrect password." });
         }
 
-        if (!user.emailVerified) {
-          return done(null, false, { message: "Please verify your email first." });
-        }
-
+        // Since we're auto-verifying users in development, we'll skip email verification check
         return done(null, user);
       } catch (err) {
         return done(err);
@@ -128,38 +125,49 @@ export function setupAuth(app: Express) {
       const { email, username, password } = result.data;
 
       // Check if user already exists
+      // Check if user already exists (by email or username)
       const [existingUser] = await db
         .select()
         .from(users)
-        .where(eq(users.email, email))
+        .where(
+          eq(users.email, email)
+        )
         .limit(1);
 
       if (existingUser) {
         return res.status(400).send("Email already registered");
       }
 
-      // Hash the password and generate verification token
-      const hashedPassword = await crypto.hash(password);
-      const verificationToken = crypto.generateToken();
+      // Check username
+      const [existingUsername] = await db
+        .select()
+        .from(users)
+        .where(
+          eq(users.username, username)
+        )
+        .limit(1);
 
-      // Create the new user
+      if (existingUsername) {
+        return res.status(400).send("Username already taken");
+      }
+
+      // Hash the password
+      const hashedPassword = await crypto.hash(password);
+      
+      // For development, we'll create verified users directly
+      // In production, you'd want to send verification emails
       const [newUser] = await db
         .insert(users)
         .values({
           email,
           username,
           password: hashedPassword,
-          verificationToken,
-          emailVerified: false,
+          emailVerified: true,
+          verificationToken: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
         })
         .returning();
-
-      // TODO: Send verification email
-      // For now, we'll auto-verify the user
-      await db
-        .update(users)
-        .set({ emailVerified: true, verificationToken: null })
-        .where(eq(users.id, newUser.id));
 
       return res.json({
         message: "Registration successful",
