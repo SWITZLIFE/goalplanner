@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react";
 import Dashboard from "./pages/Dashboard";
 import GoalView from "./pages/GoalView";
 import RewardPage from "./pages/RewardPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import AuthPage from "./pages/AuthPage";
 import { Header } from "@/components/Header";
 import { useUser } from "@/hooks/use-user";
