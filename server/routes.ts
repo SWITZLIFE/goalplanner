@@ -129,8 +129,17 @@ export function registerRoutes(app: Express): Server {
 
   // AI Coaching API
   app.get("/api/goals/:goalId/coaching", async (req, res) => {
+    res.json({
+      message: "Hey! I'm your AI coach. Let me know if you need help with anything!",
+      type: "welcome"
+    });
+  });
+
+  app.post("/api/goals/:goalId/coaching/chat", async (req, res) => {
     try {
       const { goalId } = req.params;
+      const { message } = req.body;
+      
       const goal = await db.query.goals.findFirst({
         where: eq(goals.id, parseInt(goalId)),
         with: {
@@ -143,7 +152,10 @@ export function registerRoutes(app: Express): Server {
       }
 
       const coaching = await getCoachingAdvice(goal, goal.tasks);
-      res.json(coaching);
+      res.json({
+        message: coaching.advice,
+        type: "response"
+      });
     } catch (error) {
       console.error("Failed to get coaching advice:", error);
       res.status(500).json({ error: "Failed to get coaching advice" });

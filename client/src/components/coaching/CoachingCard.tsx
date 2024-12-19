@@ -13,16 +13,39 @@ interface CoachingCardProps {
 export function CoachingCard({ goalId }: CoachingCardProps) {
   const [isMinimized, setIsMinimized] = useState(false);
   const [inputValue, setInputValue] = useState("");
+  const [messages, setMessages] = useState<Array<{ type: 'welcome' | 'user' | 'response', message: string }>>([]);
 
-  const { data: coaching, isLoading } = useQuery({
+  const { data: initialMessage, isLoading } = useQuery({
     queryKey: [`/api/goals/${goalId}/coaching`],
-    refetchInterval: 60000,
+    onSuccess: (data) => {
+      if (data && messages.length === 0) {
+        setMessages([{ type: 'welcome', message: data.message }]);
+      }
+    }
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement chat submission
+    if (!inputValue.trim()) return;
+
+    const userMessage = inputValue;
     setInputValue("");
+    setMessages(prev => [...prev, { type: 'user', message: userMessage }]);
+
+    try {
+      const response = await fetch(`/api/goals/${goalId}/coaching/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessage }),
+      });
+      
+      if (!response.ok) throw new Error('Failed to get response');
+      
+      const data = await response.json();
+      setMessages(prev => [...prev, { type: 'response', message: data.message }]);
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    }
   };
 
   if (isMinimized) {
@@ -59,24 +82,21 @@ export function CoachingCard({ goalId }: CoachingCardProps) {
       {/* Chat Messages */}
       <div className="flex-1 overflow-auto p-4 space-y-4">
         {isLoading ? (
-          <div className="space-y-4">
-            {[1, 2].map((i) => (
-              <Skeleton key={i} className="h-16 w-full" />
-            ))}
-          </div>
-        ) : coaching ? (
-          <>
-            <div className="bg-muted rounded-lg p-3">
-              <p className="text-sm">{coaching.motivation}</p>
+          <Skeleton className="h-16 w-full" />
+        ) : (
+          messages.map((msg, index) => (
+            <div
+              key={index}
+              className={`${
+                msg.type === 'user' 
+                  ? 'ml-auto bg-primary text-primary-foreground' 
+                  : 'bg-muted'
+              } rounded-lg p-3 max-w-[80%]`}
+            >
+              <p className="text-sm">{msg.message}</p>
             </div>
-            <div className="bg-muted rounded-lg p-3">
-              <p className="text-sm">{coaching.advice}</p>
-            </div>
-            <div className="bg-muted rounded-lg p-3">
-              <p className="text-sm">{coaching.tip}</p>
-            </div>
-          </>
-        ) : null}
+          ))
+        )}
       </div>
 
       {/* Input Area */}
