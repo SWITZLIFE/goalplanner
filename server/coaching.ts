@@ -10,35 +10,57 @@ export async function getCoachingAdvice(goal: Goal, tasks: Task[], userMessage: 
   const totalTasks = tasks.length;
   const progress = Math.round((completedTasks / totalTasks) * 100);
 
-  const systemPrompt = `You are an empathetic AI coach specializing in helping users achieve their goals. Your role is to:
-1. Be an encouraging and supportive coach
-2. Help users overcome obstacles and stay motivated
-3. Provide practical, actionable advice when asked
-4. Break down complex problems into manageable steps
-5. Share relevant productivity techniques when appropriate
+  const mainTasks = tasks.filter(t => !t.isSubtask);
+  const taskProgress = mainTasks.map(task => {
+    const subtasks = tasks.filter(t => t.parentTaskId === task.id);
+    const completedSubtasks = subtasks.filter(t => t.completed).length;
+    return {
+      title: task.title,
+      completed: task.completed,
+      subtaskProgress: subtasks.length > 0 ? Math.round((completedSubtasks / subtasks.length) * 100) : 0
+    };
+  });
 
-You have access to this context (but only mention it when relevant to answering the user's specific question):
-Goal: ${goal.title}
-Progress: ${progress}% (${completedTasks} of ${totalTasks} tasks completed)
-Tasks: ${tasks.map(t => t.title).join(', ')}
+  const systemPrompt = `You are an AI coach specializing in helping users achieve their goals through personalized guidance and motivation. Your role is to:
 
-Core Principles:
-- Be conversational and friendly, like a supportive coach
-- Listen actively and respond directly to what the user is asking
-- Keep initial responses short (1-2 sentences) and ask follow-up questions
-- Only mention goal/task details if the user asks about them
-- If giving advice, break it into small, actionable steps
-- Always maintain an encouraging and positive tone
-- If you don't understand something, ask for clarification
+1. Provide guidance and motivation tailored to the user's current progress
+2. Help break down complex tasks into manageable steps
+3. Offer specific, actionable advice based on their situation
+4. Be encouraging and supportive while maintaining professionalism
+5. Share relevant productivity techniques and best practices
+6. Help users overcome obstacles and stay focused
+
+Current Goal Context:
+Goal: "${goal.title}"
+Overall Progress: ${progress}%
+Tasks Overview: ${taskProgress.map(t => 
+  `\n- ${t.title} (${t.completed ? 'Completed' : `${t.subtaskProgress}% of subtasks done`})`
+).join('')}
+
+Conversation Guidelines:
+- Keep responses concise but helpful (2-3 sentences per message)
+- Be specific to the user's situation and current progress
+- Maintain a positive, motivating tone
+- Provide practical, actionable advice when asked
+- Ask clarifying questions when needed
+- Reference specific tasks or progress when relevant
+- Always acknowledge user's concerns or challenges
+
+Response Principles:
+- Personalize responses based on their progress and tasks
+- Offer specific suggestions rather than generic advice
+- Be encouraging but realistic about challenges
+- Help users break down any obstacles into smaller steps
+- Maintain a supportive and professional coaching relationship
 
 Response Format:
-- Your response must be a JSON object with a "messages" array
-- Keep each message brief and conversational
-- For longer advice, split it into 2-3 separate messages
-- Always end with a question to keep the conversation going
-- Focus on being helpful without overwhelming the user`;
+- Return a JSON object with a "messages" array
+- Keep individual messages focused and concise
+- End with an engaging question related to their goals
+- Use a mix of motivation and practical guidance`;
 
   try {
+    // Generate a more natural coaching response
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
@@ -51,26 +73,51 @@ Response Format:
 
     const content = response.choices[0].message.content;
     if (!content) {
-      throw new Error("No response generated");
+      throw new Error("Failed to generate coaching response");
     }
 
-    const parsed = JSON.parse(content);
-    if (!Array.isArray(parsed.messages)) {
-      return {
-        messages: [
-          "I'm here to help! What would you like to discuss about your goals?",
-          "You can ask me about specific tasks, need motivation, or general advice."
-        ]
-      };
-    }
+    try {
+      const parsed = JSON.parse(content);
+      
+      // Ensure we have valid messages array
+      if (!Array.isArray(parsed.messages) || parsed.messages.length === 0) {
+        console.warn("Invalid message format received:", content);
+        return {
+          messages: [
+            "I understand you're looking for guidance. Could you tell me more about what specific aspect of your goal you'd like to discuss?",
+            "I can help with task planning, motivation, or specific challenges you're facing."
+          ]
+        };
+      }
 
-    return parsed;
+      // Format and structure the messages
+      const formattedMessages = parsed.messages.map((msg: string) => {
+        // Clean up any markdown or excessive formatting
+        return msg.trim()
+          .replace(/^\s*[-*]\s+/g, '') // Remove leading bullets
+          .replace(/\n{3,}/g, '\n\n'); // Normalize line breaks
+      });
+
+      // Ensure we always end with a question if we don't already
+      if (!formattedMessages[formattedMessages.length - 1].endsWith('?')) {
+        formattedMessages.push(
+          "Is there anything specific about that you'd like me to clarify or expand on?"
+        );
+      }
+
+      return { messages: formattedMessages };
+    } catch (parseError) {
+      console.error("Failed to parse coaching response:", parseError);
+      throw new Error("Invalid response format");
+    }
   } catch (error) {
     console.error("Coaching response error:", error);
+    
+    // Provide a more helpful fallback response
     return {
       messages: [
-        "I'm having a moment of confusion, but I'm here to help!",
-        "Could you please rephrase your question?"
+        "I want to make sure I give you the best possible guidance.",
+        "Could you please rephrase your question, focusing on what specific aspect of your goal you'd like help with?"
       ]
     };
   }
