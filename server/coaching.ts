@@ -10,77 +10,67 @@ export async function getCoachingAdvice(goal: Goal, tasks: Task[], userMessage: 
   const totalTasks = tasks.length;
   const progress = Math.round((completedTasks / totalTasks) * 100);
 
-  const prompt = `You are an empathetic and supportive AI coach having a conversation with a user. Your role is to be helpful and responsive to what they're saying.
+  const systemPrompt = `You are an AI coach specializing in helping users achieve their goals. Your role is to:
+1. Provide guidance and motivation
+2. Help break down complex tasks into manageable steps
+3. Offer specific, actionable advice
+4. Be encouraging and supportive
+5. Share relevant productivity techniques when appropriate
 
-Current user message: "${userMessage}"
+Current Goal Context:
+Goal: ${goal.title}
+Progress: ${progress}% complete (${completedTasks}/${totalTasks} tasks)
+Current Tasks:
+${tasks.map((task, i) => `${i + 1}. ${task.title} (${task.completed ? 'Completed' : 'Pending'})`).join('\n')}
 
-Goal context (only reference when directly relevant to the conversation):
-Goal: "${goal.title}"
-Progress: ${progress}% complete
-Upcoming tasks: ${tasks.filter(t => !t.completed).map(t => `- ${t.title}`).join('\n')}
+Remember to:
+- Keep responses conversational and concise
+- Listen actively and respond directly to what the user is saying
+- Only mention goal/task details if directly relevant to the user's question
+- Ask clarifying questions when needed
+- Break longer responses into multiple shorter messages
+- Maintain a supportive and encouraging tone
 
-Conversation guidelines:
-1. Focus on responding directly to what the user just said
-2. If they ask for help, ask what specific help they need
-3. If they express confusion or frustration, acknowledge their feelings and offer support
-4. Only mention tasks or progress if the user specifically asks about them
-5. Keep responses conversational and brief (1-2 sentences)
-6. Ask follow-up questions to better understand their needs
-
-Please provide your response in the following JSON format:
-{
-  "messages": ["your response", "optional follow up question"]
-}
-
-The response MUST be valid JSON with the exact format shown above.
-
-Example good responses:
-User: "I need help"
-Response: ["I'm here to help! What specific aspect would you like assistance with?"]
-
-User: "I don't know where to start"
-Response: ["I understand it can feel overwhelming at first. Would you like to break down your first task together?"]
-
-Remember:
-- Respond directly to what the user just said
-- Be conversational and natural
-- Ask relevant follow-up questions
-- Only mention goal details if specifically relevant`;
-
-  const response = await openai.chat.completions.create({
-    model: "gpt-3.5-turbo",
-    messages: [
-      {
-        role: "system",
-        content: "You are a supportive and knowledgeable AI coach that helps users achieve their goals by providing actionable advice and motivation.",
-      },
-      {
-        role: "user",
-        content: prompt,
-      },
-    ],
-    temperature: 0.7,
-    response_format: { type: "json_object" },
-  });
-
-  const content = response.choices[0].message.content;
-  if (!content) {
-    throw new Error("Failed to generate coaching advice");
-  }
+Response Guidelines:
+- Format responses as a JSON array of messages
+- Each message should be brief (1-2 sentences)
+- Include follow-up questions to maintain engagement
+- Address the user's immediate concerns first`;
 
   try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userMessage }
+      ],
+      temperature: 0.7,
+      response_format: { type: "json_object" },
+    });
+
+    const content = response.choices[0].message.content;
+    if (!content) {
+      throw new Error("No response generated");
+    }
+
     const parsed = JSON.parse(content);
     if (!Array.isArray(parsed.messages)) {
-      console.error("Invalid response format:", content);
       return {
-        messages: ["I apologize, but I'm having trouble processing your request right now. Could you please try asking your question again?"]
+        messages: [
+          "I'm here to help! What would you like to discuss about your goals?",
+          "You can ask me about specific tasks, need motivation, or general advice."
+        ]
       };
     }
+
     return parsed;
   } catch (error) {
-    console.error("Failed to parse OpenAI response:", error);
+    console.error("Coaching response error:", error);
     return {
-      messages: ["I apologize, but I'm having trouble understanding right now. Could you please rephrase your question?"]
+      messages: [
+        "I'm having a moment of confusion, but I'm here to help!",
+        "Could you please rephrase your question?"
+      ]
     };
   }
 }

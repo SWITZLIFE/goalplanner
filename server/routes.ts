@@ -151,12 +151,12 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ error: "Goal not found" });
       }
 
-      const coaching = await getCoachingAdvice(goal, goal.tasks, message);
+      const response = await getCoachingAdvice(goal, goal.tasks || [], message);
       
-      // If response is an array of messages, send them one by one
-      const messages = Array.isArray(coaching.messages) ? coaching.messages : [coaching.message];
+      // Ensure we always return an array of messages
+      const messages = Array.isArray(response.messages) ? response.messages : [response.messages];
       res.json({
-        messages: messages,
+        messages,
         type: "response"
       });
     } catch (error) {
