@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY_2,
 });
 
 export async function generateTaskBreakdown(goalTitle: string): Promise<{ title: string; subtasks: string[] }[]> {
