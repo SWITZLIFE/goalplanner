@@ -5,8 +5,11 @@ import { goals, tasks, rewards } from "@db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { generateTaskBreakdown } from "./openai";
 import { getCoachingAdvice } from "./coaching";
+import { setupAuth } from "./auth";
 
 export function registerRoutes(app: Express): Server {
+  // Setup authentication middleware and routes
+  setupAuth(app);
   // Goals API
   app.get("/api/goals", async (req, res) => {
     try {
