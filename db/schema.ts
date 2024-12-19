@@ -30,6 +30,16 @@ export const rewards = pgTable("rewards", {
   lastUpdated: timestamp("last_updated").defaultNow().notNull(),
 });
 
+export const rewardItems = pgTable("reward_items", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  cost: integer("cost").notNull(),
+  icon: text("icon").notNull(), // Lucide icon name
+  type: text("type").notNull(), // 'digital', 'perk', 'discount'
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const goalRelations = relations(goals, ({ many }) => ({
   tasks: many(tasks),
 }));

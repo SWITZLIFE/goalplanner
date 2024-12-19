@@ -1,6 +1,7 @@
 import { CreateGoalDialog } from "@/components/goals/CreateGoalDialog";
 import { GoalCard } from "@/components/goals/GoalCard";
 import { CoinBalance } from "@/components/rewards/CoinBalance";
+import { RewardStore } from "@/components/rewards/RewardStore";
 import { useGoals } from "@/hooks/use-goals";
 import { Loader2 } from "lucide-react";
 
@@ -42,11 +43,8 @@ export default function Dashboard() {
 
       {/* Main Content Area */}
       <div className="flex-1 p-8 bg-white">
-        {/* This area will show the selected goal's details */}
-        <div className="max-w-3xl mx-auto">
-          <p className="text-muted-foreground text-sm">
-            Select a goal from the sidebar to view details
-          </p>
+        <div className="max-w-4xl mx-auto">
+          <RewardStore />
         </div>
       </div>
     </div>

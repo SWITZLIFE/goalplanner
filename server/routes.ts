@@ -178,6 +178,54 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.get("/api/rewards/items", async (req, res) => {
+    try {
+      const items = await db.select().from(rewardItems);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch reward items" });
+    }
+  });
+
+  app.post("/api/rewards/purchase/:itemId", async (req, res) => {
+    try {
+      const itemId = parseInt(req.params.itemId);
+      const userId = 1; // TODO: Replace with actual user ID when auth is added
+
+      // Get the reward item
+      const [item] = await db.select()
+        .from(rewardItems)
+        .where(eq(rewardItems.id, itemId))
+        .limit(1);
+
+      if (!item) {
+        return res.status(404).send("Reward item not found");
+      }
+
+      // Get user's current coins
+      const [userRewards] = await db.select()
+        .from(rewards)
+        .where(eq(rewards.userId, userId))
+        .limit(1);
+
+      if (!userRewards || userRewards.coins < item.cost) {
+        return res.status(400).send("Insufficient coins");
+      }
+
+      // Update user's coins
+      await db.update(rewards)
+        .set({ 
+          coins: userRewards.coins - item.cost,
+          lastUpdated: new Date()
+        })
+        .where(eq(rewards.userId, userId));
+
+      res.json({ message: "Purchase successful" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to process purchase" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
