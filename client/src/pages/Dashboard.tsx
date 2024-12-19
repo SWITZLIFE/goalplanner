@@ -1,9 +1,11 @@
 import { CreateGoalDialog } from "@/components/goals/CreateGoalDialog";
 import { GoalCard } from "@/components/goals/GoalCard";
 import { CoinBalance } from "@/components/rewards/CoinBalance";
-import { RewardStore } from "@/components/rewards/RewardStore";
+import { AnalyticsDashboard } from "@/components/analytics/AnalyticsDashboard";
 import { useGoals } from "@/hooks/use-goals";
-import { Loader2 } from "lucide-react";
+import { Gift, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Link } from "wouter";
 
 export default function Dashboard() {
   const { goals, isLoading } = useGoals();
@@ -27,6 +29,13 @@ export default function Dashboard() {
 
         <CreateGoalDialog />
         
+        <Link href="/rewards">
+          <Button variant="outline" className="w-full mt-4">
+            <Gift className="mr-2 h-4 w-4" />
+            Reward Store
+          </Button>
+        </Link>
+        
         <div className="mt-8 space-y-4">
           <h2 className="text-sm font-medium text-gray-600">Your Goals</h2>
           {goals.length === 0 ? (
@@ -44,7 +53,7 @@ export default function Dashboard() {
       {/* Main Content Area */}
       <div className="flex-1 p-8 bg-white">
         <div className="max-w-4xl mx-auto">
-          <RewardStore />
+          <AnalyticsDashboard />
         </div>
       </div>
     </div>
