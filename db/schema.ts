@@ -46,7 +46,13 @@ export const selectGoalSchema = createSelectSchema(goals);
 export const insertTaskSchema = createInsertSchema(tasks);
 export const selectTaskSchema = createSelectSchema(tasks);
 
-export type Goal = typeof goals.$inferSelect;
+// Define the base types from the schema
+export type BaseGoal = typeof goals.$inferSelect;
 export type NewGoal = typeof goals.$inferInsert;
 export type Task = typeof tasks.$inferSelect;
 export type NewTask = typeof tasks.$inferInsert;
+
+// Extend the Goal type to include tasks
+export interface Goal extends BaseGoal {
+  tasks?: Task[];
+}
