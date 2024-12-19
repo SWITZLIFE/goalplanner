@@ -1,16 +1,24 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { goals, tasks, rewards } from "@db/schema";
+import { goals, tasks, rewards, rewardItems } from "@db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { generateTaskBreakdown } from "./openai";
 import { getCoachingAdvice } from "./coaching";
+import { setupAuth } from "./auth";
 
 export function registerRoutes(app: Express): Server {
+  // Setup authentication routes and middleware
+  setupAuth(app);
   // Goals API
   app.get("/api/goals", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
     try {
       const allGoals = await db.query.goals.findMany({
+        where: eq(goals.userId, req.user.id),
         with: {
           tasks: true,
         },
@@ -23,6 +31,10 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.post("/api/goals", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
     try {
       const { title, description, targetDate, totalTasks } = req.body;
       
@@ -33,6 +45,7 @@ export function registerRoutes(app: Express): Server {
       // Create the goal
       const [newGoal] = await db.insert(goals)
         .values({
+          userId: req.user.id,
           title,
           description,
           targetDate: new Date(targetDate),
@@ -167,12 +180,28 @@ export function registerRoutes(app: Express): Server {
 
   // Rewards API
   app.get("/api/rewards", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
     try {
       const [userRewards] = await db.select()
         .from(rewards)
-        .where(eq(rewards.userId, 1)) // TODO: Replace with actual user ID when auth is added
+        .where(eq(rewards.userId, req.user.id))
         .limit(1);
-      res.json(userRewards || { coins: 0 });
+      
+      if (!userRewards) {
+        // Create initial rewards for new user
+        const [newRewards] = await db.insert(rewards)
+          .values({
+            userId: req.user.id,
+            coins: 0,
+          })
+          .returning();
+        return res.json(newRewards);
+      }
+      
+      res.json(userRewards);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch rewards" });
     }
@@ -188,9 +217,13 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.post("/api/rewards/purchase/:itemId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
     try {
       const itemId = parseInt(req.params.itemId);
-      const userId = 1; // TODO: Replace with actual user ID when auth is added
+      const userId = req.user.id;
 
       // Get the reward item
       const [item] = await db.select()
