@@ -4,7 +4,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY_2,
 });
 
-export async function generateTaskBreakdown(goalTitle: string): Promise<{ title: string; subtasks: string[] }[]> {
+export async function generateTaskBreakdown(goalTitle: string, numTasks: number): Promise<{ title: string; subtasks: string[] }[]> {
   const prompt = `Break down the following goal into actionable tasks with subtasks:
 Goal: "${goalTitle}"
 
@@ -16,7 +16,7 @@ Please provide a JSON array where each task has a title and exactly 3 subtasks. 
   }
 ]
 
-Generate 3 main tasks, each with 3 subtasks that are specific, actionable, and measurable.`;
+Generate exactly ${numTasks} main tasks, each with exactly 3 subtasks that are specific, actionable, and measurable.`;
 
   const response = await openai.chat.completions.create({
     model: "gpt-3.5-turbo",

@@ -23,11 +23,11 @@ export function registerRoutes(app: Express): Server {
 
   app.post("/api/goals", async (req, res) => {
     try {
-      const { title, description, targetDate } = req.body;
+      const { title, description, targetDate, totalTasks } = req.body;
       
       // Generate task breakdown using AI
-      const taskBreakdown = await generateTaskBreakdown(title);
-      const totalTasks = taskBreakdown.length + taskBreakdown.length * 3; // Main tasks + subtasks
+      const taskBreakdown = await generateTaskBreakdown(title, parseInt(totalTasks));
+      const totalTaskCount = taskBreakdown.length + taskBreakdown.length * 3; // Main tasks + subtasks
       
       // Create the goal
       const [newGoal] = await db.insert(goals)
@@ -35,7 +35,7 @@ export function registerRoutes(app: Express): Server {
           title,
           description,
           targetDate: new Date(targetDate),
-          totalTasks,
+          totalTasks: totalTaskCount,
           progress: 0,
         })
         .returning();
