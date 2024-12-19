@@ -17,12 +17,14 @@ export function CoachingCard({ goalId }: CoachingCardProps) {
 
   const { data: initialMessage, isLoading } = useQuery<{ message: string; type: string }>({
     queryKey: [`/api/goals/${goalId}/coaching`],
-    onSuccess: (data) => {
-      if (!messages.some(m => m.type === 'welcome')) {
-        setMessages([{ type: 'welcome', message: data.message }]);
-      }
-    }
   });
+
+  // Set initial welcome message
+  React.useEffect(() => {
+    if (initialMessage && !messages.some(m => m.type === 'welcome')) {
+      setMessages([{ type: 'welcome', message: initialMessage.message }]);
+    }
+  }, [initialMessage]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
