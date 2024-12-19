@@ -63,15 +63,13 @@ export default function GoalView() {
             <p className="text-sm text-muted-foreground">{goal.progress}% completed</p>
           </div>
 
-          <div className="grid gap-8 grid-cols-5">
-            <div className="col-span-3">
-              <h2 className="text-lg font-medium mb-4">Tasks</h2>
-              <TaskList tasks={goal.tasks || []} />
-            </div>
-            <div className="col-span-2">
-              <CoachingCard goalId={goal.id} />
-            </div>
+          <div className="space-y-4">
+            <h2 className="text-lg font-medium mb-4">Tasks</h2>
+            <TaskList tasks={goal.tasks || []} />
           </div>
+          
+          {/* Floating AI Coach */}
+          <CoachingCard goalId={goal.id} />
         </div>
       </div>
     </div>
