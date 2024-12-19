@@ -1,0 +1,109 @@
+App Description and Features: Goal Breakdown App
+
+The Goal Breakdown App leverages AI to help users set, break down, and achieve their goals in a structured and engaging way. It provides users with tools to track their progress, stay motivated, and earn rewards for their achievements, ensuring productivity and consistent progress. Below is a detailed breakdown of the app’s features:
+
+Key Features
+
+1. Goal and Task Management
+
+AI-Powered Goal Breakdown: Users input their main goal, and the app uses AI to break it into actionable tasks and subtasks.
+
+Task List: A dedicated space to view all tasks, with options to:
+
+Manually add tasks and subtasks.
+
+Edit or delete tasks.
+
+Mark tasks as completed.
+
+Completed Tasks View: A separate section to review and celebrate completed tasks.
+
+2. Goal Progress Tracking
+
+Milestones: Goals are broken into milestones, enabling users to track progress step-by-step.
+
+Progress Indicators: Visual indicators to show milestone completion percentages.
+
+AI Motivator: When a milestone is achieved:
+
+AI generates personalized congratulatory messages and motivational prompts.
+
+Users earn 50 coins for completing 50% of a goal and 100 coins for 100% completion.
+
+3. Time Tracking and Rewards
+
+Time Coin Balance: Users earn coins for every minute they spend working on and tracking tasks within the app.
+
+Reward Store:
+
+A virtual store where users can use earned coins to redeem rewards.
+
+Rewards can include digital items, discounts, or personalized perks (configurable by admin).
+
+4. Calendar View
+
+A comprehensive calendar to visually organize tasks by date.
+
+Features include:
+
+Viewing all tasks for all goals on the calendar.
+
+Filtering options to display tasks by goal or category.
+
+Easy drag-and-drop functionality to reschedule tasks (optional).
+
+5. Productivity Routines
+
+Routine Tab:
+
+AI-generated suggestions for building habits aligned with goal achievement.
+
+Routine templates for productivity, time management, and mental focus.
+
+6. AI Coaching
+
+AI Coach:
+
+Provides actionable advice to help users quickly overcome roadblocks.
+
+Offers suggestions for tackling admin tasks efficiently.
+
+Delivers motivational prompts tailored to the user’s current progress and challenges.
+
+7. Analytics and Insights
+
+Analytics Page: A dedicated dashboard displaying:
+
+Goal progress and completion rates.
+
+Time spent on tasks.
+
+Coin balance and reward history.
+
+Trends in productivity and task completion over time.
+
+8. Reward System
+
+Coins and Rewards:
+
+Users earn coins by:
+
+Achieving milestones.
+
+Tracking and completing tasks.
+
+Spending focused time working within the app.
+
+Coins can be redeemed in the reward store.
+
+Reward Store: Fully customizable, allowing users to:
+
+Purchase items, experiences, or perks using their earned coins.
+
+Additional Notes
+
+Personalization: AI recommendations and congratulatory messages are tailored to each user’s progress and habits.
+
+User Interface: The app features a clean, user-friendly design, ensuring that all features are intuitive and accessible.
+
+Gamification Elements: The coin system, rewards, and milestone celebrations create a fun, engaging experience to keep users motivated.
