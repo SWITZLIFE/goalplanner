@@ -10,6 +10,8 @@ import { useUser } from "@/hooks/use-user";
 
 function App() {
   const { user, isLoading } = useUser();
+  const urlParams = new URLSearchParams(window.location.search);
+  const resetToken = urlParams.get('token');
 
   if (isLoading) {
     return (
@@ -17,6 +19,11 @@ function App() {
         <Loader2 className="h-8 w-8 animate-spin text-border" />
       </div>
     );
+  }
+
+  // Special case for password reset page
+  if (window.location.pathname === '/reset-password' && resetToken) {
+    return <ResetPasswordPage />;
   }
 
   if (!user) {
@@ -31,7 +38,6 @@ function App() {
           <Route path="/" component={Dashboard} />
           <Route path="/goals/:id" component={GoalView} />
           <Route path="/rewards" component={RewardPage} />
-          <Route path="/reset-password" component={ResetPasswordPage} />
         </Switch>
       </main>
     </div>
