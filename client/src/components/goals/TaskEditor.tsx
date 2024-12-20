@@ -62,54 +62,52 @@ export function TaskEditor({ task, open, onOpenChange }: TaskEditorProps) {
             </Button>
           </div>
 
-          <div className="flex-1 overflow-auto">
-            <div className="p-4 space-y-6">
+          <div className="flex-1 overflow-hidden flex flex-col">
+            <div className="px-4 py-6 space-y-4 flex-shrink-0">
               {/* Details Section */}
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="title">Title</Label>
-                  <Input
-                    id="title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Enter task title"
-                  />
-                </div>
-                
-                {/* Task metadata */}
-                <div className="text-sm text-muted-foreground space-y-2">
-                  {task.estimatedMinutes && (
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      <span>Estimated: {task.estimatedMinutes} minutes</span>
-                    </div>
-                  )}
-                  
-                  {task.plannedDate && (
-                    <div className="flex items-center gap-2">
-                      <CalendarIcon className="h-4 w-4" />
-                      <span>
-                        Planned for: {format(new Date(task.plannedDate), 'MMMM d, yyyy')}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Notes Section */}
               <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <StickyNote className="h-4 w-4" />
-                  <Label htmlFor="notes">Notes</Label>
-                </div>
-                <Textarea
-                  id="notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Add notes about this task..."
-                  className="min-h-[200px] resize-none"
+                <Label htmlFor="title">Title</Label>
+                <Input
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Enter task title"
                 />
               </div>
+              
+              {/* Task metadata */}
+              <div className="text-sm text-muted-foreground space-y-2">
+                {task.estimatedMinutes && (
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    <span>Estimated: {task.estimatedMinutes} minutes</span>
+                  </div>
+                )}
+                
+                {task.plannedDate && (
+                  <div className="flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4" />
+                    <span>
+                      Planned for: {format(new Date(task.plannedDate), 'MMMM d, yyyy')}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Notes Section */}
+            <div className="px-4 pb-4 flex-1 min-h-0 flex flex-col">
+              <div className="flex items-center gap-2 mb-2">
+                <StickyNote className="h-4 w-4" />
+                <Label htmlFor="notes">Notes</Label>
+              </div>
+              <Textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Add notes about this task..."
+                className="flex-1 resize-none min-h-0"
+              />
             </div>
           </div>
 
