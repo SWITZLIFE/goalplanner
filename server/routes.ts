@@ -188,7 +188,16 @@ export function registerRoutes(app: Express): Server {
       const { taskId } = req.params;
       const taskIdInt = parseInt(taskId);
 
-      // First, delete any subtasks
+      // First, verify the task exists and get its details
+      const taskToDelete = await db.query.tasks.findFirst({
+        where: eq(tasks.id, taskIdInt)
+      });
+
+      if (!taskToDelete) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      // Delete all subtasks first
       await db.delete(tasks)
         .where(eq(tasks.parentTaskId, taskIdInt));
 
@@ -197,27 +206,32 @@ export function registerRoutes(app: Express): Server {
         .where(eq(tasks.id, taskIdInt))
         .returning();
 
-      if (!deletedTask) {
-        return res.status(404).json({ error: "Task not found" });
-      }
-
       // Update goal progress
-      const goalTasks = await db.select()
+      const remainingTasks = await db.select()
         .from(tasks)
-        .where(eq(tasks.goalId, deletedTask.goalId));
+        .where(eq(tasks.goalId, taskToDelete.goalId));
       
-      if (goalTasks.length > 0) {
-        const completedTasks = goalTasks.filter(t => t.completed).length;
-        const progress = Math.round((completedTasks / goalTasks.length) * 100);
+      if (remainingTasks.length > 0) {
+        const completedTasks = remainingTasks.filter(t => t.completed).length;
+        const progress = Math.round((completedTasks / remainingTasks.length) * 100);
         
         await db.update(goals)
           .set({ progress })
-          .where(eq(goals.id, deletedTask.goalId));
+          .where(eq(goals.id, taskToDelete.goalId));
+      } else {
+        // If no tasks remain, set progress to 0
+        await db.update(goals)
+          .set({ progress: 0 })
+          .where(eq(goals.id, taskToDelete.goalId));
       }
 
       res.json({ success: true });
     } catch (error) {
-      res.status(500).json({ error: "Failed to delete task" });
+      console.error("Error deleting task:", error);
+      res.status(500).json({ 
+        error: "Failed to delete task",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
