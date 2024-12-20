@@ -215,19 +215,17 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     <Trash2 className="h-4 w-4" />
                   </button>
                 )}
-                {!mainTask.completed && !readOnly && (
-                  <div className="absolute right-8">
-                    <TaskTimer 
-                      taskId={mainTask.id}
-                      totalMinutesSpent={mainTask.totalMinutesSpent || 0}
-                      onTimerStop={(coinsEarned) => {
-                        toast({
-                          title: "Time Tracked!",
-                          description: `You earned ${coinsEarned} coins for your work.`
-                        });
-                      }}
-                    />
-                  </div>
+                {!mainTask.completed && (
+                  <TaskTimer 
+                    taskId={mainTask.id}
+                    totalMinutesSpent={mainTask.totalMinutesSpent || 0}
+                    onTimerStop={(coinsEarned) => {
+                      toast({
+                        title: "Time Tracked!",
+                        description: `You earned ${coinsEarned} coins for your work.`
+                      });
+                    }}
+                  />
                 )}
                 {/* Time spent is now shown in the details section below */}
                 {!readOnly && (

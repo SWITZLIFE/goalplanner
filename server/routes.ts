@@ -197,22 +197,7 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ error: "Task not found" });
       }
 
-      // Delete all time tracking entries for the task and its subtasks
-      await db.delete(timeTracking)
-        .where(eq(timeTracking.taskId, taskIdInt));
-
-      // Get all subtasks
-      const subtasks = await db.query.tasks.findMany({
-        where: eq(tasks.parentTaskId, taskIdInt)
-      });
-
-      // Delete time tracking entries for subtasks
-      for (const subtask of subtasks) {
-        await db.delete(timeTracking)
-          .where(eq(timeTracking.taskId, subtask.id));
-      }
-
-      // Delete all subtasks
+      // Delete all subtasks first
       await db.delete(tasks)
         .where(eq(tasks.parentTaskId, taskIdInt));
 
