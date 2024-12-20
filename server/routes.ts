@@ -140,7 +140,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const { taskId } = req.params;
       // Destructure only the fields we want to update, ignoring order
-  const { completed, title, estimatedMinutes, plannedDate } = req.body;
+  const { completed, title, estimatedMinutes, plannedDate, notes } = req.body;
       
       const updateData: Partial<typeof tasks.$inferInsert> = {};
       if (typeof completed !== 'undefined') updateData.completed = completed;
@@ -149,8 +149,11 @@ export function registerRoutes(app: Express): Server {
       if (plannedDate !== undefined) {
         updateData.plannedDate = plannedDate ? new Date(plannedDate) : null;
       }
+      if (notes !== undefined) {
+        updateData.notes = notes;
+      }
 
-      console.log('Updating task with data:', { taskId, updateData });
+      console.log('Updating task with data:', { taskId, updateData, notes: req.body.notes });
 
       const [updatedTask] = await db.update(tasks)
         .set(updateData)
