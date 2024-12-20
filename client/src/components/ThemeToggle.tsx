@@ -6,7 +6,7 @@ export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <div className="fixed left-4 top-4 flex items-center space-x-2">
+    <div className="fixed left-4 bottom-4 flex items-center space-x-2">
       <Switch
         id="theme-toggle"
         checked={theme === 'dark'}
