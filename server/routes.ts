@@ -87,7 +87,7 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/goals/:goalId/tasks", async (req, res) => {
     try {
       const { goalId } = req.params;
-      const { title, isSubtask, parentTaskId } = req.body;
+      const { title, isSubtask, parentTaskId, plannedDate } = req.body;
       
       const [newTask] = await db.insert(tasks)
         .values({
@@ -96,6 +96,7 @@ export function registerRoutes(app: Express): Server {
           completed: false,
           isSubtask: isSubtask || false,
           parentTaskId: parentTaskId || null,
+          plannedDate: plannedDate ? new Date(plannedDate) : null,
         })
         .returning();
       

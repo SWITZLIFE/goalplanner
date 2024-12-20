@@ -24,7 +24,13 @@ export function useGoals() {
   });
 
   const createTaskMutation = useMutation({
-    mutationFn: async (params: { goalId: number; title: string; isSubtask?: boolean; parentTaskId?: number }) => {
+    mutationFn: async (params: { 
+      goalId: number; 
+      title: string; 
+      isSubtask?: boolean; 
+      parentTaskId?: number;
+      plannedDate?: string;
+    }) => {
       const res = await fetch(`/api/goals/${params.goalId}/tasks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -32,6 +38,7 @@ export function useGoals() {
           title: params.title,
           isSubtask: params.isSubtask,
           parentTaskId: params.parentTaskId,
+          plannedDate: params.plannedDate,
         }),
       });
       if (!res.ok) throw new Error("Failed to create task");

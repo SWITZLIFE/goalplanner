@@ -2,19 +2,77 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskList } from "./TaskList";
 import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { Task } from "@db/schema";
 import { useGoals } from "@/hooks/use-goals";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 interface TaskViewsProps {
   tasks: Task[];
   goalId: number;
 }
 
+const generateICalString = (tasks: Task[]): string => {
+  const now = new Date();
+  const header = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Task Management App//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH'
+  ].join('\r\n');
+
+  const events = tasks
+    .filter(task => task.plannedDate)
+    .map(task => {
+      const date = new Date(task.plannedDate!);
+      const dateStr = format(date, "yyyyMMdd");
+      return [
+        'BEGIN:VEVENT',
+        `DTSTART;VALUE=DATE:${dateStr}`,
+        `DTEND;VALUE=DATE:${dateStr}`,
+        `DTSTAMP:${format(now, "yyyyMMdd'T'HHmmss'Z'")}`,
+        `UID:${task.id}@taskmanagement.app`,
+        `CREATED:${format(new Date(task.createdAt), "yyyyMMdd'T'HHmmss'Z'")}`,
+        `DESCRIPTION:${task.completed ? 'Completed' : 'Active'} task`,
+        `SUMMARY:${task.title}`,
+        'END:VEVENT'
+      ].join('\r\n');
+    })
+    .join('\r\n');
+
+  return `${header}\r\n${events}\r\nEND:VCALENDAR`;
+};
+
+const parseICalString = (icalString: string): { title: string; date: string }[] => {
+  const events: { title: string; date: string }[] = [];
+  const lines = icalString.split('\r\n');
+  let currentEvent: { title?: string; date?: string } = {};
+
+  lines.forEach(line => {
+    if (line.startsWith('BEGIN:VEVENT')) {
+      currentEvent = {};
+    } else if (line.startsWith('END:VEVENT') && currentEvent.title && currentEvent.date) {
+      events.push({ 
+        title: currentEvent.title, 
+        date: currentEvent.date 
+      });
+    } else if (line.startsWith('SUMMARY:')) {
+      currentEvent.title = line.substring(8);
+    } else if (line.startsWith('DTSTART;VALUE=DATE:')) {
+      const dateStr = line.substring(19);
+      currentEvent.date = `${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}`;
+    }
+  });
+
+  return events;
+};
+
 export function TaskViews({ tasks, goalId }: TaskViewsProps) {
   const [selectedDate, setSelectedDate] = useState<Date>();
-  const { updateTask } = useGoals();
+  const { updateTask, createTask } = useGoals();
+  const { toast } = useToast();
 
   // Split tasks into active and completed
   const activeTasks = tasks.filter(task => !task.completed);
@@ -44,6 +102,62 @@ export function TaskViews({ tasks, goalId }: TaskViewsProps) {
       });
     } catch (error) {
       console.error('Failed to update task date:', error);
+    }
+  };
+
+  const exportCalendar = () => {
+    try {
+      const icalString = generateICalString(tasks);
+      const blob = new Blob([icalString], { type: 'text/calendar;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = 'tasks.ics';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({
+        title: "Calendar Exported",
+        description: "Your tasks have been exported to a calendar file.",
+      });
+    } catch (error) {
+      console.error('Failed to export calendar:', error);
+      toast({
+        variant: "destructive",
+        title: "Export Failed",
+        description: "Failed to export calendar. Please try again.",
+      });
+    }
+  };
+
+  const handleCalendarImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const text = await file.text();
+      const events = parseICalString(text);
+
+      for (const event of events) {
+        await createTask({
+          goalId,
+          title: event.title,
+          isSubtask: false,
+          plannedDate: event.date,
+        });
+      }
+
+      toast({
+        title: "Calendar Imported",
+        description: `Successfully imported ${events.length} tasks.`,
+      });
+    } catch (error) {
+      console.error('Failed to import calendar:', error);
+      toast({
+        variant: "destructive",
+        title: "Import Failed",
+        description: "Failed to import calendar. Please check the file format.",
+      });
     }
   };
 
@@ -85,12 +199,29 @@ export function TaskViews({ tasks, goalId }: TaskViewsProps) {
                 {/* We can populate this from goals data later */}
               </select>
             </div>
-            <button 
-              onClick={() => window.print()} 
-              className="p-2 border rounded-md hover:bg-gray-100"
-            >
-              🖨️ Print
-            </button>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => window.print()} 
+                className="p-2 border rounded-md hover:bg-gray-100"
+              >
+                🖨️ Print
+              </button>
+              <button
+                onClick={exportCalendar}
+                className="p-2 border rounded-md hover:bg-gray-100"
+              >
+                📅 Export Calendar
+              </button>
+              <label className="p-2 border rounded-md hover:bg-gray-100 cursor-pointer">
+                📥 Import Calendar
+                <input
+                  type="file"
+                  accept=".ics,.ical"
+                  onChange={handleCalendarImport}
+                  className="hidden"
+                />
+              </label>
+            </div>
           </div>
           
           <div className="border rounded-lg overflow-hidden">
@@ -134,9 +265,7 @@ export function TaskViews({ tasks, goalId }: TaskViewsProps) {
                           key={task.id}
                           className={cn(
                             "text-xs p-1 rounded truncate",
-                            task.completed 
-                              ? "bg-orange-200/80" 
-                              : "bg-blue-200/80"
+                            task.completed ? "bg-orange-100" : "bg-blue-100"
                           )}
                           title={task.title}
                         >
