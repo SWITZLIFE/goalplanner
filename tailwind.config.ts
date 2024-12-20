@@ -79,10 +79,28 @@ export default {
             height: "0",
           },
         },
+        "collapse": {
+          from: {
+            height: "var(--radix-collapsible-content-height)",
+          },
+          to: {
+            height: "0",
+          },
+        },
+        "expand": {
+          from: {
+            height: "0",
+          },
+          to: {
+            height: "var(--radix-collapsible-content-height)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "collapse": "collapse 0.2s ease-in-out",
+        "expand": "expand 0.2s ease-in-out",
       },
     },
   },

@@ -79,6 +79,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
   const { toast } = useToast();
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [showDatePicker, setShowDatePicker] = useState<{ taskId: number; date?: Date } | null>(null);
+  // Initialize with empty Set to collapse all tasks by default
   const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
 
   const handleDelete = async (taskId: number) => {
@@ -307,7 +308,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
             open={expandedTasks.has(mainTask.id)}
             className="ml-6 space-y-2"
           >
-            <Collapsible.Content>
+            <Collapsible.Content className="transition-all data-[state=closed]:animate-collapse data-[state=open]:animate-expand overflow-hidden">
               {getOrderedSubtasks(mainTask.id).map((subtask) => (
               <div key={subtask.id} className="flex items-center space-x-2 group">
                 <Checkbox
