@@ -173,7 +173,17 @@ export function TaskViews({ tasks, goalId }: TaskViewsProps) {
           
           {selectedTask && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
+              <div 
+                className="flex items-center gap-2 cursor-pointer hover:opacity-80"
+                onClick={async () => {
+                  if (selectedTask) {
+                    await updateTask({ 
+                      taskId: selectedTask.id, 
+                      completed: !selectedTask.completed 
+                    });
+                  }
+                }}
+              >
                 {selectedTask.completed ? (
                   <>
                     <CheckCircle2 className="h-5 w-5 text-green-500" />
