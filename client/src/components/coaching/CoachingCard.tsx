@@ -11,19 +11,28 @@ interface CoachingCardProps {
 }
 
 export function CoachingCard({ goalId }: CoachingCardProps) {
+  // Initialize all state hooks at the top
   const [isMinimized, setIsMinimized] = useState(true);
   const [inputValue, setInputValue] = useState("");
   const [messages, setMessages] = useState<Array<{ type: 'welcome' | 'user' | 'response' | 'typing', message: string; id?: string }>>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Create ref for auto-scrolling
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { data: initialMessage, isLoading } = useQuery<{ message: string; type: string }>({
+  // Query hook
+  const { data: initialMessage, isLoading } = useQuery({
     queryKey: [`/api/goals/${goalId}/coaching`],
     retry: false,
-    onError: () => setError("Failed to load initial message"),
   });
 
-  // Set initial welcome message
+  // Auto-scroll function
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  // Effect for initial welcome message
   useEffect(() => {
     if (initialMessage && !messages.some(m => m.type === 'welcome')) {
       setMessages([{ 
@@ -32,15 +41,20 @@ export function CoachingCard({ goalId }: CoachingCardProps) {
         id: 'welcome-' + Date.now() 
       }]);
     }
-  }, [initialMessage]);
+  }, [initialMessage, messages]);
 
-  // Cleanup typing indicator when component unmounts or on error
+  // Effect for cleanup
   useEffect(() => {
     return () => {
       setIsTyping(false);
       setMessages(prev => prev.filter(m => m.type !== 'typing'));
     };
   }, []);
+
+  // Effect for auto-scrolling
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,16 +154,6 @@ export function CoachingCard({ goalId }: CoachingCardProps) {
       </div>
     );
   }
-
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]); // Scroll when messages update
 
   return (
     <Card className="fixed bottom-4 right-4 w-96 h-[500px] shadow-xl z-50 flex flex-col">
