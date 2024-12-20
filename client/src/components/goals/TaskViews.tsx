@@ -1,10 +1,11 @@
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskList } from "./TaskList";
 import { Calendar } from "@/components/ui/calendar";
-import { useState } from "react";
 import { format } from "date-fns";
 import { Task } from "@db/schema";
 import { useGoals } from "@/hooks/use-goals";
+import { cn } from "@/lib/utils";
 
 interface TaskViewsProps {
   tasks: Task[];
