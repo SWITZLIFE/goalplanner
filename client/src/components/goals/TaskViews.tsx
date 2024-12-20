@@ -63,26 +63,78 @@ export function TaskViews({ tasks, goalId }: TaskViewsProps) {
       </TabsContent>
 
       <TabsContent value="calendar">
-        <div className="grid md:grid-cols-[1fr,300px] gap-4">
-          <Calendar
-            mode="single"
-            selected={selectedDate}
-            onSelect={handleDateSelect}
-            className="rounded-md border"
-          />
-          
-          {selectedDate && (
-            <div className="space-y-4">
-              <h3 className="font-medium">
-                Tasks for {format(selectedDate, 'MMMM d, yyyy')}
-              </h3>
-              <TaskList
-                tasks={tasksForDate(selectedDate)}
-                goalId={goalId}
-                onUpdateTaskDate={handleUpdateTaskDate}
-              />
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <div className="flex gap-2">
+              <select className="border rounded-md p-2">
+                <option>All Tasks</option>
+                <option>Active Tasks</option>
+                <option>Completed Tasks</option>
+              </select>
+              <select className="border rounded-md p-2">
+                <option>All Goals</option>
+                {/* We can populate this from goals data later */}
+              </select>
             </div>
-          )}
+            <button 
+              onClick={() => window.print()} 
+              className="p-2 border rounded-md hover:bg-gray-100"
+            >
+              🖨️ Print
+            </button>
+          </div>
+          
+          <div className="border rounded-lg overflow-hidden">
+            <div className="bg-primary/5 p-4">
+              <h2 className="text-xl font-semibold">Task Calendar</h2>
+              <div className="flex justify-between items-center mt-2">
+                <button className="p-1 hover:bg-gray-200 rounded">←</button>
+                <span className="font-medium">December 2024</span>
+                <button className="p-1 hover:bg-gray-200 rounded">→</button>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-7 text-center border-b">
+              {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+                <div key={day} className="p-2 font-medium border-r last:border-r-0">
+                  {day}
+                </div>
+              ))}
+            </div>
+            
+            <div className="grid grid-cols-7 divide-x divide-y">
+              {Array.from({ length: 35 }, (_, i) => {
+                const date = new Date(2024, 11, i - 4); // December 2024
+                const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+                const dayTasks = tasksForDate(date);
+                
+                return (
+                  <div 
+                    key={i} 
+                    className={cn(
+                      "min-h-[100px] p-2",
+                      isToday && "bg-primary/5"
+                    )}
+                  >
+                    <div className="font-medium mb-2">
+                      {format(date, 'd')}
+                    </div>
+                    <div className="space-y-1">
+                      {dayTasks.map(task => (
+                        <div 
+                          key={task.id}
+                          className="text-xs p-1 bg-primary/10 rounded truncate"
+                          title={task.title}
+                        >
+                          {task.title}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </TabsContent>
     </Tabs>
