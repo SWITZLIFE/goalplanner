@@ -1,8 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { goals, tasks, rewards } from "@db/schema";
-import { eq, and, isNull } from "drizzle-orm";
+import { goals, tasks, rewards, timeTracking } from "@db/schema";
+import { eq, and, isNull, sql } from "drizzle-orm";
 import { generateTaskBreakdown, generateShortTitle } from "./openai";
 import { getCoachingAdvice } from "./coaching";
 import { setupAuth } from "./auth";
@@ -256,6 +256,113 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Failed to get coaching advice:", error);
       res.status(500).json({ error: "Failed to get coaching advice" });
+    }
+  });
+
+  // Time Tracking API
+  app.post("/api/tasks/:taskId/timer/start", async (req, res) => {
+    try {
+      const { taskId } = req.params;
+      const userId = 1; // TODO: Replace with actual user ID from auth
+
+      // Check if there's already an active timer
+      const activeTimer = await db.query.timeTracking.findFirst({
+        where: and(
+          eq(timeTracking.userId, userId),
+          eq(timeTracking.isActive, true)
+        ),
+      });
+
+      if (activeTimer) {
+        return res.status(400).json({ error: "Another timer is already active" });
+      }
+
+      // Start new timer
+      const [timer] = await db.insert(timeTracking)
+        .values({
+          userId,
+          taskId: parseInt(taskId),
+          startTime: new Date(),
+          isActive: true,
+        })
+        .returning();
+
+      res.json(timer);
+    } catch (error) {
+      console.error("Failed to start timer:", error);
+      res.status(500).json({ error: "Failed to start timer" });
+    }
+  });
+
+  app.post("/api/tasks/:taskId/timer/stop", async (req, res) => {
+    try {
+      const { taskId } = req.params;
+      const userId = 1; // TODO: Replace with actual user ID from auth
+
+      // Find active timer
+      const activeTimer = await db.query.timeTracking.findFirst({
+        where: and(
+          eq(timeTracking.userId, userId),
+          eq(timeTracking.taskId, parseInt(taskId)),
+          eq(timeTracking.isActive, true)
+        ),
+      });
+
+      if (!activeTimer) {
+        return res.status(404).json({ error: "No active timer found" });
+      }
+
+      // Calculate coins earned (1 coin per minute)
+      const endTime = new Date();
+      const minutesWorked = Math.floor((endTime.getTime() - activeTimer.startTime.getTime()) / 60000);
+      const coinsEarned = Math.max(1, minutesWorked); // Minimum 1 coin
+
+      // Update timer
+      const [updatedTimer] = await db.update(timeTracking)
+        .set({
+          endTime,
+          isActive: false,
+          coinsEarned,
+        })
+        .where(eq(timeTracking.id, activeTimer.id))
+        .returning();
+
+      // Update user's coins
+      await db.update(rewards)
+        .set({
+          coins: sql`${rewards.coins} + ${coinsEarned}`,
+          lastUpdated: new Date(),
+        })
+        .where(eq(rewards.userId, userId));
+
+      res.json({
+        timer: updatedTimer,
+        coinsEarned,
+      });
+    } catch (error) {
+      console.error("Failed to stop timer:", error);
+      res.status(500).json({ error: "Failed to stop timer" });
+    }
+  });
+
+  app.get("/api/timer/current", async (req, res) => {
+    try {
+      const userId = 1; // TODO: Replace with actual user ID from auth
+
+      const activeTimer = await db.query.timeTracking.findFirst({
+        where: and(
+          eq(timeTracking.userId, userId),
+          eq(timeTracking.isActive, true)
+        ),
+        with: {
+          task: true,
+        },
+      });
+
+      res.json(activeTimer || null);
+    } catch (error) {
+      console.error("Failed to fetch current timer:", error);
+      res.status(500).json({ error: "Failed to fetch current timer" });
     }
   });
 

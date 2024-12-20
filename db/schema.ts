@@ -72,6 +72,17 @@ export const rewardItems = pgTable("reward_items", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const timeTracking = pgTable("time_tracking", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  taskId: integer("task_id").notNull().references(() => tasks.id),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time"),
+  coinsEarned: integer("coins_earned").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const goalsRelations = relations(goals, ({ many }) => ({
   tasks: many(tasks, {
     fields: [goals.id],
@@ -101,3 +112,19 @@ export type NewTask = typeof tasks.$inferInsert;
 export interface Goal extends BaseGoal {
   tasks?: Task[];
 }
+
+export const timeTrackingRelations = relations(timeTracking, ({ one }) => ({
+  user: one(users, {
+    fields: [timeTracking.userId],
+    references: [users.id],
+  }),
+  task: one(tasks, {
+    fields: [timeTracking.taskId],
+    references: [tasks.id],
+  }),
+}));
+
+export const insertTimeTrackingSchema = createInsertSchema(timeTracking);
+export const selectTimeTrackingSchema = createSelectSchema(timeTracking);
+export type TimeTracking = typeof timeTracking.$inferSelect;
+export type NewTimeTracking = typeof timeTracking.$inferInsert;
