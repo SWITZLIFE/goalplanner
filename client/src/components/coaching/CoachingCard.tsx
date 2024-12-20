@@ -13,31 +13,55 @@ interface CoachingCardProps {
 export function CoachingCard({ goalId }: CoachingCardProps) {
   const [isMinimized, setIsMinimized] = useState(true);
   const [inputValue, setInputValue] = useState("");
-  const [messages, setMessages] = useState<Array<{ type: 'welcome' | 'user' | 'response' | 'typing', message: string }>>([]);
+  const [messages, setMessages] = useState<Array<{ type: 'welcome' | 'user' | 'response' | 'typing', message: string; id?: string }>>([]);
   const [isTyping, setIsTyping] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const { data: initialMessage, isLoading } = useQuery<{ message: string; type: string }>({
     queryKey: [`/api/goals/${goalId}/coaching`],
+    retry: false,
+    onError: () => setError("Failed to load initial message"),
   });
 
   // Set initial welcome message
   useEffect(() => {
     if (initialMessage && !messages.some(m => m.type === 'welcome')) {
-      setMessages([{ type: 'welcome', message: initialMessage.message }]);
+      setMessages([{ 
+        type: 'welcome', 
+        message: initialMessage.message,
+        id: 'welcome-' + Date.now() 
+      }]);
     }
-  }, [initialMessage, messages]);
+  }, [initialMessage]);
+
+  // Cleanup typing indicator when component unmounts or on error
+  useEffect(() => {
+    return () => {
+      setIsTyping(false);
+      setMessages(prev => prev.filter(m => m.type !== 'typing'));
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || isTyping) return;
 
     const userMessage = inputValue;
+    const messageId = Date.now().toString();
     setInputValue("");
-    setMessages(prev => [...prev, { type: 'user', message: userMessage }]);
+    setError(null);
+    
+    setMessages(prev => [
+      ...prev, 
+      { type: 'user', message: userMessage, id: `user-${messageId}` }
+    ]);
 
     try {
       setIsTyping(true);
-      setMessages(prev => [...prev, { type: 'typing', message: '...' }]);
+      setMessages(prev => [
+        ...prev, 
+        { type: 'typing', message: '...', id: `typing-${messageId}` }
+      ]);
       
       const response = await fetch(`/api/goals/${goalId}/coaching/chat`, {
         method: 'POST',
@@ -54,12 +78,14 @@ export function CoachingCard({ goalId }: CoachingCardProps) {
           ...withoutTyping,
           ...(data.messages || [data.message]).map((msg: string) => ({
             type: 'response' as const,
-            message: msg
+            message: msg,
+            id: `response-${Date.now()}-${Math.random()}`
           }))
-        ];
+        ].slice(-50); // Keep only the last 50 messages
       });
     } catch (error) {
       console.error('Failed to send message:', error);
+      setError("Failed to send message. Please try again.");
       setMessages(prev => prev.filter(m => m.type !== 'typing'));
     } finally {
       setIsTyping(false);
@@ -101,10 +127,14 @@ export function CoachingCard({ goalId }: CoachingCardProps) {
       <div className="flex-1 overflow-auto p-4 space-y-4">
         {isLoading ? (
           <Skeleton className="h-16 w-full" />
+        ) : error ? (
+          <div className="bg-destructive/10 text-destructive rounded-lg p-3">
+            <p className="text-sm">{error}</p>
+          </div>
         ) : (
-          messages.map((msg, index) => (
+          messages.map((msg) => (
             <div
-              key={index}
+              key={msg.id || `${msg.type}-${msg.message}`}
               className={`${
                 msg.type === 'user' 
                   ? 'ml-auto bg-primary text-primary-foreground' 
@@ -122,7 +152,7 @@ export function CoachingCard({ goalId }: CoachingCardProps) {
                   <div className="w-2 h-2 bg-foreground rounded-full animate-bounce [animation-delay:0.4s]" />
                 </>
               ) : (
-                <p className="text-sm">{msg.message}</p>
+                <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
               )}
             </div>
           ))
@@ -137,8 +167,9 @@ export function CoachingCard({ goalId }: CoachingCardProps) {
             onChange={(e) => setInputValue(e.target.value)}
             placeholder="Ask your AI coach anything..."
             className="flex-1"
+            disabled={isTyping}
           />
-          <Button type="submit" size="icon">
+          <Button type="submit" size="icon" disabled={isTyping || !inputValue.trim()}>
             <SendHorizontal className="h-4 w-4" />
           </Button>
         </div>
