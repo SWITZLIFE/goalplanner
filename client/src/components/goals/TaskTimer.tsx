@@ -15,8 +15,14 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  interface TimerState {
+    taskId: number;
+    startTime: string;
+    isActive: boolean;
+  }
+
   // Query current timer state
-  const { data: activeTimer, isLoading } = useQuery({
+  const { data: activeTimer, isLoading } = useQuery<TimerState | null>({
     queryKey: ["/api/timer/current"],
     refetchInterval: 1000, // Poll every second to keep timer state in sync
   });
@@ -61,13 +67,14 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
       queryClient.invalidateQueries({ queryKey: ["/api/timer/current"] });
       queryClient.invalidateQueries({ queryKey: ["/api/rewards"] });
       queryClient.invalidateQueries({ queryKey: ["/api/goals"] }); // Refresh goals to get updated task times
-      // Set total minutes spent from the response
       setElapsedTime(0);
-      onTimerStop?.(data.coinsEarned);
-      toast({
-        title: "Timer Stopped",
-        description: `You earned ${data.coinsEarned} coins!`,
-      });
+      if (data.task && data.coinsEarned) {
+        onTimerStop?.(data.coinsEarned);
+        toast({
+          title: "Timer Stopped",
+          description: `You earned ${data.coinsEarned} coins! Total time tracked: ${formatTime(data.task.totalMinutesSpent)}`,
+        });
+      }
     },
     onError: (error) => {
       toast({
