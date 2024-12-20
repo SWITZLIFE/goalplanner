@@ -232,11 +232,11 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                   <>
                     <Button
                       variant="ghost"
-                      size="sm"
+                      size="icon"
                       onClick={() => handleAddSubtask(mainTask.id)}
+                      title="Add Subtask"
                     >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Subtask
+                      <Plus className="h-4 w-4" />
                     </Button>
                     {onUpdateTaskDate && (
                       <Button
