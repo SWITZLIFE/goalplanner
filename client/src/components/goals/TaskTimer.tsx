@@ -10,13 +10,37 @@ interface TaskTimerProps {
   onTimerStop?: (coinsEarned: number) => void;
 }
 
+interface TimerResponse {
+  timer: {
+    id: number;
+    taskId: number;
+    startTime: string;
+    endTime: string | null;
+    coinsEarned: number;
+    isActive: boolean;
+  };
+  task: {
+    id: number;
+    totalMinutesSpent: number;
+  };
+  coinsEarned: number;
+}
+
+interface ActiveTimer {
+  id: number;
+  taskId: number;
+  startTime: string;
+  endTime: string | null;
+  isActive: boolean;
+}
+
 export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerProps) {
   const [elapsedTime, setElapsedTime] = useState(0);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Query current timer state
-  const { data: activeTimer, isLoading } = useQuery({
+  const { data: activeTimer, isLoading } = useQuery<ActiveTimer | null>({
     queryKey: ["/api/timer/current"],
     refetchInterval: 1000, // Poll every second to keep timer state in sync
   });
@@ -29,10 +53,11 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
         credentials: "include",
       });
       if (!res.ok) throw new Error(await res.text());
-      return res.json();
+      return res.json() as Promise<ActiveTimer>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/timer/current"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/goals"] }); // Refresh goals to get updated task times
       toast({
         title: "Timer Started",
         description: "Time tracking has begun for this task",
@@ -55,18 +80,18 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
         credentials: "include",
       });
       if (!res.ok) throw new Error(await res.text());
-      return res.json();
+      const data: TimerResponse = await res.json();
+      return data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/timer/current"] });
       queryClient.invalidateQueries({ queryKey: ["/api/rewards"] });
       queryClient.invalidateQueries({ queryKey: ["/api/goals"] }); // Refresh goals to get updated task times
-      // Set total minutes spent from the response
       setElapsedTime(0);
       onTimerStop?.(data.coinsEarned);
       toast({
         title: "Timer Stopped",
-        description: `You earned ${data.coinsEarned} coins!`,
+        description: `You earned ${data.coinsEarned} coins! Total time: ${Math.floor(data.task.totalMinutesSpent / 60)}h ${data.task.totalMinutesSpent % 60}m`,
       });
     },
     onError: (error) => {

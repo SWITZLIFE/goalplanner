@@ -201,11 +201,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     }}
                   />
                 )}
-                {mainTask.totalMinutesSpent > 0 && (
-                  <div className="text-sm text-muted-foreground">
-                    Total time spent: {Math.floor(mainTask.totalMinutesSpent / 60)}h {mainTask.totalMinutesSpent % 60}m
-                  </div>
-                )}
+                {/* Time spent is now shown in the details section below */}
                 {!readOnly && (
                   <>
                     <Button
@@ -232,16 +228,29 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                 )}
               </div>
               <div className="flex justify-between items-center ml-6">
-                <div className="text-xs text-muted-foreground">
-                  {subtasks.some(task => task.estimatedMinutes) && (
-                    <>
-                      Total estimated time: {
-                        formatTime(
-                          subtasks.reduce((sum, task) => sum + (task.estimatedMinutes || 0), 0)
-                        )
-                      }
-                    </>
-                  )}
+                <div className="flex gap-2 text-xs">
+                  <div className="text-muted-foreground">
+                    {(subtasks.some(task => task.estimatedMinutes) || mainTask.totalMinutesSpent > 0) && (
+                      <div className="flex items-center gap-2">
+                        <span>
+                          {subtasks.some(task => task.estimatedMinutes) && (
+                            <>
+                              Total estimated time: {
+                                formatTime(
+                                  subtasks.reduce((sum, task) => sum + (task.estimatedMinutes || 0), 0)
+                                )
+                              }
+                            </>
+                          )}
+                        </span>
+                        {mainTask.totalMinutesSpent > 0 && (
+                          <span className="text-blue-500 font-medium">
+                            (Actual: {Math.floor(mainTask.totalMinutesSpent / 60)}h {mainTask.totalMinutesSpent % 60}m)
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 {!readOnly && mainTask.plannedDate && (
                   <div className="text-xs text-primary">
