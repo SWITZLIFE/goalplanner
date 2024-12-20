@@ -6,10 +6,11 @@ import { useToast } from "@/hooks/use-toast";
 
 interface TaskTimerProps {
   taskId: number;
+  totalMinutesSpent: number;
   onTimerStop?: (coinsEarned: number) => void;
 }
 
-export function TaskTimer({ taskId, onTimerStop }: TaskTimerProps) {
+export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerProps) {
   const [elapsedTime, setElapsedTime] = useState(0);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -103,10 +104,11 @@ export function TaskTimer({ taskId, onTimerStop }: TaskTimerProps) {
   const isCurrentTask = activeTimer?.taskId === taskId;
 
   return (
-    <div className="flex items-center gap-2">
-      <div className="font-mono text-lg">
-        {formatTime(elapsedTime)}
-      </div>
+    <div className="flex flex-col">
+      <div className="flex items-center gap-2">
+        <div className="font-mono text-lg">
+          {formatTime(elapsedTime)}
+        </div>
       {!activeTimer ? (
         <Button
           variant="outline"
@@ -131,6 +133,12 @@ export function TaskTimer({ taskId, onTimerStop }: TaskTimerProps) {
         <Button variant="outline" size="sm" disabled>
           Timer Active on Another Task
         </Button>
+      )}
+      </div>
+      {totalMinutesSpent > 0 && (
+        <div className="text-sm text-muted-foreground mt-1">
+          Total time: {formatTime(totalMinutesSpent * 60)}
+        </div>
       )}
     </div>
   );

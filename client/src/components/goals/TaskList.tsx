@@ -192,6 +192,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                 {!mainTask.completed && (
                   <TaskTimer 
                     taskId={mainTask.id}
+                    totalMinutesSpent={mainTask.totalMinutesSpent || 0}
                     onTimerStop={(coinsEarned) => {
                       toast({
                         title: "Time Tracked!",

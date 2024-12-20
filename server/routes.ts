@@ -327,6 +327,13 @@ export function registerRoutes(app: Express): Server {
         .where(eq(timeTracking.id, activeTimer.id))
         .returning();
 
+      // Update task's total time
+      await db.update(tasks)
+        .set({
+          totalMinutesSpent: sql`${tasks.totalMinutesSpent} + ${minutesWorked}`,
+        })
+        .where(eq(tasks.id, parseInt(taskId)));
+
       // Update user's coins
       await db.update(rewards)
         .set({

@@ -49,6 +49,7 @@ export const tasks = pgTable("tasks", {
   title: text("title").notNull(),
   completed: boolean("completed").default(false).notNull(),
   estimatedMinutes: integer("estimated_minutes"),
+  totalMinutesSpent: integer("total_minutes_spent").default(0).notNull(),
   plannedDate: timestamp("planned_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   parentTaskId: integer("parent_task_id").references(() => tasks.id),
