@@ -214,34 +214,10 @@ export function TaskEditor({ task, open, onOpenChange }: TaskEditorProps) {
                   {isSaving ? "Saving..." : "Save Changes"}
                 </Button>
               </div>
-              <Button
-                variant="ghost"
-                type="button"
-                onClick={() => setShowDeleteDialog(true)}
-                className="w-full text-destructive hover:text-destructive"
-              >
-                Delete Task
-              </Button>
             </div>
           </div>
         </div>
       </div>
-
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the {task.isSubtask ? "subtask" : "task"}
-              {!task.isSubtask && " and all its subtasks"}. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }
