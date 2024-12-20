@@ -60,6 +60,9 @@ export default function GoalView() {
           <div className="flex justify-between items-start">
             <div>
               <h1 className="text-2xl font-semibold mb-2">{goal.title}</h1>
+              {goal.description && goal.description !== goal.title && (
+                <p className="text-sm text-muted-foreground mb-1">{goal.description}</p>
+              )}
               <p className="text-muted-foreground">
                 Target completion: {format(new Date(goal.targetDate), "MMMM d, yyyy")}
               </p>
