@@ -73,14 +73,13 @@ export default function GoalView() {
                 </Link>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="sm">
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete Goal
-                    </Button>
+                    <button className="text-destructive hover:text-destructive/80 transition-colors">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                      <AlertDialogTitle>Delete Goal</AlertDialogTitle>
                       <AlertDialogDescription>
                         This action will permanently delete this goal and all its tasks.
                         This action cannot be undone.
