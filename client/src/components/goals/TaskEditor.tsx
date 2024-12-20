@@ -171,26 +171,56 @@ export function TaskEditor({ task, open, onOpenChange }: TaskEditorProps) {
           </div>
 
           <div className="p-4 border-t bg-muted/40">
-            <div className="flex justify-between gap-2">
+            <div className="flex flex-col gap-2">
+              <div className="flex justify-between gap-2">
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await updateTask({
+                        taskId: task.id,
+                        notes: null
+                      });
+                      setNotes("");
+                      toast({
+                        title: "Success",
+                        description: "Note deleted successfully"
+                      });
+                      onOpenChange(false);
+                    } catch (error) {
+                      console.error('Failed to delete note:', error);
+                      toast({
+                        variant: "destructive",
+                        title: "Error",
+                        description: "Failed to delete note"
+                      });
+                    }
+                  }}
+                  className="w-full"
+                >
+                  Clear Note
+                </Button>
+                <Button
+                  type="submit"
+                  onClick={async () => {
+                    setIsSaving(true);
+                    await handleSave();
+                    setIsSaving(false);
+                  }}
+                  className="w-full"
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
               <Button
-                variant="outline"
+                variant="ghost"
                 type="button"
                 onClick={() => setShowDeleteDialog(true)}
-                className="w-full"
+                className="w-full text-destructive hover:text-destructive"
               >
-                Delete
-              </Button>
-              <Button
-                type="submit"
-                onClick={async () => {
-                  setIsSaving(true);
-                  await handleSave();
-                  setIsSaving(false);
-                }}
-                className="w-full"
-                disabled={isSaving}
-              >
-                {isSaving ? "Saving..." : "Save Changes"}
+                Delete Task
               </Button>
             </div>
           </div>
