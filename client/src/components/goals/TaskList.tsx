@@ -100,9 +100,6 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
     if (title.trim()) {
       const { title: cleanTitle, estimatedMinutes } = parseEstimatedTime(title);
       await updateTask({ taskId, title: cleanTitle, estimatedMinutes });
-    } else {
-      // If the title is empty after editing, delete the task
-      // This will be implemented in the next step
     }
     setEditingTaskId(null);
   };
@@ -136,20 +133,17 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
 
   const formatTime = (minutes: number) => {
     if (minutes < 60) {
-      return `${minutes} minutes`;
+      return `${minutes}m`;
     }
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;
-    return `${hours}h ${remainingMinutes} minutes`;
+    return `${hours}h ${remainingMinutes}m`;
   };
 
-  // Sort tasks by creation date to maintain consistent order
-  // Sort tasks by creation date to maintain consistent order
   const mainTasks = tasks
     .filter(task => !task.isSubtask)
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     
-  // Pre-sort subtasks to avoid reordering on re-render
   const getOrderedSubtasks = (parentId: number) => {
     return tasks
       .filter(task => task.parentTaskId === parentId)
@@ -169,119 +163,114 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         </Button>
       </div>
 
-      {mainTasks.map((mainTask) => {
-        const subtasks = tasks.filter(task => task.parentTaskId === mainTask.id);
-        
-        return (
-          <div key={mainTask.id} className="space-y-2">
-            <div className="space-y-1">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id={`task-${mainTask.id}`}
-                  checked={mainTask.completed}
-                  onCheckedChange={(checked) => handleTaskToggle(mainTask.id, checked as boolean)}
+      {mainTasks.map((mainTask) => (
+        <div key={mainTask.id} className="space-y-2">
+          <div className="space-y-1">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id={`task-${mainTask.id}`}
+                checked={mainTask.completed}
+                onCheckedChange={(checked) => handleTaskToggle(mainTask.id, checked as boolean)}
+              />
+              <EditableTaskTitle
+                task={mainTask}
+                onSave={(title) => handleTaskTitleChange(mainTask.id, title)}
+                className={cn(
+                  "font-medium flex-grow",
+                  mainTask.completed && "line-through text-muted-foreground"
+                )}
+              />
+              {!mainTask.completed && (
+                <TaskTimer 
+                  taskId={mainTask.id}
+                  totalMinutesSpent={mainTask.totalMinutesSpent || 0}
+                  onTimerStop={(coinsEarned) => {
+                    toast({
+                      title: "Time Tracked!",
+                      description: `You earned ${coinsEarned} coins for your work.`
+                    });
+                  }}
                 />
-                <EditableTaskTitle
-                  task={mainTask}
-                  onSave={(title) => handleTaskTitleChange(mainTask.id, title)}
-                  className={cn(
-                    "font-medium flex-grow",
-                    mainTask.completed && "line-through text-muted-foreground"
+              )}
+              {!readOnly && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleAddSubtask(mainTask.id)}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Subtask
+                  </Button>
+                  {onUpdateTaskDate && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowDatePicker({ taskId: mainTask.id, date: mainTask.plannedDate ? new Date(mainTask.plannedDate) : undefined })}
+                    >
+                      {mainTask.plannedDate 
+                        ? format(new Date(mainTask.plannedDate), 'dd/MM/yy')
+                        : "Set Date"
+                      }
+                    </Button>
                   )}
-                />
-                {!mainTask.completed && (
-                  <TaskTimer 
-                    taskId={mainTask.id}
-                    totalMinutesSpent={mainTask.totalMinutesSpent || 0}
-                    onTimerStop={(coinsEarned) => {
-                      toast({
-                        title: "Time Tracked!",
-                        description: `You earned ${coinsEarned} coins for your work.`
-                      });
-                    }}
-                  />
+                </>
+              )}
+            </div>
+            <div className="flex justify-between items-center ml-6">
+              <div className="text-xs space-x-2">
+                {subtasks.some(task => task.estimatedMinutes) && (
+                  <span className="text-muted-foreground">
+                    Total estimated time: {
+                      formatTime(
+                        subtasks.reduce((sum, task) => sum + (task.estimatedMinutes || 0), 0)
+                      )
+                    }
+                  </span>
                 )}
                 {mainTask.totalMinutesSpent > 0 && (
-                  <div className="text-sm text-muted-foreground">
-                    Total time spent: {Math.floor(mainTask.totalMinutesSpent / 60)}h {mainTask.totalMinutesSpent % 60}m
-                  </div>
-                )}
-                {!readOnly && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleAddSubtask(mainTask.id)}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Subtask
-                    </Button>
-                    {onUpdateTaskDate && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowDatePicker({ taskId: mainTask.id, date: mainTask.plannedDate ? new Date(mainTask.plannedDate) : undefined })}
-                      >
-                        {mainTask.plannedDate 
-                          ? format(new Date(mainTask.plannedDate), 'dd/MM/yy')
-                          : "Set Date"
-                        }
-                      </Button>
-                    )}
-                  </>
+                  <span className="text-blue-500">
+                    (Actual: {formatTime(mainTask.totalMinutesSpent)})
+                  </span>
                 )}
               </div>
-              <div className="flex justify-between items-center ml-6">
-                <div className="text-xs text-muted-foreground">
-                  {subtasks.some(task => task.estimatedMinutes) && (
-                    <>
-                      Total estimated time: {
-                        formatTime(
-                          subtasks.reduce((sum, task) => sum + (task.estimatedMinutes || 0), 0)
-                        )
-                      }
-                    </>
-                  )}
+              {!readOnly && mainTask.plannedDate && (
+                <div className="text-xs text-primary">
+                  📅 {format(new Date(mainTask.plannedDate), 'MMM d, yyyy')}
                 </div>
-                {!readOnly && mainTask.plannedDate && (
-                  <div className="text-xs text-primary">
-                    📅 {format(new Date(mainTask.plannedDate), 'MMM d, yyyy')}
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            <div className="ml-6 space-y-2">
-              {getOrderedSubtasks(mainTask.id).map((subtask) => (
-                <div key={subtask.id} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`task-${subtask.id}`}
-                    checked={subtask.completed}
-                    onCheckedChange={(checked) => handleTaskToggle(subtask.id, checked as boolean)}
-                  />
-                  <div className="flex flex-col flex-grow">
-                    <EditableTaskTitle
-                      task={subtask}
-                      onSave={(title) => handleTaskTitleChange(subtask.id, title)}
-                      className={cn(
-                        "text-sm",
-                        subtask.completed && "line-through text-muted-foreground"
-                      )}
-                    />
-                    {subtask.estimatedMinutes && (
-                      <span className="text-xs text-muted-foreground">
-                        Estimated time: {subtask.estimatedMinutes} minutes
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
+              )}
             </div>
           </div>
-        );
-      })}
+          
+          <div className="ml-6 space-y-2">
+            {getOrderedSubtasks(mainTask.id).map((subtask) => (
+              <div key={subtask.id} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`task-${subtask.id}`}
+                  checked={subtask.completed}
+                  onCheckedChange={(checked) => handleTaskToggle(subtask.id, checked as boolean)}
+                />
+                <div className="flex flex-col flex-grow">
+                  <EditableTaskTitle
+                    task={subtask}
+                    onSave={(title) => handleTaskTitleChange(subtask.id, title)}
+                    className={cn(
+                      "text-sm",
+                      subtask.completed && "line-through text-muted-foreground"
+                    )}
+                  />
+                  {subtask.estimatedMinutes && (
+                    <span className="text-xs text-muted-foreground">
+                      Estimated time: {subtask.estimatedMinutes} minutes
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
       
-      {/* Date Picker Dialog */}
       <Dialog 
         open={showDatePicker !== null} 
         onOpenChange={(open) => !open && setShowDatePicker(null)}
