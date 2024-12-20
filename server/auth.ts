@@ -154,7 +154,13 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    const result = insertUserSchema.safeParse(req.body);
+    // Use a simpler schema for login that only validates email format
+    const loginSchema = z.object({
+      email: z.string().email("Invalid email format"),
+      password: z.string()
+    });
+    
+    const result = loginSchema.safeParse(req.body);
     if (!result.success) {
       return res
         .status(400)
