@@ -403,7 +403,7 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ error: "No active timer found" });
       }
 
-      // Calculate coins earned (1 coin per minute)
+      // Calculate time worked and coins earned
       const endTime = new Date();
       const minutesWorked = Math.floor((endTime.getTime() - activeTimer.startTime.getTime()) / 60000);
       const coinsEarned = Math.max(1, minutesWorked); // Minimum 1 coin
@@ -418,10 +418,10 @@ export function registerRoutes(app: Express): Server {
         .where(eq(timeTracking.id, activeTimer.id))
         .returning();
 
-      // Update task's total time and get updated task
+      // Update task's total time, initialize if null
       const [updatedTask] = await db.update(tasks)
         .set({
-          totalMinutesSpent: sql`${tasks.totalMinutesSpent} + ${minutesWorked}`,
+          totalMinutesSpent: sql`COALESCE(${tasks.totalMinutesSpent}, 0) + ${minutesWorked}`,
         })
         .where(eq(tasks.id, parseInt(taskId)))
         .returning();

@@ -42,7 +42,7 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
   // Query current timer state
   const { data: activeTimer, isLoading } = useQuery<ActiveTimer | null>({
     queryKey: ["/api/timer/current"],
-    refetchInterval: 1000, // Poll every second to keep timer state in sync
+    refetchInterval: activeTimer?.isActive ? 1000 : false, // Only poll when timer is active
   });
 
   // Start timer mutation
