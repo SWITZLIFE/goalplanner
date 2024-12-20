@@ -148,11 +148,9 @@ export function registerRoutes(app: Express): Server {
       if (plannedDate !== undefined) {
         updateData.plannedDate = plannedDate ? new Date(plannedDate) : null;
       }
-      if (typeof order !== 'undefined') updateData.order = order;
+      if (typeof order === 'number') updateData.order = order;
 
       console.log('Updating task with data:', { taskId, updateData });
-
-      console.log('Updating task:', { taskId, updateData }); // Add logging
 
       const [updatedTask] = await db.update(tasks)
         .set(updateData)

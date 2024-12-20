@@ -55,6 +55,7 @@ export const tasks = pgTable("tasks", {
   parentTaskId: integer("parent_task_id").references(() => tasks.id),
   isSubtask: boolean("is_subtask").default(false).notNull(),
   order: integer("order").default(0).notNull(),
+  order: integer("order").default(0).notNull(),
 });
 
 export const rewards = pgTable("rewards", {
