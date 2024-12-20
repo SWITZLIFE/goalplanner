@@ -311,7 +311,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                           })}
                         >
                           {mainTask.plannedDate 
-                            ? format(new Date(mainTask.plannedDate), 'dd/MM/yy')
+                            ? format(new Date(mainTask.plannedDate), 'MMM d, yyyy')
                             : "Set Date"
                           }
                         </Button>
