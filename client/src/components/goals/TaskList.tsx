@@ -341,13 +341,11 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                         key={subtask.id}
                         className="flex items-center space-x-2 group"
                       >
-                        {subtask.id !== -1 && (
-                          <Checkbox
-                            id={`task-${subtask.id}`}
-                            checked={subtask.completed}
-                            onCheckedChange={(checked) => handleTaskToggle(subtask.id, checked as boolean)}
-                          />
-                        )}
+                        <Checkbox
+                          id={`task-${subtask.id}`}
+                          checked={subtask.completed}
+                          onCheckedChange={(checked) => handleTaskToggle(subtask.id, checked as boolean)}
+                        />
                         <div className="flex flex-col flex-grow">
                           <div className="flex items-center gap-2">
                             <EditableTaskTitle
