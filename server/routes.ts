@@ -90,24 +90,43 @@ export function registerRoutes(app: Express): Server {
   app.delete("/api/goals/:goalId", async (req, res) => {
     try {
       const { goalId } = req.params;
-      
-      // First, delete all tasks associated with the goal
-      await db.delete(tasks)
-        .where(eq(tasks.goalId, parseInt(goalId)));
+      const goalIdInt = parseInt(goalId);
 
-      // Then delete the goal
-      const [deletedGoal] = await db.delete(goals)
-        .where(eq(goals.id, parseInt(goalId)))
-        .returning();
+      // First verify the goal exists
+      const goalToDelete = await db.query.goals.findFirst({
+        where: eq(goals.id, goalIdInt),
+        with: {
+          tasks: true
+        }
+      });
 
-      if (!deletedGoal) {
+      if (!goalToDelete) {
         return res.status(404).json({ error: "Goal not found" });
       }
+
+      // Delete in correct order to handle foreign key constraints
+      
+      // 1. Delete all time tracking records for tasks in this goal
+      for (const task of goalToDelete.tasks) {
+        await db.delete(timeTracking)
+          .where(eq(timeTracking.taskId, task.id));
+      }
+
+      // 2. Delete all tasks associated with the goal
+      await db.delete(tasks)
+        .where(eq(tasks.goalId, goalIdInt));
+
+      // 3. Finally delete the goal
+      await db.delete(goals)
+        .where(eq(goals.id, goalIdInt));
 
       res.json({ success: true });
     } catch (error) {
       console.error("Failed to delete goal:", error);
-      res.status(500).json({ error: "Failed to delete goal" });
+      res.status(500).json({ 
+        error: "Failed to delete goal",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
