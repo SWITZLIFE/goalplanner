@@ -18,12 +18,9 @@ const generateICalString = (tasks: Task[]): string => {
   const header = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Task Management App//Microsoft Corporation//EN',
+    'PRODID:-//Task Management//Task Calendar//EN',
     'CALSCALE:GREGORIAN',
-    'METHOD:PUBLISH',
-    'X-WR-CALNAME:Task Management Calendar',
-    'X-WR-TIMEZONE:UTC',
-    'X-MS-OLK-FORCEINSPECTOROPEN:TRUE'
+    'METHOD:PUBLISH'
   ].join('\r\n');
 
   const events = tasks
@@ -35,18 +32,12 @@ const generateICalString = (tasks: Task[]): string => {
       
       return [
         'BEGIN:VEVENT',
-        `DTSTART;VALUE=DATE:${format(date, "yyyyMMdd")}`,
-        `DTEND;VALUE=DATE:${format(nextDay, "yyyyMMdd")}`,
-        `DTSTAMP:${format(now, "yyyyMMdd'T'HHmmss'Z'")}`,
-        `UID:${task.id}-${Date.now()}@taskmanagement.app`,
-        `CREATED:${format(new Date(task.createdAt), "yyyyMMdd'T'HHmmss'Z'")}`,
-        `LAST-MODIFIED:${format(now, "yyyyMMdd'T'HHmmss'Z'")}`,
-        'CLASS:PUBLIC',
-        `STATUS:${task.completed ? 'COMPLETED' : 'CONFIRMED'}`,
-        `CATEGORIES:${task.completed ? 'Completed Tasks' : 'Active Tasks'}`,
-        'TRANSP:TRANSPARENT',
+        `DTSTART:${format(date, "yyyyMMdd")}`,
+        `DTEND:${format(nextDay, "yyyyMMdd")}`,
+        `DTSTAMP:${format(now, "yyyyMMdd'T'HHmmss")}`,
+        `UID:task-${task.id}@taskmanagement`,
         `SUMMARY:${task.title}`,
-        `DESCRIPTION:Status: ${task.completed ? 'Completed' : 'Active'}\\n\\nTask from Task Management App`,
+        `DESCRIPTION:${task.completed ? 'Completed' : 'Active'} task`,
         'END:VEVENT'
       ].join('\r\n');
     })
@@ -96,10 +87,12 @@ export function TaskViews({ tasks, goalId }: TaskViewsProps) {
   const exportCalendar = () => {
     try {
       const icalString = generateICalString(tasks);
-      const blob = new Blob([icalString], { type: 'text/calendar;charset=utf-8' });
+      const blob = new Blob([icalString], { 
+        type: 'text/calendar;charset=utf-8;method=PUBLISH' 
+      });
       const link = document.createElement('a');
       link.href = window.URL.createObjectURL(blob);
-      link.download = 'tasks.ics';
+      link.download = 'task_calendar.ics';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
