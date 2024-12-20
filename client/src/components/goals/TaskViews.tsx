@@ -13,38 +13,7 @@ interface TaskViewsProps {
   goalId: number;
 }
 
-const generateICalString = (tasks: Task[]): string => {
-  const now = new Date();
-  const header = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//Task Management//Task Calendar//EN',
-    'CALSCALE:GREGORIAN',
-    'METHOD:PUBLISH'
-  ].join('\r\n');
 
-  const events = tasks
-    .filter(task => task.plannedDate)
-    .map(task => {
-      const date = new Date(task.plannedDate!);
-      const nextDay = new Date(date);
-      nextDay.setDate(nextDay.getDate() + 1);
-      
-      return [
-        'BEGIN:VEVENT',
-        `DTSTART:${format(date, "yyyyMMdd")}`,
-        `DTEND:${format(nextDay, "yyyyMMdd")}`,
-        `DTSTAMP:${format(now, "yyyyMMdd'T'HHmmss")}`,
-        `UID:task-${task.id}@taskmanagement`,
-        `SUMMARY:${task.title}`,
-        `DESCRIPTION:${task.completed ? 'Completed' : 'Active'} task`,
-        'END:VEVENT'
-      ].join('\r\n');
-    })
-    .join('\r\n');
-
-  return `${header}\r\n${events}\r\nEND:VCALENDAR`;
-};
 
 
 
@@ -84,32 +53,7 @@ export function TaskViews({ tasks, goalId }: TaskViewsProps) {
     }
   };
 
-  const exportCalendar = () => {
-    try {
-      const icalString = generateICalString(tasks);
-      const blob = new Blob([icalString], { 
-        type: 'text/calendar;charset=utf-8;method=PUBLISH' 
-      });
-      const link = document.createElement('a');
-      link.href = window.URL.createObjectURL(blob);
-      link.download = 'task_calendar.ics';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      toast({
-        title: "Calendar Exported",
-        description: "Your tasks have been exported to a calendar file.",
-      });
-    } catch (error) {
-      console.error('Failed to export calendar:', error);
-      toast({
-        variant: "destructive",
-        title: "Export Failed",
-        description: "Failed to export calendar. Please try again.",
-      });
-    }
-  };
+  
 
   
 
@@ -157,13 +101,6 @@ export function TaskViews({ tasks, goalId }: TaskViewsProps) {
                 className="p-2 border rounded-md hover:bg-gray-100"
               >
                 🖨️ Print
-              </button>
-              <button
-                onClick={exportCalendar}
-                className="p-2 border rounded-md hover:bg-gray-100"
-                title="Export to Outlook Calendar"
-              >
-                📅 Export to Calendar
               </button>
             </div>
           </div>
