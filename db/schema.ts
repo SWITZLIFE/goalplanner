@@ -115,7 +115,7 @@ export const updateTaskSchema = selectTaskSchema.partial().extend({
   title: z.string().optional(),
   estimatedMinutes: z.number().optional().nullable(),
   plannedDate: z.string().optional().nullable(),
-  notes: z.string().optional().nullable()
+  notes: z.string().optional().nullable(),
 });
 
 // Define the base types from the schema
