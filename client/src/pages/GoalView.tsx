@@ -1,7 +1,7 @@
 import { useRoute } from "wouter";
 import { useGoals } from "@/hooks/use-goals";
 import { GoalProgress } from "@/components/goals/GoalProgress";
-import { TaskList } from "@/components/goals/TaskList";
+import { TaskViews } from "@/components/goals/TaskViews";
 import { CoachingCard } from "@/components/coaching/CoachingCard";
 import { CreateGoalDialog } from "@/components/goals/CreateGoalDialog";
 import { GoalCard } from "@/components/goals/GoalCard";
@@ -65,7 +65,7 @@ export default function GoalView() {
 
           <div className="space-y-4">
             <h2 className="text-lg font-medium mb-4">Tasks</h2>
-            <TaskList tasks={goal.tasks || []} goalId={goal.id} />
+            <TaskViews tasks={goal.tasks || []} goalId={goal.id} />
           </div>
           
           {/* Floating AI Coach */}
