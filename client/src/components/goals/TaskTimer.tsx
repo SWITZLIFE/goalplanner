@@ -138,7 +138,7 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
       </div>
       {totalMinutesSpent > 0 && (
         <div className="text-sm text-muted-foreground mt-1">
-          Total time: {formatTime(totalMinutesSpent * 60)}
+          Total time spent: {Math.floor(totalMinutesSpent / 60)}h {totalMinutesSpent % 60}m
         </div>
       )}
     </div>
