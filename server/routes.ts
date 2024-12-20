@@ -148,9 +148,59 @@ export function registerRoutes(app: Express): Server {
       if (plannedDate !== undefined) {
         updateData.plannedDate = plannedDate ? new Date(plannedDate) : null;
       }
-      if (typeof order === 'number') updateData.order = order;
+      if (typeof order === 'number') {
+        updateData.order = order;
+      }
 
-      console.log('Updating task with data:', { taskId, updateData });
+      try {
+        const [updatedTask] = await db.update(tasks)
+          .set(updateData)
+          .where(eq(tasks.id, parseInt(taskId)))
+          .returning();
+
+        if (!updatedTask) {
+          return res.status(404).json({ error: "Task not found" });
+        }
+
+        // If this is a reordering operation, we need to ensure consistent ordering
+        if (typeof order === 'number') {
+          const otherTasks = await db.select()
+            .from(tasks)
+            .where(
+              and(
+                eq(tasks.goalId, updatedTask.goalId),
+                eq(tasks.isSubtask, updatedTask.isSubtask),
+                updatedTask.isSubtask 
+                  ? eq(tasks.parentTaskId, updatedTask.parentTaskId)
+                  : isNull(tasks.parentTaskId)
+              )
+            );
+          
+          // Sort tasks by order
+          const sortedTasks = otherTasks
+            .filter(t => t.id !== updatedTask.id)
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+          // Reorder tasks to maintain consistent spacing
+          let currentOrder = 0;
+          for (const task of sortedTasks) {
+            if (currentOrder === order) {
+              currentOrder += 1000;
+            }
+            if (task.order !== currentOrder) {
+              await db.update(tasks)
+                .set({ order: currentOrder })
+                .where(eq(tasks.id, task.id));
+            }
+            currentOrder += 1000;
+          }
+        }
+
+        return res.json(updatedTask);
+      } catch (error) {
+        console.error("Failed to update task:", error);
+        return res.status(500).json({ error: "Failed to update task" });
+      }
 
       const [updatedTask] = await db.update(tasks)
         .set(updateData)
