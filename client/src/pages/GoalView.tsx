@@ -1,4 +1,4 @@
-import { useRoute } from "wouter";
+import { useRoute, useLocation } from "wouter";
 import { useGoals } from "@/hooks/use-goals";
 import { GoalProgress } from "@/components/goals/GoalProgress";
 import { TaskViews } from "@/components/goals/TaskViews";
@@ -7,13 +7,27 @@ import { CreateGoalDialog } from "@/components/goals/CreateGoalDialog";
 import { GoalCard } from "@/components/goals/GoalCard";
 import { CoinBalance } from "@/components/rewards/CoinBalance";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 export default function GoalView() {
   const [, params] = useRoute("/goals/:id");
-  const { goals, isLoading } = useGoals();
+  const [, setLocation] = useLocation();
+  const { goals, isLoading, deleteGoal } = useGoals();
+  const { toast } = useToast();
   
   const goal = goals.find((g) => g.id === parseInt(params?.id || ""));
 
@@ -50,12 +64,50 @@ export default function GoalView() {
                 Target completion: {format(new Date(goal.targetDate), "MMMM d, yyyy")}
               </p>
             </div>
-            <Link href="/">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-            </Link>
+            <div className="flex space-x-2">
+                <Link href="/">
+                  <Button variant="ghost" size="sm">
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Back
+                  </Button>
+                </Link>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Goal
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action will permanently delete this goal and all its tasks.
+                        This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={async () => {
+                        try {
+                          await deleteGoal(goal.id);
+                          toast({
+                            title: "Goal deleted",
+                            description: "The goal has been permanently deleted.",
+                          });
+                          setLocation("/");
+                        } catch (error) {
+                          toast({
+                            title: "Error",
+                            description: "Failed to delete goal. Please try again.",
+                            variant: "destructive",
+                          });
+                        }
+                      }}>Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
           </div>
 
           <div className="space-y-2">

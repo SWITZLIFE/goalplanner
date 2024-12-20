@@ -60,3 +60,38 @@ Remember: The response MUST contain exactly ${numTasks} main tasks.`;
     throw new Error("Failed to parse task breakdown");
   }
 }
+
+export async function generateShortTitle(longTitle: string): Promise<string> {
+  const prompt = `Create a shorter, more concise title for the following goal while preserving its core meaning:
+"${longTitle}"
+
+Requirements:
+1. Maximum 5 words
+2. Keep the essential meaning
+3. Make it action-oriented
+4. Remove unnecessary words
+5. Return only the new short title, nothing else
+
+Example:
+Input: "I want to finish my Goal Planner app and launch it on the market and have 1000 paid user with monthly revenue of 5K"
+Output: "Launch Goal Planner App"`;
+
+  const response = await openai.chat.completions.create({
+    model: "gpt-3.5-turbo",
+    messages: [
+      {
+        role: "system",
+        content: "You are a title optimization assistant that creates concise, meaningful titles from longer descriptions.",
+      },
+      {
+        role: "user",
+        content: prompt,
+      },
+    ],
+    temperature: 0.3,
+    max_tokens: 20,
+  });
+
+  const shortTitle = response.choices[0].message.content?.trim() || longTitle;
+  return shortTitle;
+}

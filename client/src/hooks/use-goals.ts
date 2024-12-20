@@ -89,6 +89,19 @@ export function useGoals() {
     },
   });
 
+  const deleteGoalMutation = useMutation({
+    mutationFn: async (goalId: number) => {
+      const res = await fetch(`/api/goals/${goalId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete goal");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+    },
+  });
+
   return {
     goals,
     isLoading,
@@ -96,5 +109,6 @@ export function useGoals() {
     createTask: createTaskMutation.mutateAsync,
     updateTask: updateTaskMutation.mutateAsync,
     deleteTask: deleteTaskMutation.mutateAsync,
+    deleteGoal: deleteGoalMutation.mutateAsync,
   };
 }

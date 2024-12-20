@@ -14,7 +14,10 @@ export function GoalCard({ goal }: GoalCardProps) {
       <Card className="cursor-pointer hover:shadow-md transition-shadow">
         <CardHeader className="pb-2">
           <h3 className="font-medium text-lg">{goal.title}</h3>
-          <p className="text-sm text-muted-foreground">
+          {goal.description && goal.description !== goal.title && (
+            <p className="text-sm text-muted-foreground line-clamp-2">{goal.description}</p>
+          )}
+          <p className="text-sm text-muted-foreground mt-1">
             Target: {format(new Date(goal.targetDate), "MMM d, yyyy")}
           </p>
         </CardHeader>

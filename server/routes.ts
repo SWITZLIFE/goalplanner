@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { db } from "@db";
 import { goals, tasks, rewards } from "@db/schema";
 import { eq, and, isNull } from "drizzle-orm";
-import { generateTaskBreakdown } from "./openai";
+import { generateTaskBreakdown, generateShortTitle } from "./openai";
 import { getCoachingAdvice } from "./coaching";
 import { setupAuth } from "./auth";
 
@@ -30,42 +30,46 @@ export function registerRoutes(app: Express): Server {
     try {
       const { title, description, targetDate, totalTasks } = req.body;
       
-      // Generate task breakdown using AI
-      const taskBreakdown = await generateTaskBreakdown(title, parseInt(totalTasks));
-      const totalTaskCount = taskBreakdown.length + taskBreakdown.length * 3; // Main tasks + subtasks
+      // Generate a shorter title using AI
+      const shortTitle = await generateShortTitle(title);
       
-      // Create the goal
       const [newGoal] = await db.insert(goals)
         .values({
-          title,
-          description,
+          title: shortTitle,
+          description: title, // Store original title as description
           targetDate: new Date(targetDate),
-          totalTasks: totalTaskCount,
+          totalTasks: totalTasks,
           progress: 0,
         })
         .returning();
 
       // Create tasks and subtasks
-      for (const task of taskBreakdown) {
-        const [mainTask] = await db.insert(tasks)
-          .values({
-            goalId: newGoal.id,
-            title: task.title,
-            completed: false,
-            isSubtask: false,
-          })
-          .returning();
+      if (totalTasks > 0) {
+        const breakdown = await generateTaskBreakdown(title, parseInt(totalTasks));
+        
+        for (const task of breakdown) {
+          const [mainTask] = await db.insert(tasks)
+            .values({
+              goalId: newGoal.id,
+              title: task.title,
+              completed: false,
+              isSubtask: false,
+            })
+            .returning();
 
-        // Create subtasks
-        await db.insert(tasks)
-          .values(task.subtasks.map(subtask => ({
-            goalId: newGoal.id,
-            title: subtask.title,
-            completed: false,
-            estimatedMinutes: subtask.estimatedMinutes,
-            isSubtask: true,
-            parentTaskId: mainTask.id,
-          })));
+          // Create subtasks
+          for (const subtask of task.subtasks) {
+            await db.insert(tasks)
+              .values({
+                goalId: newGoal.id,
+                title: subtask.title,
+                completed: false,
+                estimatedMinutes: subtask.estimatedMinutes,
+                isSubtask: true,
+                parentTaskId: mainTask.id,
+              });
+          }
+        }
       }
 
       // Fetch the complete goal with tasks
@@ -82,6 +86,31 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ error: "Failed to create goal" });
     }
   });
+  // Delete goal endpoint
+  app.delete("/api/goals/:goalId", async (req, res) => {
+    try {
+      const { goalId } = req.params;
+      
+      // First, delete all tasks associated with the goal
+      await db.delete(tasks)
+        .where(eq(tasks.goalId, parseInt(goalId)));
+
+      // Then delete the goal
+      const [deletedGoal] = await db.delete(goals)
+        .where(eq(goals.id, parseInt(goalId)))
+        .returning();
+
+      if (!deletedGoal) {
+        return res.status(404).json({ error: "Goal not found" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete goal:", error);
+      res.status(500).json({ error: "Failed to delete goal" });
+    }
+  });
+
 
   // Tasks API
   app.post("/api/goals/:goalId/tasks", async (req, res) => {
