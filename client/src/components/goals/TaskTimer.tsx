@@ -84,9 +84,11 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
       return data;
     },
     onSuccess: (data) => {
+      // Invalidate all affected queries to refresh their data
       queryClient.invalidateQueries({ queryKey: ["/api/timer/current"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/rewards"] });
       queryClient.invalidateQueries({ queryKey: ["/api/goals"] }); // Refresh goals to get updated task times
+      queryClient.invalidateQueries({ queryKey: ["/api/rewards"] }); // Force refresh of coin balance
+      
       setElapsedTime(0);
       onTimerStop?.(data.coinsEarned);
       toast({
