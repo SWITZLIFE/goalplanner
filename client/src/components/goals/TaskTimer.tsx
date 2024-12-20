@@ -61,6 +61,8 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
       queryClient.invalidateQueries({ queryKey: ["/api/timer/current"] });
       queryClient.invalidateQueries({ queryKey: ["/api/rewards"] });
       queryClient.invalidateQueries({ queryKey: ["/api/goals"] }); // Refresh goals to get updated task times
+      // Set total minutes spent from the response
+      setElapsedTime(0);
       onTimerStop?.(data.coinsEarned);
       toast({
         title: "Timer Stopped",

@@ -15,19 +15,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const allGoals = await db.query.goals.findMany({
         with: {
-          tasks: {
-            columns: {
-              id: true,
-              title: true,
-              completed: true,
-              estimatedMinutes: true,
-              totalMinutesSpent: true,
-              plannedDate: true,
-              createdAt: true,
-              parentTaskId: true,
-              isSubtask: true,
-            },
-          },
+          tasks: true,
         },
         orderBy: (goals, { desc }) => [desc(goals.createdAt)],
       });

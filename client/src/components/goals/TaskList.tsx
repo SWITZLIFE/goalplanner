@@ -201,6 +201,11 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     }}
                   />
                 )}
+                {mainTask.totalMinutesSpent > 0 && (
+                  <div className="text-sm text-muted-foreground">
+                    Total time spent: {Math.floor(mainTask.totalMinutesSpent / 60)}h {mainTask.totalMinutesSpent % 60}m
+                  </div>
+                )}
                 {!readOnly && (
                   <>
                     <Button
