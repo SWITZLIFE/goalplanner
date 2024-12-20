@@ -9,8 +9,8 @@
   }
 
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
   }
 
   * {
@@ -18,10 +18,18 @@
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground min-h-screen;
+    @apply font-sans antialiased min-h-screen;
+  }
+
+  body {
+    @apply bg-background text-foreground;
   }
 
   .dark body {
+    @apply bg-black text-white;
+  }
+
+  .dark main {
     @apply bg-black;
   }
 }
