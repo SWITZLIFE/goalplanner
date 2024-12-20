@@ -7,6 +7,8 @@ import type { Task } from "@db/schema";
 import { useGoals } from "@/hooks/use-goals";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Calendar } from "@/components/ui/calendar";
 
 interface TaskListProps {
   tasks: Task[];
@@ -72,6 +74,7 @@ function EditableTaskTitle({ task, onSave, className }: EditableTaskTitleProps) 
 export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: TaskListProps) {
   const { updateTask, createTask } = useGoals();
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState<{ taskId: number; date?: Date } | null>(null);
 
   const handleTaskToggle = async (taskId: number, completed: boolean) => {
     await updateTask({ taskId, completed });
@@ -186,10 +189,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
-                          const date = mainTask.plannedDate ? undefined : new Date();
-                          onUpdateTaskDate(mainTask.id, date);
-                        }}
+                        onClick={() => setShowDatePicker({ taskId: mainTask.id, date: mainTask.plannedDate ? new Date(mainTask.plannedDate) : undefined })}
                         className={cn(
                           "text-xs",
                           mainTask.plannedDate && "text-primary"
@@ -245,6 +245,29 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
           </div>
         );
       })}
+      
+      {/* Date Picker Dialog */}
+      <Dialog 
+        open={showDatePicker !== null} 
+        onOpenChange={(open) => !open && setShowDatePicker(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select Task Date</DialogTitle>
+          </DialogHeader>
+          <Calendar
+            mode="single"
+            selected={showDatePicker?.date}
+            onSelect={(date) => {
+              if (showDatePicker && onUpdateTaskDate) {
+                onUpdateTaskDate(showDatePicker.taskId, date);
+                setShowDatePicker(null);
+              }
+            }}
+            className="rounded-md border"
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
