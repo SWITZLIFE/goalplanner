@@ -83,14 +83,17 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
       const data: TimerResponse = await res.json();
       return data;
     },
-    onSuccess: (data) => {
-      // Invalidate all affected queries to refresh their data
-      queryClient.invalidateQueries({ queryKey: ["/api/timer/current"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/goals"] }); // Refresh goals to get updated task times
-      queryClient.invalidateQueries({ queryKey: ["/api/rewards"] }); // Force refresh of coin balance
-      
+    onSuccess: async (data) => {
       setElapsedTime(0);
       onTimerStop?.(data.coinsEarned);
+      
+      // Invalidate all affected queries to refresh their data
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/timer/current"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/goals"] }), // Refresh goals to get updated task times
+        queryClient.invalidateQueries({ queryKey: ["/api/rewards"] }), // Force refresh of coin balance
+      ]);
+
       toast({
         title: "Timer Stopped",
         description: `You earned ${data.coinsEarned} coins! Total time: ${String(Math.floor(data.task.totalMinutesSpent / 60)).padStart(2, '0')}:${String(data.task.totalMinutesSpent % 60).padStart(2, '0')}`,

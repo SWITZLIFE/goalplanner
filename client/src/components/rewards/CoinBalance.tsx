@@ -5,7 +5,8 @@ export function CoinBalance() {
   const { data: rewards } = useQuery({
     queryKey: ["/api/rewards"],
     staleTime: 0, // Always fetch fresh data
-    cacheTime: 1000 * 60, // Cache for 1 minute
+    gcTime: 1000 * 60, // Cache for 1 minute
+    refetchOnMount: true,
   });
 
   return (

@@ -25,6 +25,9 @@ export function RewardStore() {
 
   const { data: userRewards } = useQuery({
     queryKey: ["/api/rewards"],
+    staleTime: 0,
+    gcTime: 1000 * 60,
+    refetchOnMount: true,
   });
 
   const handlePurchase = async () => {
