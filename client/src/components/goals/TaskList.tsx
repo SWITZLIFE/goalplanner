@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import type { Task } from "@db/schema";
 import { useGoals } from "@/hooks/use-goals";
 import { cn } from "@/lib/utils";
@@ -74,8 +74,25 @@ function EditableTaskTitle({ task, onSave, className }: EditableTaskTitleProps) 
 }
 
 export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: TaskListProps) {
-  const { updateTask, createTask } = useGoals();
+  const { updateTask, createTask, deleteTask } = useGoals();
   const { toast } = useToast();
+
+  const handleDelete = async (taskId: number) => {
+    try {
+      await deleteTask(taskId);
+      toast({
+        title: "Success",
+        description: "Task deleted successfully"
+      });
+    } catch (error) {
+      console.error("Failed to delete task:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete task"
+      });
+    }
+  };
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [showDatePicker, setShowDatePicker] = useState<{ taskId: number; date?: Date } | null>(null);
 
@@ -175,7 +192,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         return (
           <div key={mainTask.id} className="space-y-2">
             <div className="space-y-1">
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 group relative">
                 <Checkbox
                   id={`task-${mainTask.id}`}
                   checked={mainTask.completed}
@@ -189,6 +206,15 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     mainTask.completed && "line-through text-muted-foreground"
                   )}
                 />
+                {!readOnly && (
+                  <button
+                    onClick={() => handleDelete(mainTask.id)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity absolute right-0 p-1 hover:text-destructive"
+                    title="Delete task"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
                 {!mainTask.completed && (
                   <TaskTimer 
                     taskId={mainTask.id}
@@ -262,7 +288,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
             
             <div className="ml-6 space-y-2">
               {getOrderedSubtasks(mainTask.id).map((subtask) => (
-                <div key={subtask.id} className="flex items-center space-x-2">
+                <div key={subtask.id} className="flex items-center space-x-2 group relative">
                   <Checkbox
                     id={`task-${subtask.id}`}
                     checked={subtask.completed}
@@ -277,6 +303,15 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                         subtask.completed && "line-through text-muted-foreground"
                       )}
                     />
+                    {!readOnly && (
+                      <button
+                        onClick={() => handleDelete(subtask.id)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity absolute right-0 p-1 hover:text-destructive"
+                        title="Delete subtask"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                     {subtask.estimatedMinutes && (
                       <span className="text-xs text-muted-foreground">
                         Estimated time: {subtask.estimatedMinutes} minutes
