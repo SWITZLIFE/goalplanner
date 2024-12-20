@@ -418,10 +418,21 @@ export function registerRoutes(app: Express): Server {
         .where(eq(timeTracking.id, activeTimer.id))
         .returning();
 
-      // Update task's total time, initialize if null
+      // Get current task to check totalMinutesSpent
+      const currentTask = await db.query.tasks.findFirst({
+        where: eq(tasks.id, parseInt(taskId))
+      });
+
+      if (!currentTask) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      // Update task's total time, ensuring we handle null cases
       const [updatedTask] = await db.update(tasks)
         .set({
-          totalMinutesSpent: sql`COALESCE(${tasks.totalMinutesSpent}, 0) + ${minutesWorked}`,
+          totalMinutesSpent: currentTask.totalMinutesSpent 
+            ? currentTask.totalMinutesSpent + minutesWorked
+            : minutesWorked
         })
         .where(eq(tasks.id, parseInt(taskId)))
         .returning();
