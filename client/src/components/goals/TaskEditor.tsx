@@ -140,12 +140,12 @@ export function TaskEditor({ task, open, onOpenChange }: TaskEditorProps) {
                 <Select
                   onValueChange={(value) => {
                     if (notes && notes.trim()) {
-                      if (window.confirm("This will replace your current notes. Are you sure?")) {
-                        setNotes(NOTE_TEMPLATES[value as keyof typeof NOTE_TEMPLATES]);
-                      }
-                    } else {
-                      setNotes(NOTE_TEMPLATES[value as keyof typeof NOTE_TEMPLATES]);
+                      toast({
+                        title: "Template Changed",
+                        description: "Your notes have been updated with the new template."
+                      });
                     }
+                    setNotes(NOTE_TEMPLATES[value as keyof typeof NOTE_TEMPLATES]);
                   }}
                 >
                   <SelectTrigger className="w-[200px]">
