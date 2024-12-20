@@ -12,7 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Calendar } from "@/components/ui/calendar";
 import { TaskTimer } from "./TaskTimer";
 import { useToast } from "@/hooks/use-toast";
-import { DragDropContext, Droppable, Draggable, DropResult } from "react-beautiful-dnd";
+import { DragDropContext, Droppable, Draggable, type DropResult } from "react-beautiful-dnd";
+import { StrictModeDroppable } from "./StrictModeDroppable";
 
 interface TaskListProps {
   tasks: Task[];
@@ -81,15 +82,6 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [showDatePicker, setShowDatePicker] = useState<{ taskId: number; date?: Date } | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
-  const [enabled, setEnabled] = useState(false);
-
-  // Enable drag and drop after initial render to avoid hydration issues
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      setEnabled(true);
-    }, 0);
-    return () => clearTimeout(timeout);
-  }, []);
 
   const handleDelete = async (taskId: number) => {
     try {
@@ -145,6 +137,8 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         order: minOrder - 1000,
       });
       setEditingTaskId(newTask.id);
+      // Expand the task list when adding a new task
+      setExpandedTasks(new Set([...expandedTasks, newTask.id]));
     } catch (error) {
       console.error("Failed to create task:", error);
     }
@@ -219,6 +213,8 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         order: minOrder - 1000,
       });
       setEditingTaskId(newSubtask.id);
+      // Expand the parent task when adding a new subtask
+      setExpandedTasks(new Set([...expandedTasks, parentTaskId]));
     } catch (error) {
       console.error("Failed to create subtask:", error);
     }
@@ -242,10 +238,6 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
       .filter(task => task.parentTaskId === parentId)
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   };
-
-  if (!enabled) {
-    return <div>Loading...</div>;
-  }
 
   return (
     <>
@@ -285,7 +277,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         </div>
 
         <DragDropContext onDragEnd={handleDragEnd}>
-          <Droppable droppableId="main-tasks" type="MAIN_TASK">
+          <StrictModeDroppable droppableId="main-tasks" type="MAIN_TASK">
             {(provided) => (
               <div
                 ref={provided.innerRef}
@@ -432,7 +424,10 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                           className="ml-6 space-y-2"
                         >
                           <Collapsible.Content className="transition-all data-[state=closed]:animate-collapse data-[state=open]:animate-expand overflow-hidden">
-                            <Droppable droppableId={`subtasks-${mainTask.id}`} type={`SUBTASK-${mainTask.id}`}>
+                            <StrictModeDroppable 
+                              droppableId={`subtasks-${mainTask.id}`} 
+                              type={`SUBTASK-${mainTask.id}`}
+                            >
                               {(provided) => (
                                 <div
                                   ref={provided.innerRef}
@@ -493,7 +488,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                                   {provided.placeholder}
                                 </div>
                               )}
-                            </Droppable>
+                            </StrictModeDroppable>
                           </Collapsible.Content>
                         </Collapsible.Root>
                       </div>
@@ -503,7 +498,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                 {provided.placeholder}
               </div>
             )}
-          </Droppable>
+          </StrictModeDroppable>
         </DragDropContext>
 
         {/* Date Picker Dialog */}
