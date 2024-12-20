@@ -191,7 +191,10 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                         size="sm"
                         onClick={() => setShowDatePicker({ taskId: mainTask.id, date: mainTask.plannedDate ? new Date(mainTask.plannedDate) : undefined })}
                       >
-                        {mainTask.plannedDate ? "Change Date" : "Set Date"}
+                        {mainTask.plannedDate 
+                          ? format(new Date(mainTask.plannedDate), 'dd/MM/yy')
+                          : "Set Date"
+                        }
                       </Button>
                     )}
                   </>
