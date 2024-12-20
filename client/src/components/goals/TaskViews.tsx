@@ -33,10 +33,15 @@ export function TaskViews({ tasks, goalId }: TaskViewsProps) {
   };
 
   const handleUpdateTaskDate = async (taskId: number, date: Date | undefined) => {
-    await updateTask({ 
-      taskId, 
-      plannedDate: date ? date.toISOString() : null 
-    });
+    try {
+      await updateTask({ 
+        taskId, 
+        title: tasks.find(t => t.id === taskId)?.title,
+        plannedDate: date ? date.toISOString() : null 
+      });
+    } catch (error) {
+      console.error('Failed to update task date:', error);
+    }
   };
 
   return (

@@ -115,12 +115,20 @@ export function registerRoutes(app: Express): Server {
       if (typeof completed !== 'undefined') updateData.completed = completed;
       if (title) updateData.title = title;
       if (typeof estimatedMinutes !== 'undefined') updateData.estimatedMinutes = estimatedMinutes;
-      if (typeof plannedDate !== 'undefined') updateData.plannedDate = plannedDate ? new Date(plannedDate) : null;
+      if (plannedDate !== undefined) {
+        updateData.plannedDate = plannedDate ? new Date(plannedDate) : null;
+      }
+
+      console.log('Updating task:', { taskId, updateData }); // Add logging
 
       const [updatedTask] = await db.update(tasks)
         .set(updateData)
         .where(eq(tasks.id, parseInt(taskId)))
         .returning();
+
+      if (!updatedTask) {
+        return res.status(404).json({ error: "Task not found" });
+      }
 
       // Update goal progress
       if (updatedTask && typeof completed !== 'undefined') {
