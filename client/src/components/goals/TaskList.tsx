@@ -240,14 +240,12 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     </Button>
                     {onUpdateTaskDate && (
                       <Button
-                        variant="outline"
-                        size="sm"
+                        variant="ghost"
+                        size="icon"
                         onClick={() => setShowDatePicker({ taskId: mainTask.id, date: mainTask.plannedDate ? new Date(mainTask.plannedDate) : undefined })}
+                        title={mainTask.plannedDate ? format(new Date(mainTask.plannedDate), 'dd/MM/yy') : "Set Date"}
                       >
-                        {mainTask.plannedDate 
-                          ? format(new Date(mainTask.plannedDate), 'dd/MM/yy')
-                          : "Set Date"
-                        }
+                        <Calendar className="h-4 w-4" />
                       </Button>
                     )}
                   </>
