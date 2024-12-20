@@ -193,11 +193,16 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                         variant="outline"
                         size="sm"
                         onClick={() => setShowDatePicker({ taskId: mainTask.id, date: mainTask.plannedDate ? new Date(mainTask.plannedDate) : undefined })}
+                        className="text-primary flex items-center gap-1"
                       >
-                        {mainTask.plannedDate 
-                          ? format(new Date(mainTask.plannedDate), 'dd/MM/yy')
-                          : "Set Date"
-                        }
+                        {mainTask.plannedDate ? (
+                          <>
+                            <Calendar className="h-4 w-4" />
+                            {format(new Date(mainTask.plannedDate), 'dd/MM/yy')}
+                          </>
+                        ) : (
+                          "Set Date"
+                        )}
                       </Button>
                     )}
                   </>
@@ -215,11 +220,6 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     </>
                   )}
                 </div>
-                {!readOnly && mainTask.plannedDate && (
-                  <div className="text-xs text-primary">
-                    📅 {format(new Date(mainTask.plannedDate), 'MMM d, yyyy')}
-                  </div>
-                )}
               </div>
             </div>
             
