@@ -172,7 +172,30 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
+      <div className="flex justify-between items-center">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            const mainTaskIds = mainTasks.map(task => task.id);
+            const newExpanded = new Set(expandedTasks);
+            
+            // If any tasks are expanded, collapse all. Otherwise, expand all
+            const shouldExpandAll = mainTaskIds.some(id => !expandedTasks.has(id));
+            
+            mainTaskIds.forEach(id => {
+              if (shouldExpandAll) {
+                newExpanded.add(id);
+              } else {
+                newExpanded.delete(id);
+              }
+            });
+            
+            setExpandedTasks(newExpanded);
+          }}
+        >
+          {mainTasks.some(task => !expandedTasks.has(task.id)) ? 'Expand All' : 'Collapse All'}
+        </Button>
         <Button
           variant="outline"
           size="sm"
