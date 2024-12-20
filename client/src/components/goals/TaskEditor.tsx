@@ -88,8 +88,8 @@ export function TaskEditor({ task, open, onOpenChange }: TaskEditorProps) {
           </div>
 
           <div className="flex-1 overflow-hidden flex flex-col">
-            <div className="px-4 py-6 space-y-4 flex-shrink-0">
-              {/* Details Section */}
+            {/* Header Section with Title and Metadata */}
+            <div className="px-4 py-4 space-y-4 border-b">
               <div className="space-y-2">
                 <Label htmlFor="title">Title</Label>
                 <Input
@@ -120,8 +120,8 @@ export function TaskEditor({ task, open, onOpenChange }: TaskEditorProps) {
               </div>
             </div>
 
-            {/* Notes Section */}
-            <div className="px-4 pb-4 flex-1 min-h-0 flex flex-col">
+            {/* Notes Section - Takes remaining height */}
+            <div className="flex-1 flex flex-col min-h-0 p-4">
               <div className="flex items-center gap-2 mb-2">
                 <StickyNote className="h-4 w-4" />
                 <Label htmlFor="notes">Notes</Label>
@@ -131,7 +131,7 @@ export function TaskEditor({ task, open, onOpenChange }: TaskEditorProps) {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Add notes about this task..."
-                className="flex-1 resize-none min-h-0"
+                className="flex-1 resize-none h-full min-h-[200px]"
               />
             </div>
           </div>
