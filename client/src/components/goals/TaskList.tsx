@@ -301,17 +301,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                       }}
                     />
                   )}
-                  {!readOnly && (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleAddSubtask(mainTask.id)}
-                        title="Add Subtask"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                      {onUpdateTaskDate && (
+                  {!readOnly && onUpdateTaskDate && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -326,8 +316,6 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                           }
                         </Button>
                       )}
-                    </>
-                  )}
                 </div>
 
                 <div className="flex justify-between items-center ml-6">
