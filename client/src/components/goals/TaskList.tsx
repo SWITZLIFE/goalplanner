@@ -76,6 +76,8 @@ function EditableTaskTitle({ task, onSave, className }: EditableTaskTitleProps) 
 export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: TaskListProps) {
   const { updateTask, createTask, deleteTask } = useGoals();
   const { toast } = useToast();
+  const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState<{ taskId: number; date?: Date } | null>(null);
 
   const handleDelete = async (taskId: number) => {
     try {
@@ -93,8 +95,6 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
       });
     }
   };
-  const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
-  const [showDatePicker, setShowDatePicker] = useState<{ taskId: number; date?: Date } | null>(null);
 
   const handleTaskToggle = async (taskId: number, completed: boolean) => {
     await updateTask({ taskId, completed });
@@ -117,9 +117,6 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
     if (title.trim()) {
       const { title: cleanTitle, estimatedMinutes } = parseEstimatedTime(title);
       await updateTask({ taskId, title: cleanTitle, estimatedMinutes });
-    } else {
-      // If the title is empty after editing, delete the task
-      // This will be implemented in the next step
     }
     setEditingTaskId(null);
   };
@@ -160,19 +157,16 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
     return `${hours}h ${remainingMinutes} minutes`;
   };
 
-  // Sort tasks by creation date to maintain consistent order
-  // Sort tasks by creation date to maintain consistent order
   const mainTasks = tasks
     .filter(task => !task.isSubtask)
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-    
-  // Pre-sort subtasks to avoid reordering on re-render
+
   const getOrderedSubtasks = (parentId: number) => {
     return tasks
       .filter(task => task.parentTaskId === parentId)
       .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   };
-  
+
   return (
     <div className="space-y-6">
       <div className="flex justify-end">
@@ -186,115 +180,115 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         </Button>
       </div>
 
-      {mainTasks.map((mainTask) => {
-        const subtasks = tasks.filter(task => task.parentTaskId === mainTask.id);
-        
-        return (
-          <div key={mainTask.id} className="space-y-2">
-            <div className="space-y-1">
-              <div className="flex items-center space-x-2 group relative">
-                <Checkbox
-                  id={`task-${mainTask.id}`}
-                  checked={mainTask.completed}
-                  onCheckedChange={(checked) => handleTaskToggle(mainTask.id, checked as boolean)}
-                />
+      {mainTasks.map((mainTask) => (
+        <div key={mainTask.id} className="space-y-2">
+          <div className="space-y-1">
+            <div className="flex items-center space-x-2 group">
+              <Checkbox
+                id={`task-${mainTask.id}`}
+                checked={mainTask.completed}
+                onCheckedChange={(checked) => handleTaskToggle(mainTask.id, checked as boolean)}
+              />
+              <div className="flex items-center gap-2 flex-grow">
                 <EditableTaskTitle
                   task={mainTask}
                   onSave={(title) => handleTaskTitleChange(mainTask.id, title)}
                   className={cn(
-                    "font-medium flex-grow",
+                    "font-medium",
                     mainTask.completed && "line-through text-muted-foreground"
                   )}
                 />
                 {!readOnly && (
                   <button
                     onClick={() => handleDelete(mainTask.id)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity absolute right-0 p-1 hover:text-destructive"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:text-destructive"
                     title="Delete task"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 )}
-                {!mainTask.completed && (
-                  <TaskTimer 
-                    taskId={mainTask.id}
-                    totalMinutesSpent={mainTask.totalMinutesSpent || 0}
-                    onTimerStop={(coinsEarned) => {
-                      toast({
-                        title: "Time Tracked!",
-                        description: `You earned ${coinsEarned} coins for your work.`
-                      });
-                    }}
-                  />
-                )}
-                {/* Time spent is now shown in the details section below */}
-                {!readOnly && (
-                  <>
+              </div>
+              {!mainTask.completed && (
+                <TaskTimer 
+                  taskId={mainTask.id}
+                  totalMinutesSpent={mainTask.totalMinutesSpent || 0}
+                  onTimerStop={(coinsEarned) => {
+                    toast({
+                      title: "Time Tracked!",
+                      description: `You earned ${coinsEarned} coins for your work.`
+                    });
+                  }}
+                />
+              )}
+              {!readOnly && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleAddSubtask(mainTask.id)}
+                    title="Add Subtask"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                  {onUpdateTaskDate && (
                     <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleAddSubtask(mainTask.id)}
-                      title="Add Subtask"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowDatePicker({ taskId: mainTask.id, date: mainTask.plannedDate ? new Date(mainTask.plannedDate) : undefined })}
                     >
-                      <Plus className="h-4 w-4" />
+                      {mainTask.plannedDate 
+                        ? format(new Date(mainTask.plannedDate), 'dd/MM/yy')
+                        : "Set Date"
+                      }
                     </Button>
-                    {onUpdateTaskDate && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowDatePicker({ taskId: mainTask.id, date: mainTask.plannedDate ? new Date(mainTask.plannedDate) : undefined })}
-                      >
-                        {mainTask.plannedDate 
-                          ? format(new Date(mainTask.plannedDate), 'dd/MM/yy')
-                          : "Set Date"
-                        }
-                      </Button>
-                    )}
-                  </>
-                )}
-              </div>
-              <div className="flex justify-between items-center ml-6">
-                <div className="flex gap-2 text-xs">
-                  <div className="text-muted-foreground">
-                    {(subtasks.some(task => task.estimatedMinutes) || mainTask.totalMinutesSpent > 0) && (
-                      <div className="flex items-center gap-2">
-                        <span>
-                          {subtasks.some(task => task.estimatedMinutes) && (
-                            <>
-                              Total estimated time: {
-                                formatTime(
-                                  subtasks.reduce((sum, task) => sum + (task.estimatedMinutes || 0), 0)
-                                )
-                              }
-                            </>
-                          )}
-                        </span>
-                        {mainTask.totalMinutesSpent > 0 && (
-                          <span className="text-blue-500 font-medium">
-                            (Actual: {String(Math.floor(mainTask.totalMinutesSpent / 60)).padStart(2, '0')}:{String(mainTask.totalMinutesSpent % 60).padStart(2, '0')})
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                {!readOnly && mainTask.plannedDate && (
-                  <div className="text-xs text-primary">
-                    📅 {format(new Date(mainTask.plannedDate), 'MMM d, yyyy')}
-                  </div>
-                )}
-              </div>
+                  )}
+                </>
+              )}
             </div>
-            
-            <div className="ml-6 space-y-2">
-              {getOrderedSubtasks(mainTask.id).map((subtask) => (
-                <div key={subtask.id} className="flex items-center space-x-2 group relative">
-                  <Checkbox
-                    id={`task-${subtask.id}`}
-                    checked={subtask.completed}
-                    onCheckedChange={(checked) => handleTaskToggle(subtask.id, checked as boolean)}
-                  />
-                  <div className="flex flex-col flex-grow">
+
+            <div className="flex justify-between items-center ml-6">
+              <div className="flex gap-2 text-xs">
+                <div className="text-muted-foreground">
+                  {(getOrderedSubtasks(mainTask.id).some(task => task.estimatedMinutes) || mainTask.totalMinutesSpent > 0) && (
+                    <div className="flex items-center gap-2">
+                      <span>
+                        {getOrderedSubtasks(mainTask.id).some(task => task.estimatedMinutes) && (
+                          <>
+                            Total estimated time: {
+                              formatTime(
+                                getOrderedSubtasks(mainTask.id).reduce((sum, task) => sum + (task.estimatedMinutes || 0), 0)
+                              )
+                            }
+                          </>
+                        )}
+                      </span>
+                      {mainTask.totalMinutesSpent > 0 && (
+                        <span className="text-blue-500 font-medium">
+                          (Actual: {String(Math.floor(mainTask.totalMinutesSpent / 60)).padStart(2, '0')}:{String(mainTask.totalMinutesSpent % 60).padStart(2, '0')})
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+              {!readOnly && mainTask.plannedDate && (
+                <div className="text-xs text-primary">
+                  📅 {format(new Date(mainTask.plannedDate), 'MMM d, yyyy')}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="ml-6 space-y-2">
+            {getOrderedSubtasks(mainTask.id).map((subtask) => (
+              <div key={subtask.id} className="flex items-center space-x-2 group">
+                <Checkbox
+                  id={`task-${subtask.id}`}
+                  checked={subtask.completed}
+                  onCheckedChange={(checked) => handleTaskToggle(subtask.id, checked as boolean)}
+                />
+                <div className="flex flex-col flex-grow">
+                  <div className="flex items-center gap-2">
                     <EditableTaskTitle
                       task={subtask}
                       onSave={(title) => handleTaskTitleChange(subtask.id, title)}
@@ -306,25 +300,25 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     {!readOnly && (
                       <button
                         onClick={() => handleDelete(subtask.id)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity absolute right-0 p-1 hover:text-destructive"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:text-destructive"
                         title="Delete subtask"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
                     )}
-                    {subtask.estimatedMinutes && (
-                      <span className="text-xs text-muted-foreground">
-                        Estimated time: {subtask.estimatedMinutes} minutes
-                      </span>
-                    )}
                   </div>
+                  {subtask.estimatedMinutes && (
+                    <span className="text-xs text-muted-foreground">
+                      Estimated time: {subtask.estimatedMinutes} minutes
+                    </span>
+                  )}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
-        );
-      })}
-      
+        </div>
+      ))}
+
       {/* Date Picker Dialog */}
       <Dialog 
         open={showDatePicker !== null} 
