@@ -332,7 +332,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
 
               <Collapsible.Root 
                 open={expandedTasks.has(mainTask.id)}
-                className="ml-6 space-y-2"
+                className="ml-10 border-l-2 border-gray-200 pl-4 mt-2"
               >
                 <Collapsible.Content className="transition-all data-[state=closed]:animate-collapse data-[state=open]:animate-expand overflow-hidden">
                   <div className="space-y-2">
