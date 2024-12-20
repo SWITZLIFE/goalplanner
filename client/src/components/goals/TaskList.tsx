@@ -74,9 +74,23 @@ export function TaskList({ tasks, goalId }: TaskListProps) {
     await updateTask({ taskId, completed });
   };
 
+  const parseEstimatedTime = (title: string): { title: string; estimatedMinutes?: number } => {
+    const timePattern = /\(est:(\d+)m\)/;
+    const match = title.match(timePattern);
+    
+    if (match) {
+      const minutes = parseInt(match[1], 10);
+      const cleanTitle = title.replace(timePattern, '').trim();
+      return { title: cleanTitle, estimatedMinutes: minutes };
+    }
+    
+    return { title };
+  };
+
   const handleTaskTitleChange = async (taskId: number, title: string) => {
     if (title.trim()) {
-      await updateTask({ taskId, title });
+      const { title: cleanTitle, estimatedMinutes } = parseEstimatedTime(title);
+      await updateTask({ taskId, title: cleanTitle, estimatedMinutes });
     } else {
       // If the title is empty after editing, delete the task
       // This will be implemented in the next step
@@ -91,7 +105,6 @@ export function TaskList({ tasks, goalId }: TaskListProps) {
         title: "New Task",
         isSubtask: false,
       });
-      // Set the new task in edit mode
       setEditingTaskId(newTask.id);
     } catch (error) {
       console.error("Failed to create task:", error);
@@ -106,7 +119,6 @@ export function TaskList({ tasks, goalId }: TaskListProps) {
         isSubtask: true,
         parentTaskId,
       });
-      // Set the new subtask in edit mode
       setEditingTaskId(newSubtask.id);
     } catch (error) {
       console.error("Failed to create subtask:", error);

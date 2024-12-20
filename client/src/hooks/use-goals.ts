@@ -43,11 +43,21 @@ export function useGoals() {
   });
 
   const updateTaskMutation = useMutation({
-    mutationFn: async ({ taskId, completed, title }: { taskId: number; completed?: boolean; title?: string }) => {
+    mutationFn: async ({ 
+      taskId, 
+      completed, 
+      title,
+      estimatedMinutes 
+    }: { 
+      taskId: number; 
+      completed?: boolean; 
+      title?: string;
+      estimatedMinutes?: number;
+    }) => {
       const res = await fetch(`/api/tasks/${taskId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ completed, title }),
+        body: JSON.stringify({ completed, title, estimatedMinutes }),
       });
       if (!res.ok) throw new Error("Failed to update task");
       return res.json();
