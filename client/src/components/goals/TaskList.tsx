@@ -393,16 +393,23 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                           )}
                         </div>
                         {!mainTask.completed && (
-                          <TaskTimer 
-                            taskId={mainTask.id}
-                            totalMinutesSpent={mainTask.totalMinutesSpent || 0}
-                            onTimerStop={(coinsEarned) => {
-                              toast({
-                                title: "Time Tracked!",
-                                description: `You earned ${coinsEarned} coins for your work.`
-                              });
-                            }}
-                          />
+                          <div className="flex items-center gap-2">
+                            <TaskTimer 
+                              taskId={mainTask.id}
+                              totalMinutesSpent={mainTask.totalMinutesSpent || 0}
+                              onTimerStop={(coinsEarned) => {
+                                toast({
+                                  title: "Time Tracked!",
+                                  description: `You earned ${coinsEarned} coins for your work.`
+                                });
+                              }}
+                            />
+                            {mainTask.totalMinutesSpent > 0 && (
+                              <span className="text-xs text-muted-foreground">
+                                Time spent: {formatTime(mainTask.totalMinutesSpent)}
+                              </span>
+                            )}
+                          </div>
                         )}
                         {!readOnly && (
                           <>
