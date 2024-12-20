@@ -343,11 +343,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                       )}
                     </div>
                   </div>
-                  {!readOnly && mainTask.plannedDate && (
-                    <div className="text-xs text-primary">
-                      📅 {format(new Date(mainTask.plannedDate), 'MMM d, yyyy')}
-                    </div>
-                  )}
+                  {/* Date is now shown in the Set Date button */}
                 </div>
               </div>
 
