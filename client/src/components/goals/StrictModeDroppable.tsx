@@ -19,18 +19,19 @@ export function StrictModeDroppable({ children, ...props }: StrictModeDroppableP
   const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
-    const animation = requestAnimationFrame(() => {
+    // Delay the initialization to avoid issues with React Strict Mode
+    const timeout = setTimeout(() => {
       setEnabled(true);
-    });
+    }, 100);
 
     return () => {
-      cancelAnimationFrame(animation);
+      clearTimeout(timeout);
       setEnabled(false);
     };
   }, []);
 
   if (!enabled) {
-    return <div style={{ minHeight: 1 }} />;
+    return null;
   }
 
   return (

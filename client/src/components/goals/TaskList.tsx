@@ -151,26 +151,37 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
     const destinationIndex = result.destination.index;
     
     try {
-      const calculateOrderValue = (prev: number | null, next: number | null): number => {
-        const prevValue = prev ?? 0;
-        const nextValue = next ?? prevValue + 2000;
-        return Math.floor(prevValue + (nextValue - prevValue) / 2);
-      };
-
       const reorderTasks = async (tasks: Task[], taskId: number, newIndex: number) => {
-        const tasksArray = Array.from(tasks);
-        const prevTask = newIndex > 0 ? tasksArray[newIndex - 1] : null;
-        const nextTask = newIndex < tasksArray.length ? tasksArray[newIndex] : null;
-        
-        const newOrder = calculateOrderValue(
-          prevTask?.order ?? null,
-          nextTask?.order ?? null
-        );
+        // Create a new array with the task moved to its new position
+        const reorderedTasks = Array.from(tasks);
+        const [movedTask] = reorderedTasks.splice(sourceIndex, 1);
+        reorderedTasks.splice(destinationIndex, 0, movedTask);
 
+        // Calculate new order values for all affected tasks
+        const updatedTasks = reorderedTasks.map((task, index) => ({
+          ...task,
+          order: (index + 1) * 1000, // Use consistent spacing
+        }));
+
+        // Update the moved task first
         await updateTask({
           taskId,
-          order: newOrder,
+          order: updatedTasks[destinationIndex].order,
         });
+
+        // Update other tasks that need reordering
+        const start = Math.min(sourceIndex, destinationIndex);
+        const end = Math.max(sourceIndex, destinationIndex);
+
+        for (let i = start; i <= end; i++) {
+          if (i !== destinationIndex) { // Skip the already updated task
+            const task = updatedTasks[i];
+            await updateTask({
+              taskId: task.id,
+              order: task.order,
+            });
+          }
+        }
       };
 
       if (result.type === "MAIN_TASK") {
