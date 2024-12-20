@@ -13,13 +13,15 @@ export function registerRoutes(app: Express): Server {
   // Goals API
   app.get("/api/goals", async (req, res) => {
     try {
-      const allGoals = await db.query.goals.findMany({
-        with: {
-          tasks: true,
-        },
-        orderBy: (goals, { desc }) => [desc(goals.createdAt)],
-      });
-      res.json(allGoals);
+      const allGoals = await db.select().from(goals).orderBy(goals.createdAt);
+      const allTasks = await db.select().from(tasks);
+      
+      // Manually join tasks with goals
+      const goalsWithTasks = allGoals.map(goal => ({
+        ...goal,
+        tasks: allTasks.filter(task => task.goalId === goal.id)
+      }));
+      res.json(goalsWithTasks);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch goals" });
     }
