@@ -11,7 +11,7 @@ interface GoalCardProps {
 export function GoalCard({ goal }: GoalCardProps) {
   return (
     <Link href={`/goals/${goal.id}`}>
-      <Card className="cursor-pointer hover:shadow-md transition-shadow">
+      <Card className="cursor-pointer hover:shadow-md transition-shadow mb-6">
         <CardHeader className="pb-2">
           <h3 className="font-medium text-lg">{goal.title}</h3>
           {goal.description && goal.description !== goal.title && (
