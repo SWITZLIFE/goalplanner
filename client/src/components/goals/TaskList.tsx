@@ -40,10 +40,14 @@ function EditableTaskTitle({ task, onSave, className, continuousCreate }: Editab
   }, [isEditing]);
 
   const handleSave = (createAnother = false) => {
-    if (title.trim()) {
+    const isUnedited = title === task.title && (title === "New Task" || title === "New Subtask");
+    if (title.trim() && !isUnedited) {
       onSave(title.trim(), createAnother);
+    } else if (isUnedited) {
+      // If it's a new task/subtask and wasn't edited, treat it as a cancellation
+      onSave('', false);
     }
-    if (!createAnother) {
+    if (!createAnother || isUnedited) {
       setIsEditing(false);
     } else {
       setTitle('');
@@ -131,17 +135,22 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
   };
 
   const handleTaskTitleChange = async (taskId: number, title: string, createAnother = false) => {
-    if (title.trim()) {
+    const task = tasks.find(t => t.id === taskId);
+    
+    if (!title) {
+      // Empty title means the user didn't edit the new task/subtask, so delete it
+      if (task && (task.title === "New Task" || task.title === "New Subtask")) {
+        await deleteTask(taskId);
+      }
+    } else if (title.trim()) {
       const { title: cleanTitle, estimatedMinutes } = parseEstimatedTime(title);
       await updateTask({ taskId, title: cleanTitle, estimatedMinutes });
       
-      if (createAnother) {
-        const task = tasks.find(t => t.id === taskId);
-        if (task?.parentTaskId) {
-          await handleAddSubtask(task.parentTaskId);
-        }
+      if (createAnother && task?.parentTaskId) {
+        await handleAddSubtask(task.parentTaskId);
       }
     }
+    
     if (!createAnother) {
       setEditingTaskId(null);
     }
