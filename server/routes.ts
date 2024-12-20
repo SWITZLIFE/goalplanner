@@ -202,30 +202,7 @@ export function registerRoutes(app: Express): Server {
         return res.status(500).json({ error: "Failed to update task" });
       }
 
-      const [updatedTask] = await db.update(tasks)
-        .set(updateData)
-        .where(eq(tasks.id, parseInt(taskId)))
-        .returning();
-
-      if (!updatedTask) {
-        return res.status(404).json({ error: "Task not found" });
-      }
-
-      // Update goal progress
-      if (updatedTask && typeof completed !== 'undefined') {
-        const goalTasks = await db.select()
-          .from(tasks)
-          .where(eq(tasks.goalId, updatedTask.goalId));
-        
-        const completedTasks = goalTasks.filter(t => t.completed).length;
-        const progress = Math.round((completedTasks / goalTasks.length) * 100);
-        
-        await db.update(goals)
-          .set({ progress })
-          .where(eq(goals.id, updatedTask.goalId));
-      }
-
-      res.json(updatedTask);
+      // This section has been moved above and is now handled in the try-catch block
     } catch (error) {
       res.status(500).json({ error: "Failed to update task" });
     }
