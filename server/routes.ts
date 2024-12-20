@@ -108,12 +108,13 @@ export function registerRoutes(app: Express): Server {
   app.patch("/api/tasks/:taskId", async (req, res) => {
     try {
       const { taskId } = req.params;
-      const { completed, title, estimatedMinutes } = req.body;
+      const { completed, title, estimatedMinutes, plannedDate } = req.body;
       
       const updateData: Partial<typeof tasks.$inferInsert> = {};
       if (typeof completed !== 'undefined') updateData.completed = completed;
       if (title) updateData.title = title;
       if (typeof estimatedMinutes !== 'undefined') updateData.estimatedMinutes = estimatedMinutes;
+      if (typeof plannedDate !== 'undefined') updateData.plannedDate = plannedDate ? new Date(plannedDate) : null;
 
       const [updatedTask] = await db.update(tasks)
         .set(updateData)

@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 interface TaskListProps {
   tasks: Task[];
   goalId: number;
+  readOnly?: boolean;
+  onUpdateTaskDate?: (taskId: number, date: Date | undefined) => Promise<void>;
 }
 
 interface EditableTaskTitleProps {
@@ -66,7 +68,7 @@ function EditableTaskTitle({ task, onSave, className }: EditableTaskTitleProps) 
   );
 }
 
-export function TaskList({ tasks, goalId }: TaskListProps) {
+export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: TaskListProps) {
   const { updateTask, createTask } = useGoals();
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
 
@@ -169,14 +171,34 @@ export function TaskList({ tasks, goalId }: TaskListProps) {
                     mainTask.completed && "line-through text-muted-foreground"
                   )}
                 />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleAddSubtask(mainTask.id)}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Subtask
-                </Button>
+                {!readOnly && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleAddSubtask(mainTask.id)}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Subtask
+                    </Button>
+                    {onUpdateTaskDate && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const date = mainTask.plannedDate ? undefined : new Date();
+                          onUpdateTaskDate(mainTask.id, date);
+                        }}
+                      >
+                        {mainTask.plannedDate ? (
+                          format(new Date(mainTask.plannedDate), 'MMM d')
+                        ) : (
+                          "Set Date"
+                        )}
+                      </Button>
+                    )}
+                  </>
+                )}
               </div>
               {subtasks.some(task => task.estimatedMinutes) && (
                 <div className="text-xs text-muted-foreground ml-6">
