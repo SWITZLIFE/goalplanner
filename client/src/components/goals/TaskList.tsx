@@ -70,10 +70,16 @@ function SortableTask({ task, children, disabled = false }: SortableTaskProps) {
   };
 
   return (
-    <div ref={setNodeRef} style={style}>
-      <div {...attributes} {...listeners}>
-        {children}
-      </div>
+    <div 
+      ref={setNodeRef} 
+      style={style}
+      className={cn(
+        "rounded-md",
+        isDragging && "opacity-50",
+        !disabled && "cursor-grab active:cursor-grabbing"
+      )}
+    >
+      {children}
     </div>
   );
 }
@@ -232,10 +238,14 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
       if (oldIndex !== -1 && newIndex !== -1) {
         const reorderedTasks = arrayMove(relevantTasks, oldIndex, newIndex);
 
+        // Calculate new orders with larger gaps to prevent conflicts
+        const startOrder = 1000;
+        const orderGap = 2000;
+
         // Update orders for all affected tasks
         for (let i = 0; i < reorderedTasks.length; i++) {
           const task = reorderedTasks[i];
-          const newOrder = (i + 1) * 1000;
+          const newOrder = startOrder + (i * orderGap);
           if (task.order !== newOrder) {
             await updateTask({
               taskId: task.id,
