@@ -16,7 +16,7 @@ function App() {
   const resetToken = urlParams.get('token');
 
   return (
-    <ThemeProvider defaultTheme="light">
+    <ThemeProvider defaultTheme="dark">
       {isLoading ? (
         <div className="min-h-screen flex items-center justify-center bg-background">
           <Loader2 className="h-8 w-8 animate-spin text-border" />
