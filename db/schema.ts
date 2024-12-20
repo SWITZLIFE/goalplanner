@@ -54,7 +54,8 @@ export const tasks = pgTable("tasks", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   parentTaskId: integer("parent_task_id").references(() => tasks.id),
   isSubtask: boolean("is_subtask").default(false).notNull(),
-  order: integer("order").default(0).notNull(),
+  // Note: order field exists in DB but is no longer used in the application
+  order: integer("order"),
 });
 
 export const rewards = pgTable("rewards", {
@@ -109,7 +110,6 @@ export const selectGoalSchema = createSelectSchema(goals);
 export const insertTaskSchema = createInsertSchema(tasks);
 export const selectTaskSchema = createSelectSchema(tasks);
 export const updateTaskSchema = selectTaskSchema.partial().extend({
-  order: z.number().optional(),
   completed: z.boolean().optional(),
   title: z.string().optional(),
   estimatedMinutes: z.number().optional().nullable(),

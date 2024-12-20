@@ -139,7 +139,8 @@ export function registerRoutes(app: Express): Server {
   app.patch("/api/tasks/:taskId", async (req, res) => {
     try {
       const { taskId } = req.params;
-      const { completed, title, estimatedMinutes, plannedDate, order } = req.body;
+      // Destructure only the fields we want to update, ignoring order
+  const { completed, title, estimatedMinutes, plannedDate } = req.body;
       
       const updateData: Partial<typeof tasks.$inferInsert> = {};
       if (typeof completed !== 'undefined') updateData.completed = completed;
@@ -147,10 +148,6 @@ export function registerRoutes(app: Express): Server {
       if (typeof estimatedMinutes !== 'undefined') updateData.estimatedMinutes = estimatedMinutes;
       if (plannedDate !== undefined) {
         updateData.plannedDate = plannedDate ? new Date(plannedDate) : null;
-      }
-      // Ensure order is properly handled as a number
-      if (order !== undefined && order !== null) {
-        updateData.order = typeof order === 'string' ? parseInt(order, 10) : order;
       }
 
       console.log('Updating task with data:', { taskId, updateData });
