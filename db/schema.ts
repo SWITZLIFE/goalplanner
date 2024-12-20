@@ -91,10 +91,14 @@ export const goalsRelations = relations(goals, ({ many }) => ({
   }),
 }));
 
-export const tasksRelations = relations(tasks, ({ one }) => ({
+export const tasksRelations = relations(tasks, ({ one, many }) => ({
   goal: one(goals, {
     fields: [tasks.goalId],
     references: [goals.id],
+  }),
+  timeTrackingSessions: many(timeTracking, {
+    fields: [tasks.id],
+    references: [timeTracking.taskId],
   }),
 }));
 
