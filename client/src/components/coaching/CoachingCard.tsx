@@ -11,7 +11,7 @@ interface CoachingCardProps {
 }
 
 export function CoachingCard({ goalId }: CoachingCardProps) {
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(true);
   const [inputValue, setInputValue] = useState("");
   const [messages, setMessages] = useState<Array<{ type: 'welcome' | 'user' | 'response' | 'typing', message: string }>>([]);
   const [isTyping, setIsTyping] = useState(false);
