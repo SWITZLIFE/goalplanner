@@ -335,13 +335,29 @@ export function registerRoutes(app: Express): Server {
         .where(eq(tasks.id, parseInt(taskId)))
         .returning();
 
-      // Update user's coins
-      await db.update(rewards)
-        .set({
-          coins: sql`${rewards.coins} + ${coinsEarned}`,
-          lastUpdated: new Date(),
-        })
-        .where(eq(rewards.userId, userId));
+      // Update user's coins - ensure the rewards record exists first
+      const [userRewards] = await db.select()
+        .from(rewards)
+        .where(eq(rewards.userId, userId))
+        .limit(1);
+
+      if (!userRewards) {
+        // Create initial rewards record if it doesn't exist
+        await db.insert(rewards)
+          .values({
+            userId,
+            coins: coinsEarned,
+            lastUpdated: new Date(),
+          });
+      } else {
+        // Update existing rewards
+        await db.update(rewards)
+          .set({
+            coins: sql`${rewards.coins} + ${coinsEarned}`,
+            lastUpdated: new Date(),
+          })
+          .where(eq(rewards.userId, userId));
+      }
 
       res.json({
         timer: updatedTimer,
