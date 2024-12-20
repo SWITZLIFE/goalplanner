@@ -8,6 +8,7 @@ import { useGoals } from "@/hooks/use-goals";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import type { Task } from "@db/schema";
 import { StickyNote, Clock, Calendar as CalendarIcon, X } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +24,7 @@ export function TaskEditor({ task, open, onOpenChange }: TaskEditorProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const { updateTask, deleteTask } = useGoals();
+  const { toast } = useToast();
 
   const handleSave = async () => {
     try {
