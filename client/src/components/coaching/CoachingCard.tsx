@@ -18,8 +18,9 @@ export function CoachingCard({ goalId }: CoachingCardProps) {
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Create ref for auto-scrolling
+  // Create refs for auto-scrolling and input focus
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Query hook
   const { data: initialMessage, isLoading } = useQuery({
@@ -30,6 +31,8 @@ export function CoachingCard({ goalId }: CoachingCardProps) {
   // Auto-scroll function
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Maintain focus on input after scrolling
+    inputRef.current?.focus();
   };
 
   // Effect for initial welcome message
@@ -218,11 +221,13 @@ export function CoachingCard({ goalId }: CoachingCardProps) {
       <form onSubmit={handleSubmit} className="p-4 border-t">
         <div className="flex gap-2">
           <Input
+            ref={inputRef}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             placeholder="Ask your AI coach anything..."
             className="flex-1"
             disabled={isTyping}
+            autoFocus
           />
           <Button type="submit" size="icon" disabled={isTyping || !inputValue.trim()}>
             <SendHorizontal className="h-4 w-4" />
