@@ -300,7 +300,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     onCheckedChange={(checked) => handleTaskToggle(mainTask.id, checked as boolean)}
                   />
                   <div 
-                    className="flex items-center gap-2 flex-grow"
+                    className="flex items-center gap-2 flex-grow cursor-pointer"
                     onClick={(e) => {
                       // Only open task details if clicking the container, not the title or buttons
                       if (e.target === e.currentTarget) {
@@ -318,7 +318,13 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     />
                     <div className="flex items-center gap-1">
                       {mainTask.notes && (
-                        <StickyNote className="h-4 w-4 text-muted-foreground" />
+                        <button
+                          onClick={() => setEditingTaskId(mainTask.id)}
+                          className="text-muted-foreground hover:text-foreground transition-colors"
+                          title="View notes"
+                        >
+                          <StickyNote className="h-4 w-4" />
+                        </button>
                       )}
                       {!readOnly && (
                         <button
@@ -426,7 +432,13 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                             />
                             <div className="flex items-center gap-1">
                               {subtask.notes && (
-                                <StickyNote className="h-4 w-4 text-muted-foreground" />
+                                <button
+                                  onClick={() => setEditingTaskId(subtask.id)}
+                                  className="text-muted-foreground hover:text-foreground transition-colors"
+                                  title="View notes"
+                                >
+                                  <StickyNote className="h-4 w-4" />
+                                </button>
                               )}
                               {!readOnly && (
                                 <button

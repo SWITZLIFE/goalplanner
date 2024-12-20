@@ -26,16 +26,34 @@ export function TaskEditor({ task, open, onOpenChange }: TaskEditorProps) {
 
   const handleSave = async () => {
     try {
-      if (title.trim()) {
-        await updateTask({ 
-          taskId: task.id, 
-          title: title.trim(),
-          notes: notes.trim() || null,
+      if (!title.trim()) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Task title cannot be empty"
         });
-        onOpenChange(false);
+        return;
       }
+
+      await updateTask({ 
+        taskId: task.id, 
+        title: title.trim(),
+        notes: notes.trim() || null,
+      });
+      
+      toast({
+        title: "Success",
+        description: "Task updated successfully"
+      });
+      
+      onOpenChange(false);
     } catch (error) {
       console.error('Failed to save task:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to save task"
+      });
     }
   };
 
