@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 import type {
   DroppableProps,
   DroppableProvided,
@@ -14,17 +14,17 @@ type StrictModeDroppableProps = Omit<DroppableProps, 'children'> & {
  * A wrapper component that makes react-beautiful-dnd work in React.StrictMode
  * This is needed because react-beautiful-dnd's Droppable has issues with StrictMode's double-mounting
  */
-export function StrictModeDroppable({ children, ...props }: StrictModeDroppableProps) {
+const StrictModeDroppableComponent = ({ children, ...props }: StrictModeDroppableProps) => {
   const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
-    // Use requestAnimationFrame to ensure the component is mounted
-    const animation = requestAnimationFrame(() => {
+    // Use a short timeout to ensure the component is mounted
+    const timeout = setTimeout(() => {
       setEnabled(true);
-    });
+    }, 50);
 
     return () => {
-      cancelAnimationFrame(animation);
+      clearTimeout(timeout);
       setEnabled(false);
     };
   }, []);
@@ -38,4 +38,7 @@ export function StrictModeDroppable({ children, ...props }: StrictModeDroppableP
       {(provided, snapshot) => children(provided, snapshot)}
     </Droppable>
   );
-}
+};
+
+// Use memo to prevent unnecessary re-renders and handle defaultProps warning
+export const StrictModeDroppable = memo(StrictModeDroppableComponent);
