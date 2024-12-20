@@ -118,7 +118,35 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
   };
 
   const handleTaskToggle = async (taskId: number, completed: boolean) => {
-    await updateTask({ taskId, completed });
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    try {
+      // Update the main task
+      await updateTask({ taskId, completed });
+      
+      // If this is a main task, update all its subtasks
+      if (!task.isSubtask && completed) {
+        const subtasks = tasks.filter(t => t.parentTaskId === taskId);
+        await Promise.all(
+          subtasks.map(subtask => 
+            updateTask({ taskId: subtask.id, completed: true })
+          )
+        );
+      }
+      
+      toast({
+        title: "Success",
+        description: completed ? "Task completed!" : "Task reopened"
+      });
+    } catch (error) {
+      console.error("Failed to update task completion:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update task status"
+      });
+    }
   };
 
   const parseEstimatedTime = (title: string): { title: string; estimatedMinutes?: number } => {
