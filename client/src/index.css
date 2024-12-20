@@ -32,4 +32,8 @@
   .dark main {
     @apply bg-black;
   }
+
+  .dark div {
+    @apply bg-black;
+  }
 }
