@@ -6,7 +6,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useGoals } from "@/hooks/use-goals";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Task } from "@db/schema";
 import { StickyNote, Clock, Calendar as CalendarIcon, X } from "lucide-react";
 import { format } from "date-fns";
@@ -63,16 +62,10 @@ export function TaskEditor({ task, open, onOpenChange }: TaskEditorProps) {
             </Button>
           </div>
 
-          <Tabs defaultValue="details" className="flex-1 overflow-auto">
-            <div className="px-4 py-2 border-b bg-muted/40">
-              <TabsList className="w-full">
-                <TabsTrigger value="details" className="flex-1">Details</TabsTrigger>
-                <TabsTrigger value="notes" className="flex-1">Notes</TabsTrigger>
-              </TabsList>
-            </div>
-
-            <div className="p-4">
-              <TabsContent value="details" className="space-y-4 mt-0">
+          <div className="flex-1 overflow-auto">
+            <div className="p-4 space-y-6">
+              {/* Details Section */}
+              <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="title">Title</Label>
                   <Input
@@ -101,25 +94,24 @@ export function TaskEditor({ task, open, onOpenChange }: TaskEditorProps) {
                     </div>
                   )}
                 </div>
-              </TabsContent>
-              
-              <TabsContent value="notes" className="space-y-4 mt-0">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <StickyNote className="h-4 w-4" />
-                    <Label htmlFor="notes">Task Notes</Label>
-                  </div>
-                  <Textarea
-                    id="notes"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Add notes about this task..."
-                    className="min-h-[200px]"
-                  />
+              </div>
+
+              {/* Notes Section */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <StickyNote className="h-4 w-4" />
+                  <Label htmlFor="notes">Notes</Label>
                 </div>
-              </TabsContent>
+                <Textarea
+                  id="notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Add notes about this task..."
+                  className="min-h-[200px] resize-none"
+                />
+              </div>
             </div>
-          </Tabs>
+          </div>
 
           <div className="p-4 border-t bg-muted/40">
             <div className="flex justify-between gap-2">
