@@ -76,11 +76,47 @@ export function CoachingCard({ goalId }: CoachingCardProps) {
         const withoutTyping = prev.filter(m => m.type !== 'typing');
         return [
           ...withoutTyping,
-          ...(data.messages || [data.message]).map((msg: any) => ({
-            type: 'response' as const,
-            message: typeof msg === 'string' ? msg : 'Invalid message format received',
-            id: `response-${Date.now()}-${Math.random()}`
-          }))
+          ...(data.messages || [data.message]).map((msg: any) => {
+            let messageText = '';
+            try {
+              // Handle object format
+              if (typeof msg === 'object' && msg !== null) {
+                messageText = msg.text || msg.message || String(msg);
+              }
+              // Handle string format
+              else if (typeof msg === 'string') {
+                if (msg.trim().startsWith('{') || msg.trim().startsWith('[')) {
+                  try {
+                    const parsed = JSON.parse(msg);
+                    messageText = parsed.text || parsed.message || msg;
+                  } catch {
+                    messageText = msg;
+                  }
+                } else {
+                  messageText = msg;
+                }
+              }
+              // Handle other types
+              else {
+                messageText = String(msg || '');
+              }
+
+              // Clean up the message
+              messageText = messageText.trim();
+              if (!messageText) {
+                messageText = 'Invalid message format received';
+              }
+            } catch (error) {
+              console.error('Error processing message:', error);
+              messageText = 'Error processing message';
+            }
+            
+            return {
+              type: 'response' as const,
+              message: messageText,
+              id: `response-${Date.now()}-${Math.random()}`
+            };
+          })
         ].slice(-50); // Keep only the last 50 messages
       });
     } catch (error) {

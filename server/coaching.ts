@@ -64,14 +64,41 @@ Response Format:
       };
     }
 
-    // Ensure all messages are strings
+    // Ensure all messages are properly formatted strings
     if (!Array.isArray(parsed.messages)) {
       parsed.messages = [String(parsed.messages || "")];
     } else {
-      parsed.messages = parsed.messages.map(msg => 
-        typeof msg === 'object' ? JSON.stringify(msg) : String(msg)
-      );
+      parsed.messages = parsed.messages.map(msg => {
+        try {
+          // If it's already an object, extract text or message
+          if (typeof msg === 'object' && msg !== null) {
+            return msg.text || msg.message || String(msg);
+          }
+          // If it's a string, try to parse if it looks like JSON
+          if (typeof msg === 'string') {
+            if (msg.trim().startsWith('{') || msg.trim().startsWith('[')) {
+              try {
+                const parsed = JSON.parse(msg);
+                return parsed.text || parsed.message || String(parsed);
+              } catch {
+                return msg;
+              }
+            }
+            return msg;
+          }
+          return String(msg || "");
+        } catch (error) {
+          console.error('Error processing message:', error);
+          return String(msg || "");
+        }
+      }).filter(msg => msg && msg.trim() !== ''); // Remove empty messages
     }
+
+    // Ensure there's always at least one message
+    if (!parsed.messages || parsed.messages.length === 0) {
+      parsed.messages = ["I'm having trouble understanding. Could you please rephrase that?"];
+    }
+
     return parsed;
   } catch (error) {
     console.error("Coaching response error:", error);
