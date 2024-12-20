@@ -196,7 +196,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
 
   const mainTasks = tasks
     .filter(task => !task.isSubtask)
-    .sort((a, b) => a.id - b.id); // Changed to ascending order
+    .sort((a, b) => b.id - a.id); // Descending order - newest tasks first
 
   const getOrderedSubtasks = (parentId: number) => {
     return tasks
