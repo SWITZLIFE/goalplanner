@@ -64,6 +64,14 @@ Response Format:
       };
     }
 
+    // Ensure all messages are strings
+    if (!Array.isArray(parsed.messages)) {
+      parsed.messages = [String(parsed.messages || "")];
+    } else {
+      parsed.messages = parsed.messages.map(msg => 
+        typeof msg === 'object' ? JSON.stringify(msg) : String(msg)
+      );
+    }
     return parsed;
   } catch (error) {
     console.error("Coaching response error:", error);

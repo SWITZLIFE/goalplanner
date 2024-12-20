@@ -76,9 +76,9 @@ export function CoachingCard({ goalId }: CoachingCardProps) {
         const withoutTyping = prev.filter(m => m.type !== 'typing');
         return [
           ...withoutTyping,
-          ...(data.messages || [data.message]).map((msg: string) => ({
+          ...(data.messages || [data.message]).map((msg: any) => ({
             type: 'response' as const,
-            message: msg,
+            message: typeof msg === 'string' ? msg : 'Invalid message format received',
             id: `response-${Date.now()}-${Math.random()}`
           }))
         ].slice(-50); // Keep only the last 50 messages
@@ -152,7 +152,11 @@ export function CoachingCard({ goalId }: CoachingCardProps) {
                   <div className="w-2 h-2 bg-foreground rounded-full animate-bounce [animation-delay:0.4s]" />
                 </>
               ) : (
-                <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                <p className="text-sm whitespace-pre-wrap">
+                  {typeof msg.message === 'string' 
+                    ? msg.message 
+                    : 'Invalid message format received'}
+                </p>
               )}
             </div>
           ))
