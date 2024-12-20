@@ -138,9 +138,11 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
 
   return (
     <div className="flex items-center gap-2">
-        <div className="font-mono text-lg">
-          {formatTime(elapsedTime)}
-        </div>
+        {isCurrentTask && (
+          <div className="font-mono text-lg">
+            {formatTime(elapsedTime)}
+          </div>
+        )}
         {!activeTimer ? (
           <Button
             variant="ghost"
