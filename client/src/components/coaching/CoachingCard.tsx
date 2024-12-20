@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Laptop, MinimizeIcon, SendHorizontal } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -141,6 +141,16 @@ export function CoachingCard({ goalId }: CoachingCardProps) {
     );
   }
 
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]); // Scroll when messages update
+
   return (
     <Card className="fixed bottom-4 right-4 w-96 h-[500px] shadow-xl z-50 flex flex-col">
       {/* Header */}
@@ -197,6 +207,7 @@ export function CoachingCard({ goalId }: CoachingCardProps) {
             </div>
           ))
         )}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Input Area */}
