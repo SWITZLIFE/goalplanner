@@ -1,6 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Goal, NewGoal, Task, NewTask } from "@db/schema";
 
+interface CreateTaskParams {
+  goalId: number;
+  title: string;
+  isSubtask?: boolean;
+  parentTaskId?: number;
+  plannedDate?: string;
+  order?: number;
+}
+
 export function useGoals() {
   const queryClient = useQueryClient();
 
@@ -24,13 +33,7 @@ export function useGoals() {
   });
 
   const createTaskMutation = useMutation({
-    mutationFn: async (params: { 
-      goalId: number; 
-      title: string; 
-      isSubtask?: boolean; 
-      parentTaskId?: number;
-      plannedDate?: string;
-    }) => {
+    mutationFn: async (params: CreateTaskParams) => {
       const res = await fetch(`/api/goals/${params.goalId}/tasks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

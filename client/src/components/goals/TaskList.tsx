@@ -12,8 +12,24 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Calendar } from "@/components/ui/calendar";
 import { TaskTimer } from "./TaskTimer";
 import { useToast } from "@/hooks/use-toast";
-import { DragDropContext, Droppable, Draggable, type DropResult } from "react-beautiful-dnd";
-import { StrictModeDroppable } from "./StrictModeDroppable";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragStartEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface TaskListProps {
   tasks: Task[];
@@ -26,6 +42,40 @@ interface EditableTaskTitleProps {
   task: Task;
   onSave: (title: string) => void;
   className?: string;
+}
+
+interface SortableTaskProps {
+  task: Task;
+  children: React.ReactNode;
+  disabled?: boolean;
+}
+
+function SortableTask({ task, children, disabled = false }: SortableTaskProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ 
+    id: `task-${task.id}`,
+    disabled
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <div {...attributes} {...listeners}>
+        {children}
+      </div>
+    </div>
+  );
 }
 
 function EditableTaskTitle({ task, onSave, className }: EditableTaskTitleProps) {
@@ -82,6 +132,14 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [showDatePicker, setShowDatePicker] = useState<{ taskId: number; date?: Date } | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const handleDelete = async (taskId: number) => {
     try {
@@ -127,73 +185,64 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
 
   const handleAddTask = async () => {
     try {
-      // Create task at the beginning of the list
       const existingOrders = mainTasks.map(t => t.order ?? 0);
       const minOrder = existingOrders.length ? Math.min(...existingOrders) : 0;
       const newTask = await createTask({
         goalId,
         title: "New Task",
         isSubtask: false,
+        plannedDate: undefined,
         order: minOrder - 1000,
       });
       setEditingTaskId(newTask.id);
-      // Expand the task list when adding a new task
-      setExpandedTasks(new Set([...expandedTasks, newTask.id]));
+      setExpandedTasks(new Set(Array.from(expandedTasks).concat([newTask.id])));
     } catch (error) {
       console.error("Failed to create task:", error);
     }
   };
 
-  const handleDragEnd = async (result: DropResult) => {
-    if (!result.destination) return;
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id.toString());
+  };
 
-    const sourceIndex = result.source.index;
-    const destinationIndex = result.destination.index;
-    
+  const handleDragEnd = async (event: DragEndEvent) => {
+    setActiveId(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
     try {
-      const reorderTasks = async (tasks: Task[]) => {
-        // Get the task being moved
-        const taskId = parseInt(result.draggableId.split('-')[1]);
-        const movedTask = tasks.find(t => t.id === taskId);
-        
-        if (!movedTask) return;
+      const activeId = parseInt(active.id.toString().split('-')[1]);
+      const overId = parseInt(over.id.toString().split('-')[1]);
+      
+      const activeTask = tasks.find(t => t.id === activeId);
+      const overTask = tasks.find(t => t.id === overId);
+      
+      if (!activeTask || !overTask || activeTask.isSubtask !== overTask.isSubtask) {
+        return;
+      }
 
-        // Create a new array with the task moved to its new position
-        const reorderedTasks = Array.from(tasks);
-        reorderedTasks.splice(sourceIndex, 1);
-        reorderedTasks.splice(destinationIndex, 0, movedTask);
+      // Get the relevant tasks (either main tasks or subtasks of the same parent)
+      const relevantTasks = activeTask.isSubtask
+        ? tasks.filter(t => t.isSubtask && t.parentTaskId === activeTask.parentTaskId)
+        : tasks.filter(t => !t.isSubtask);
 
-        // Normalize orders to prevent floating-point issues
-        const normalizedTasks = reorderedTasks.map((task, index) => ({
-          ...task,
-          order: (index + 1) * 1000
-        }));
+      const oldIndex = relevantTasks.findIndex(t => t.id === activeId);
+      const newIndex = relevantTasks.findIndex(t => t.id === overId);
 
-        // Only update the tasks that actually changed position
-        const start = Math.min(sourceIndex, destinationIndex);
-        const end = Math.max(sourceIndex, destinationIndex);
-        
-        for (let i = start; i <= end; i++) {
-          const task = normalizedTasks[i];
-          if (task.order !== reorderedTasks[i].order) {
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const reorderedTasks = arrayMove(relevantTasks, oldIndex, newIndex);
+
+        // Update orders for all affected tasks
+        for (let i = 0; i < reorderedTasks.length; i++) {
+          const task = reorderedTasks[i];
+          const newOrder = (i + 1) * 1000;
+          if (task.order !== newOrder) {
             await updateTask({
               taskId: task.id,
-              order: task.order,
+              order: newOrder,
             });
           }
         }
-      };
-
-      // Handle main tasks and subtasks separately
-      if (result.type === "MAIN_TASK") {
-        // Only reorder main tasks
-        const mainTasksOnly = tasks.filter(t => !t.isSubtask);
-        await reorderTasks(mainTasksOnly);
-      } else if (result.type.startsWith("SUBTASK-")) {
-        // Only reorder subtasks within the same parent
-        const parentId = parseInt(result.type.split('-')[1]);
-        const subtasksOnly = tasks.filter(t => t.isSubtask && t.parentTaskId === parentId);
-        await reorderTasks(subtasksOnly);
       }
     } catch (error) {
       console.error("Failed to update task order:", error);
@@ -217,8 +266,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         order: minOrder - 1000,
       });
       setEditingTaskId(newSubtask.id);
-      // Expand the parent task when adding a new subtask
-      setExpandedTasks(new Set([...expandedTasks, parentTaskId]));
+      setExpandedTasks(new Set(Array.from(expandedTasks).concat([parentTaskId])));
     } catch (error) {
       console.error("Failed to create subtask:", error);
     }
@@ -253,10 +301,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
             onClick={() => {
               const mainTaskIds = mainTasks.map(task => task.id);
               const newExpanded = new Set(expandedTasks);
-              
-              // If any tasks are expanded, collapse all. Otherwise, expand all
               const shouldExpandAll = mainTaskIds.some(id => !expandedTasks.has(id));
-              
               mainTaskIds.forEach(id => {
                 if (shouldExpandAll) {
                   newExpanded.add(id);
@@ -264,7 +309,6 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                   newExpanded.delete(id);
                 }
               });
-              
               setExpandedTasks(newExpanded);
             }}
           >
@@ -280,230 +324,216 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
           </Button>
         </div>
 
-        <DragDropContext onDragEnd={handleDragEnd}>
-          <StrictModeDroppable droppableId="main-tasks" type="MAIN_TASK">
-            {(provided, snapshot) => (
-              <div
-                ref={provided.innerRef}
-                {...provided.droppableProps}
-                className={cn("space-y-2", snapshot.isDraggingOver && "bg-accent/50")}
-              >
-                {mainTasks.map((mainTask, index) => (
-                  <Draggable
-                    key={mainTask.id}
-                    draggableId={`task-${mainTask.id}`}
-                    index={index}
-                    isDragDisabled={readOnly}
-                  >
-                    {(provided) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        className="space-y-2"
-                      >
-                        <div className="space-y-1">
-                          <div className="flex items-center space-x-2 group">
-                            <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing">
-                              <GripVertical className="h-4 w-4 text-muted-foreground" />
-                            </div>
-                            {/* Toggle icon for collapsible */}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={mainTasks.map(task => `task-${task.id}`)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-2">
+              {mainTasks.map((mainTask) => (
+                <SortableTask 
+                  key={mainTask.id} 
+                  task={mainTask}
+                  disabled={readOnly}
+                >
+                  <div className="space-y-2">
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2 group">
+                        {!readOnly && (
+                          <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab active:cursor-grabbing" />
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 p-0"
+                          onClick={() => {
+                            const newExpanded = new Set(expandedTasks);
+                            if (expandedTasks.has(mainTask.id)) {
+                              newExpanded.delete(mainTask.id);
+                            } else {
+                              newExpanded.add(mainTask.id);
+                            }
+                            setExpandedTasks(newExpanded);
+                          }}
+                        >
+                          <ChevronRight 
+                            className={cn(
+                              "h-4 w-4 transition-transform",
+                              expandedTasks.has(mainTask.id) ? "transform rotate-90" : ""
+                            )}
+                          />
+                        </Button>
+                        <Checkbox
+                          id={`task-${mainTask.id}`}
+                          checked={mainTask.completed}
+                          onCheckedChange={(checked) => handleTaskToggle(mainTask.id, checked as boolean)}
+                        />
+                        <div className="flex items-center gap-2 flex-grow">
+                          <EditableTaskTitle
+                            task={mainTask}
+                            onSave={(title) => handleTaskTitleChange(mainTask.id, title)}
+                            className={cn(
+                              "font-medium",
+                              mainTask.completed && "line-through text-muted-foreground"
+                            )}
+                          />
+                          {!readOnly && (
+                            <button
+                              onClick={() => handleDelete(mainTask.id)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:text-destructive"
+                              title="Delete task"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                        {!mainTask.completed && (
+                          <TaskTimer 
+                            taskId={mainTask.id}
+                            totalMinutesSpent={mainTask.totalMinutesSpent || 0}
+                            onTimerStop={(coinsEarned) => {
+                              toast({
+                                title: "Time Tracked!",
+                                description: `You earned ${coinsEarned} coins for your work.`
+                              });
+                            }}
+                          />
+                        )}
+                        {!readOnly && (
+                          <>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-6 w-6 p-0"
-                              onClick={() => {
-                                const newExpanded = new Set(expandedTasks);
-                                if (expandedTasks.has(mainTask.id)) {
-                                  newExpanded.delete(mainTask.id);
-                                } else {
-                                  newExpanded.add(mainTask.id);
-                                }
-                                setExpandedTasks(newExpanded);
-                              }}
+                              onClick={() => handleAddSubtask(mainTask.id)}
+                              title="Add Subtask"
                             >
-                              <ChevronRight 
-                                className={cn(
-                                  "h-4 w-4 transition-transform",
-                                  expandedTasks.has(mainTask.id) ? "transform rotate-90" : ""
-                                )}
-                              />
+                              <Plus className="h-4 w-4" />
                             </Button>
-                            <Checkbox
-                              id={`task-${mainTask.id}`}
-                              checked={mainTask.completed}
-                              onCheckedChange={(checked) => handleTaskToggle(mainTask.id, checked as boolean)}
-                            />
-                            <div className="flex items-center gap-2 flex-grow">
-                              <EditableTaskTitle
-                                task={mainTask}
-                                onSave={(title) => handleTaskTitleChange(mainTask.id, title)}
-                                className={cn(
-                                  "font-medium",
-                                  mainTask.completed && "line-through text-muted-foreground"
-                                )}
-                              />
-                              {!readOnly && (
-                                <button
-                                  onClick={() => handleDelete(mainTask.id)}
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:text-destructive"
-                                  title="Delete task"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              )}
-                            </div>
-                            {!mainTask.completed && (
-                              <TaskTimer 
-                                taskId={mainTask.id}
-                                totalMinutesSpent={mainTask.totalMinutesSpent || 0}
-                                onTimerStop={(coinsEarned) => {
-                                  toast({
-                                    title: "Time Tracked!",
-                                    description: `You earned ${coinsEarned} coins for your work.`
-                                  });
-                                }}
-                              />
+                            {onUpdateTaskDate && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowDatePicker({ taskId: mainTask.id, date: mainTask.plannedDate ? new Date(mainTask.plannedDate) : undefined })}
+                              >
+                                {mainTask.plannedDate 
+                                  ? format(new Date(mainTask.plannedDate), 'dd/MM/yy')
+                                  : "Set Date"
+                                }
+                              </Button>
                             )}
-                            {!readOnly && (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleAddSubtask(mainTask.id)}
-                                  title="Add Subtask"
-                                >
-                                  <Plus className="h-4 w-4" />
-                                </Button>
-                                {onUpdateTaskDate && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setShowDatePicker({ taskId: mainTask.id, date: mainTask.plannedDate ? new Date(mainTask.plannedDate) : undefined })}
-                                  >
-                                    {mainTask.plannedDate 
-                                      ? format(new Date(mainTask.plannedDate), 'dd/MM/yy')
-                                      : "Set Date"
-                                    }
-                                  </Button>
-                                )}
-                              </>
-                            )}
-                          </div>
+                          </>
+                        )}
+                      </div>
 
-                          <div className="flex justify-between items-center ml-6">
-                            <div className="flex gap-2 text-xs">
-                              <div className="text-muted-foreground">
-                                {(getOrderedSubtasks(mainTask.id).some(task => task.estimatedMinutes) || mainTask.totalMinutesSpent > 0) && (
-                                  <div className="flex items-center gap-2">
-                                    <span>
-                                      {getOrderedSubtasks(mainTask.id).some(task => task.estimatedMinutes) && (
-                                        <>
-                                          Total estimated time: {
-                                            formatTime(
-                                              getOrderedSubtasks(mainTask.id).reduce((sum, task) => sum + (task.estimatedMinutes || 0), 0)
-                                            )
-                                          }
-                                        </>
-                                      )}
-                                    </span>
-                                    {mainTask.totalMinutesSpent > 0 && (
-                                      <span className="text-blue-500 font-medium">
-                                        (Actual: {String(Math.floor(mainTask.totalMinutesSpent / 60)).padStart(2, '0')}:{String(mainTask.totalMinutesSpent % 60).padStart(2, '0')})
-                                      </span>
-                                    )}
-                                  </div>
+                      <div className="flex justify-between items-center ml-6">
+                        <div className="flex gap-2 text-xs">
+                          <div className="text-muted-foreground">
+                            {(getOrderedSubtasks(mainTask.id).some(task => task.estimatedMinutes) || mainTask.totalMinutesSpent > 0) && (
+                              <div className="flex items-center gap-2">
+                                <span>
+                                  {getOrderedSubtasks(mainTask.id).some(task => task.estimatedMinutes) && (
+                                    <>
+                                      Total estimated time: {
+                                        formatTime(
+                                          getOrderedSubtasks(mainTask.id).reduce((sum, task) => sum + (task.estimatedMinutes || 0), 0)
+                                        )
+                                      }
+                                    </>
+                                  )}
+                                </span>
+                                {mainTask.totalMinutesSpent > 0 && (
+                                  <span className="text-blue-500 font-medium">
+                                    (Actual: {String(Math.floor(mainTask.totalMinutesSpent / 60)).padStart(2, '0')}:{String(mainTask.totalMinutesSpent % 60).padStart(2, '0')})
+                                  </span>
                                 )}
-                              </div>
-                            </div>
-                            {!readOnly && mainTask.plannedDate && (
-                              <div className="text-xs text-primary">
-                                📅 {format(new Date(mainTask.plannedDate), 'MMM d, yyyy')}
                               </div>
                             )}
                           </div>
                         </div>
-
-                        <Collapsible.Root 
-                          open={expandedTasks.has(mainTask.id)}
-                          className="ml-6 space-y-2"
-                        >
-                          <Collapsible.Content className="transition-all data-[state=closed]:animate-collapse data-[state=open]:animate-expand overflow-hidden">
-                            <StrictModeDroppable 
-                              droppableId={`subtasks-${mainTask.id}`} 
-                              type={`SUBTASK-${mainTask.id}`}
-                            >
-                              {(provided, snapshot) => (
-                                <div
-                                  ref={provided.innerRef}
-                                  {...provided.droppableProps}
-                                  className={cn("space-y-2", snapshot.isDraggingOver && "bg-accent/50")}
-                                >
-                                  {getOrderedSubtasks(mainTask.id).map((subtask, index) => (
-                                    <Draggable
-                                      key={subtask.id}
-                                      draggableId={`subtask-${subtask.id}`}
-                                      index={index}
-                                      isDragDisabled={readOnly}
-                                    >
-                                      {(provided) => (
-                                        <div
-                                          ref={provided.innerRef}
-                                          {...provided.draggableProps}
-                                          className="flex items-center space-x-2 group"
-                                        >
-                                          <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing">
-                                            <GripVertical className="h-4 w-4 text-muted-foreground" />
-                                          </div>
-                                          <Checkbox
-                                            id={`task-${subtask.id}`}
-                                            checked={subtask.completed}
-                                            onCheckedChange={(checked) => handleTaskToggle(subtask.id, checked as boolean)}
-                                          />
-                                          <div className="flex flex-col flex-grow">
-                                            <div className="flex items-center gap-2">
-                                              <EditableTaskTitle
-                                                task={subtask}
-                                                onSave={(title) => handleTaskTitleChange(subtask.id, title)}
-                                                className={cn(
-                                                  "text-sm",
-                                                  subtask.completed && "line-through text-muted-foreground"
-                                                )}
-                                              />
-                                              {!readOnly && (
-                                                <button
-                                                  onClick={() => handleDelete(subtask.id)}
-                                                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:text-destructive"
-                                                  title="Delete subtask"
-                                                >
-                                                  <Trash2 className="h-4 w-4" />
-                                                </button>
-                                              )}
-                                            </div>
-                                            {subtask.estimatedMinutes && (
-                                              <span className="text-xs text-muted-foreground">
-                                                Estimated time: {subtask.estimatedMinutes} minutes
-                                              </span>
-                                            )}
-                                          </div>
-                                        </div>
-                                      )}
-                                    </Draggable>
-                                  ))}
-                                  {provided.placeholder}
-                                </div>
-                              )}
-                            </StrictModeDroppable>
-                          </Collapsible.Content>
-                        </Collapsible.Root>
+                        {!readOnly && mainTask.plannedDate && (
+                          <div className="text-xs text-primary">
+                            📅 {format(new Date(mainTask.plannedDate), 'MMM d, yyyy')}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </Draggable>
-                ))}
-                {provided.placeholder}
-              </div>
-            )}
-          </StrictModeDroppable>
-        </DragDropContext>
+                    </div>
+
+                    <Collapsible.Root 
+                      open={expandedTasks.has(mainTask.id)}
+                      className="ml-6 space-y-2"
+                    >
+                      <Collapsible.Content className="transition-all data-[state=closed]:animate-collapse data-[state=open]:animate-expand overflow-hidden">
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragStart={handleDragStart}
+                          onDragEnd={handleDragEnd}
+                        >
+                          <SortableContext
+                            items={getOrderedSubtasks(mainTask.id).map(task => `task-${task.id}`)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            <div className="space-y-2">
+                              {getOrderedSubtasks(mainTask.id).map((subtask) => (
+                                <SortableTask 
+                                  key={subtask.id} 
+                                  task={subtask}
+                                  disabled={readOnly}
+                                >
+                                  <div className="flex items-center space-x-2 group">
+                                    {!readOnly && (
+                                      <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab active:cursor-grabbing" />
+                                    )}
+                                    <Checkbox
+                                      id={`task-${subtask.id}`}
+                                      checked={subtask.completed}
+                                      onCheckedChange={(checked) => handleTaskToggle(subtask.id, checked as boolean)}
+                                    />
+                                    <div className="flex flex-col flex-grow">
+                                      <div className="flex items-center gap-2">
+                                        <EditableTaskTitle
+                                          task={subtask}
+                                          onSave={(title) => handleTaskTitleChange(subtask.id, title)}
+                                          className={cn(
+                                            "text-sm",
+                                            subtask.completed && "line-through text-muted-foreground"
+                                          )}
+                                        />
+                                        {!readOnly && (
+                                          <button
+                                            onClick={() => handleDelete(subtask.id)}
+                                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:text-destructive"
+                                            title="Delete subtask"
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                          </button>
+                                        )}
+                                      </div>
+                                      {subtask.estimatedMinutes && (
+                                        <span className="text-xs text-muted-foreground">
+                                          Estimated time: {subtask.estimatedMinutes} minutes
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </SortableTask>
+                              ))}
+                            </div>
+                          </SortableContext>
+                        </DndContext>
+                      </Collapsible.Content>
+                    </Collapsible.Root>
+                  </div>
+                </SortableTask>
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
 
         {/* Date Picker Dialog */}
         <Dialog 
