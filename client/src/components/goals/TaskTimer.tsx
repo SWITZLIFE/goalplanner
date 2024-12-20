@@ -132,42 +132,35 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
   const isCurrentTask = activeTimer?.taskId === taskId;
 
   return (
-    <div className="flex flex-col">
-      <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2">
         <div className="font-mono text-lg">
           {formatTime(elapsedTime)}
         </div>
-      {!activeTimer ? (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => startTimer.mutate()}
-          disabled={startTimer.isPending}
-        >
-          <Timer className="h-4 w-4 mr-2" />
-          Start Timer
-        </Button>
-      ) : isCurrentTask ? (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => stopTimer.mutate()}
-          disabled={stopTimer.isPending}
-        >
-          <StopCircle className="h-4 w-4 mr-2" />
-          Stop Timer
-        </Button>
-      ) : (
-        <Button variant="outline" size="sm" disabled>
-          Timer Active on Another Task
-        </Button>
-      )}
+        {!activeTimer ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => startTimer.mutate()}
+            disabled={startTimer.isPending}
+          >
+            <Timer className="h-4 w-4 mr-2" />
+            Start Timer
+          </Button>
+        ) : isCurrentTask ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => stopTimer.mutate()}
+            disabled={stopTimer.isPending}
+          >
+            <StopCircle className="h-4 w-4 mr-2" />
+            Stop Timer
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm" disabled>
+            Timer Active on Another Task
+          </Button>
+        )}
       </div>
-      {totalMinutesSpent > 0 && (
-        <div className="text-sm text-muted-foreground mt-1">
-          Total time spent: {Math.floor(totalMinutesSpent / 60)}h {totalMinutesSpent % 60}m
-        </div>
-      )}
-    </div>
   );
 }
