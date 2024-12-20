@@ -148,7 +148,10 @@ export function registerRoutes(app: Express): Server {
       if (plannedDate !== undefined) {
         updateData.plannedDate = plannedDate ? new Date(plannedDate) : null;
       }
-      if (typeof order === 'number') updateData.order = order;
+      // Ensure order is properly handled as a number
+      if (order !== undefined && order !== null) {
+        updateData.order = typeof order === 'string' ? parseInt(order, 10) : order;
+      }
 
       console.log('Updating task with data:', { taskId, updateData });
 

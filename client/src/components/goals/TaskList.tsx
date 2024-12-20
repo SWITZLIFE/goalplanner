@@ -158,10 +158,17 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         
         // Update orders sequentially to avoid race conditions
         for (let i = 0; i < updatedTasks.length; i++) {
-          await updateTask({
-            taskId: updatedTasks[i].id,
-            order: i * 1000,
-          });
+          const taskToUpdate = updatedTasks[i];
+          if (taskToUpdate) {
+            await updateTask({
+              taskId: taskToUpdate.id,
+              order: i * 1000,
+              title: taskToUpdate.title, // Keep existing data
+              completed: taskToUpdate.completed,
+              estimatedMinutes: taskToUpdate.estimatedMinutes,
+              plannedDate: taskToUpdate.plannedDate
+            });
+          }
         }
       } else if (result.type.startsWith("SUBTASK-")) {
         const parentId = parseInt(result.type.split('-')[1]);
@@ -172,10 +179,17 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         
         // Update subtask orders sequentially
         for (let i = 0; i < updatedSubtasks.length; i++) {
-          await updateTask({
-            taskId: updatedSubtasks[i].id,
-            order: i * 1000,
-          });
+          const subtaskToUpdate = updatedSubtasks[i];
+          if (subtaskToUpdate) {
+            await updateTask({
+              taskId: subtaskToUpdate.id,
+              order: i * 1000,
+              title: subtaskToUpdate.title, // Keep existing data
+              completed: subtaskToUpdate.completed,
+              estimatedMinutes: subtaskToUpdate.estimatedMinutes,
+              plannedDate: subtaskToUpdate.plannedDate
+            });
+          }
         }
       }
     } catch (error) {

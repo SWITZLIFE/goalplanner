@@ -105,14 +105,23 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
 
 export const insertGoalSchema = createInsertSchema(goals);
 export const selectGoalSchema = createSelectSchema(goals);
+// Create custom task update schema that includes order
 export const insertTaskSchema = createInsertSchema(tasks);
 export const selectTaskSchema = createSelectSchema(tasks);
+export const updateTaskSchema = selectTaskSchema.partial().extend({
+  order: z.number().optional(),
+  completed: z.boolean().optional(),
+  title: z.string().optional(),
+  estimatedMinutes: z.number().optional().nullable(),
+  plannedDate: z.string().optional().nullable()
+});
 
 // Define the base types from the schema
 export type BaseGoal = typeof goals.$inferSelect;
 export type NewGoal = typeof goals.$inferInsert;
 export type Task = typeof tasks.$inferSelect;
 export type NewTask = typeof tasks.$inferInsert;
+export type UpdateTask = z.infer<typeof updateTaskSchema>;
 
 // Extend the Goal type to include tasks
 export interface Goal extends BaseGoal {
