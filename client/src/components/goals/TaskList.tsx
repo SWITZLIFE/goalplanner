@@ -151,47 +151,46 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
     const destinationIndex = result.destination.index;
     
     try {
-      const reorderTasks = async (tasks: Task[], taskId: number, newIndex: number) => {
+      const reorderTasks = async (tasks: Task[], taskId: number) => {
         // Create a new array with the task moved to its new position
         const reorderedTasks = Array.from(tasks);
         const [movedTask] = reorderedTasks.splice(sourceIndex, 1);
         reorderedTasks.splice(destinationIndex, 0, movedTask);
 
-        // Calculate new order values for all affected tasks
-        const updatedTasks = reorderedTasks.map((task, index) => ({
-          ...task,
-          order: (index + 1) * 1000, // Use consistent spacing
-        }));
+        // Calculate order for the moved task
+        const ORDER_STEP = 1000;
+        let newOrder: number;
 
-        // Update the moved task first
+        if (destinationIndex === 0) {
+          // If moving to the start, use half of the first task's order or a default
+          const nextOrder = reorderedTasks[1]?.order ?? ORDER_STEP;
+          newOrder = Math.floor(nextOrder / 2);
+        } else if (destinationIndex === reorderedTasks.length - 1) {
+          // If moving to the end, add ORDER_STEP to the last task's order
+          const prevOrder = reorderedTasks[destinationIndex - 1].order ?? 0;
+          newOrder = prevOrder + ORDER_STEP;
+        } else {
+          // Calculate the midpoint between the previous and next tasks
+          const prevOrder = reorderedTasks[destinationIndex - 1].order ?? 0;
+          const nextOrder = reorderedTasks[destinationIndex + 1].order ?? prevOrder + (ORDER_STEP * 2);
+          newOrder = Math.floor(prevOrder + (nextOrder - prevOrder) / 2);
+        }
+
+        // Update only the moved task's order
         await updateTask({
           taskId,
-          order: updatedTasks[destinationIndex].order,
+          order: newOrder,
         });
-
-        // Update other tasks that need reordering
-        const start = Math.min(sourceIndex, destinationIndex);
-        const end = Math.max(sourceIndex, destinationIndex);
-
-        for (let i = start; i <= end; i++) {
-          if (i !== destinationIndex) { // Skip the already updated task
-            const task = updatedTasks[i];
-            await updateTask({
-              taskId: task.id,
-              order: task.order,
-            });
-          }
-        }
       };
 
       if (result.type === "MAIN_TASK") {
         const taskId = parseInt(result.draggableId.split('-')[1]);
-        await reorderTasks(mainTasks, taskId, destinationIndex);
+        await reorderTasks(mainTasks, taskId);
       } else if (result.type.startsWith("SUBTASK-")) {
         const parentId = parseInt(result.type.split('-')[1]);
         const taskId = parseInt(result.draggableId.split('-')[1]);
         const subtasks = getOrderedSubtasks(parentId);
-        await reorderTasks(subtasks, taskId, destinationIndex);
+        await reorderTasks(subtasks, taskId);
       }
     } catch (error) {
       console.error("Failed to update task order:", error);

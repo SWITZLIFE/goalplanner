@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import type {
-  Droppable as DroppableType,
   DroppableProps,
   DroppableProvided,
   DroppableStateSnapshot
@@ -19,13 +18,13 @@ export function StrictModeDroppable({ children, ...props }: StrictModeDroppableP
   const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
-    // Delay the initialization to avoid issues with React Strict Mode
-    const timeout = setTimeout(() => {
+    // Use requestAnimationFrame to ensure the component is mounted
+    const animation = requestAnimationFrame(() => {
       setEnabled(true);
-    }, 100);
+    });
 
     return () => {
-      clearTimeout(timeout);
+      cancelAnimationFrame(animation);
       setEnabled(false);
     };
   }, []);
