@@ -141,9 +141,17 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
   };
 
   // Sort tasks by creation date to maintain consistent order
+  // Sort tasks by creation date to maintain consistent order
   const mainTasks = tasks
     .filter(task => !task.isSubtask)
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    
+  // Pre-sort subtasks to avoid reordering on re-render
+  const getOrderedSubtasks = (parentId: number) => {
+    return tasks
+      .filter(task => task.parentTaskId === parentId)
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  };
   
   return (
     <div className="space-y-6">
@@ -224,7 +232,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
             </div>
             
             <div className="ml-6 space-y-2">
-              {subtasks.map((subtask) => (
+              {getOrderedSubtasks(mainTask.id).map((subtask) => (
                 <div key={subtask.id} className="flex items-center space-x-2">
                   <Checkbox
                     id={`task-${subtask.id}`}
