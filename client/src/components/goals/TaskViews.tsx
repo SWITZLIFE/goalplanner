@@ -2,13 +2,13 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskList } from "./TaskList";
 import { Calendar } from "@/components/ui/calendar";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { Task } from "@db/schema";
 import { useGoals } from "@/hooks/use-goals";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Clock, Calendar as CalendarIcon, CheckCircle2, Circle, XCircle } from "lucide-react";
+import { Clock, Calendar as CalendarIcon, CheckCircle2, Circle } from "lucide-react";
 
 interface TaskViewsProps {
   tasks: Task[];
@@ -49,6 +49,27 @@ export function TaskViews({ tasks, goalId }: TaskViewsProps) {
       });
     } catch (error) {
       console.error('Failed to update task date:', error);
+    }
+  };
+
+  const handleToggleComplete = async (task: Task) => {
+    try {
+      await updateTask({ 
+        taskId: task.id, 
+        completed: !task.completed 
+      });
+      // Update the selected task state immediately
+      setSelectedTask({
+        ...task,
+        completed: !task.completed
+      });
+    } catch (error) {
+      console.error('Failed to toggle task completion:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update task status"
+      });
     }
   };
 
@@ -175,14 +196,7 @@ export function TaskViews({ tasks, goalId }: TaskViewsProps) {
             <div className="space-y-4">
               <div 
                 className="flex items-center gap-2 cursor-pointer hover:opacity-80"
-                onClick={async () => {
-                  if (selectedTask) {
-                    await updateTask({ 
-                      taskId: selectedTask.id, 
-                      completed: !selectedTask.completed 
-                    });
-                  }
-                }}
+                onClick={() => handleToggleComplete(selectedTask)}
               >
                 {selectedTask.completed ? (
                   <>
