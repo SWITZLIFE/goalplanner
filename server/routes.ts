@@ -119,6 +119,8 @@ export function registerRoutes(app: Express): Server {
         updateData.plannedDate = plannedDate ? new Date(plannedDate) : null;
       }
 
+      console.log('Updating task with data:', { taskId, updateData });
+
       console.log('Updating task:', { taskId, updateData }); // Add logging
 
       const [updatedTask] = await db.update(tasks)
