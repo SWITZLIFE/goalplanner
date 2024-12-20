@@ -141,7 +141,18 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
     }
   };
 
-  const handleDragEnd = async (result: any) => {
+  const handleDragEnd = async (result: {
+    destination?: {
+      index: number;
+      droppableId: string;
+    };
+    source: {
+      index: number;
+      droppableId: string;
+    };
+    draggableId: string;
+    type: string;
+  }) => {
     if (!result.destination) return;
 
     const sourceIndex = result.source.index;

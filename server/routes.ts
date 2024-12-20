@@ -139,7 +139,7 @@ export function registerRoutes(app: Express): Server {
   app.patch("/api/tasks/:taskId", async (req, res) => {
     try {
       const { taskId } = req.params;
-      const { completed, title, estimatedMinutes, plannedDate } = req.body;
+      const { completed, title, estimatedMinutes, plannedDate, order } = req.body;
       
       const updateData: Partial<typeof tasks.$inferInsert> = {};
       if (typeof completed !== 'undefined') updateData.completed = completed;
@@ -148,6 +148,7 @@ export function registerRoutes(app: Express): Server {
       if (plannedDate !== undefined) {
         updateData.plannedDate = plannedDate ? new Date(plannedDate) : null;
       }
+      if (typeof order !== 'undefined') updateData.order = order;
 
       console.log('Updating task with data:', { taskId, updateData });
 
