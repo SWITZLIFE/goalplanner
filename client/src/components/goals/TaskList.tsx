@@ -187,33 +187,34 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     </Button>
                     {onUpdateTaskDate && (
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
                         onClick={() => setShowDatePicker({ taskId: mainTask.id, date: mainTask.plannedDate ? new Date(mainTask.plannedDate) : undefined })}
-                        className={cn(
-                          "text-xs",
-                          mainTask.plannedDate && "text-primary"
-                        )}
                       >
-                        {mainTask.plannedDate ? (
-                          format(new Date(mainTask.plannedDate), 'MMM d, yyyy')
-                        ) : (
-                          "Set Date"
-                        )}
+                        {mainTask.plannedDate ? "Change Date" : "Set Date"}
                       </Button>
                     )}
                   </>
                 )}
               </div>
-              {subtasks.some(task => task.estimatedMinutes) && (
-                <div className="text-xs text-muted-foreground ml-6">
-                  Total estimated time: {
-                    formatTime(
-                      subtasks.reduce((sum, task) => sum + (task.estimatedMinutes || 0), 0)
-                    )
-                  }
+              <div className="flex justify-between items-center ml-6">
+                <div className="text-xs text-muted-foreground">
+                  {subtasks.some(task => task.estimatedMinutes) && (
+                    <>
+                      Total estimated time: {
+                        formatTime(
+                          subtasks.reduce((sum, task) => sum + (task.estimatedMinutes || 0), 0)
+                        )
+                      }
+                    </>
+                  )}
                 </div>
-              )}
+                {!readOnly && mainTask.plannedDate && (
+                  <div className="text-xs text-primary">
+                    📅 {format(new Date(mainTask.plannedDate), 'MMM d, yyyy')}
+                  </div>
+                )}
+              </div>
             </div>
             
             <div className="ml-6 space-y-2">
