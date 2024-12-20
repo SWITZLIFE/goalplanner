@@ -132,7 +132,12 @@ export function TaskViews({ tasks, goalId }: TaskViewsProps) {
                       {dayTasks.map(task => (
                         <div 
                           key={task.id}
-                          className="text-xs p-1 bg-primary/10 rounded truncate"
+                          className={cn(
+                            "text-xs p-1 rounded truncate",
+                            task.completed 
+                              ? "bg-orange-200/80" 
+                              : "bg-blue-200/80"
+                          )}
                           title={task.title}
                         >
                           {task.title}
