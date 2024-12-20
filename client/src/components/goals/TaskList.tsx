@@ -163,12 +163,12 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
 
   const mainTasks = tasks
     .filter(task => !task.isSubtask)
-    .sort((a, b) => a.id - b.id);
+    .sort((a, b) => b.id - a.id);
 
   const getOrderedSubtasks = (parentId: number) => {
     return tasks
       .filter(task => task.parentTaskId === parentId)
-      .sort((a, b) => a.id - b.id);
+      .sort((a, b) => b.id - a.id);
   };
 
   return (
