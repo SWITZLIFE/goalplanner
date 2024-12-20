@@ -339,12 +339,13 @@ export function registerRoutes(app: Express): Server {
         .where(eq(timeTracking.id, activeTimer.id))
         .returning();
 
-      // Update task's total time
-      await db.update(tasks)
+      // Update task's total time and get updated task
+      const [updatedTask] = await db.update(tasks)
         .set({
           totalMinutesSpent: sql`${tasks.totalMinutesSpent} + ${minutesWorked}`,
         })
-        .where(eq(tasks.id, parseInt(taskId)));
+        .where(eq(tasks.id, parseInt(taskId)))
+        .returning();
 
       // Update user's coins
       await db.update(rewards)
@@ -356,6 +357,7 @@ export function registerRoutes(app: Express): Server {
 
       res.json({
         timer: updatedTimer,
+        task: updatedTask,
         coinsEarned,
       });
     } catch (error) {
