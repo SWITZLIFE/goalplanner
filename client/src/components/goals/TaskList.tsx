@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Calendar } from "@/components/ui/calendar";
 import { TaskTimer } from "./TaskTimer";
 import { useToast } from "@/hooks/use-toast";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { DragDropContext, Droppable, Draggable, DropResult } from "react-beautiful-dnd";
 
 interface TaskListProps {
   tasks: Task[];
@@ -141,18 +141,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
     }
   };
 
-  const handleDragEnd = async (result: {
-    destination?: {
-      index: number;
-      droppableId: string;
-    };
-    source: {
-      index: number;
-      droppableId: string;
-    };
-    draggableId: string;
-    type: string;
-  }) => {
+  const handleDragEnd = async (result: DropResult) => {
     if (!result.destination) return;
 
     const sourceIndex = result.source.index;
@@ -182,7 +171,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
           description: "Failed to update task order"
         });
       }
-    } else if (result.type === "SUBTASK") {
+    } else if (result.type.startsWith("SUBTASK-")) {
       const parentId = parseInt(result.type.split('-')[1]);
       const subtasks = getOrderedSubtasks(parentId);
       const updatedSubtasks = Array.from(subtasks);
@@ -232,7 +221,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
     }
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;
-    return `${hours}h ${remainingMinutes} minutes`;
+    return `${hours}h ${remainingMinutes}m`;
   };
 
   const mainTasks = tasks
@@ -295,6 +284,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     key={mainTask.id}
                     draggableId={`task-${mainTask.id}`}
                     index={index}
+                    isDragDisabled={readOnly}
                   >
                     {(provided) => (
                       <div
@@ -441,6 +431,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                                       key={subtask.id}
                                       draggableId={`subtask-${subtask.id}`}
                                       index={index}
+                                      isDragDisabled={readOnly}
                                     >
                                       {(provided) => (
                                         <div
