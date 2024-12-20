@@ -54,6 +54,7 @@ export const tasks = pgTable("tasks", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   parentTaskId: integer("parent_task_id").references(() => tasks.id),
   isSubtask: boolean("is_subtask").default(false).notNull(),
+  notes: text("notes"),
   // Note: order field exists in DB but is no longer used in the application
   order: integer("order"),
 });
@@ -113,7 +114,8 @@ export const updateTaskSchema = selectTaskSchema.partial().extend({
   completed: z.boolean().optional(),
   title: z.string().optional(),
   estimatedMinutes: z.number().optional().nullable(),
-  plannedDate: z.string().optional().nullable()
+  plannedDate: z.string().optional().nullable(),
+  notes: z.string().optional().nullable()
 });
 
 // Define the base types from the schema

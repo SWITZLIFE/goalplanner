@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, ChevronRight } from "lucide-react";
+import { Plus, Trash2, ChevronRight, StickyNote } from "lucide-react";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import type { Task } from "@db/schema";
 import { useGoals } from "@/hooks/use-goals";
@@ -11,6 +11,7 @@ import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { TaskTimer } from "./TaskTimer";
+import { TaskEditor } from "./TaskEditor";
 import { useToast } from "@/hooks/use-toast";
 
 interface TaskListProps {
@@ -192,7 +193,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         isSubtask: false,
       });
       setEditingTaskId(newTask.id);
-      setExpandedTasks(new Set([...expandedTasks, newTask.id]));
+      setExpandedTasks(new Set([...Array.from(expandedTasks), newTask.id]));
     } catch (error) {
       console.error("Failed to create task:", error);
     }
@@ -207,7 +208,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         parentTaskId,
       });
       setEditingTaskId(newSubtask.id);
-      setExpandedTasks(new Set([...expandedTasks, parentTaskId]));
+      setExpandedTasks(new Set([...Array.from(expandedTasks), parentTaskId]));
     } catch (error) {
       console.error("Failed to create subtask:", error);
     }
@@ -240,20 +241,20 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
             variant="outline"
             size="sm"
             onClick={() => {
-              const mainTaskIds = mainTasks.map(task => task.id);
-              const newExpanded = new Set(expandedTasks);
-              const shouldExpandAll = mainTaskIds.some(id => !expandedTasks.has(id));
-              
-              mainTaskIds.forEach(id => {
-                if (shouldExpandAll) {
-                  newExpanded.add(id);
-                } else {
-                  newExpanded.delete(id);
-                }
-              });
-              
-              setExpandedTasks(newExpanded);
-            }}
+            const mainTaskIds = mainTasks.map(task => task.id);
+            const newExpanded = new Set(Array.from(expandedTasks));
+            const shouldExpandAll = mainTaskIds.some(id => !expandedTasks.has(id));
+            
+            mainTaskIds.forEach(id => {
+              if (shouldExpandAll) {
+                newExpanded.add(id);
+              } else {
+                newExpanded.delete(id);
+              }
+            });
+            
+            setExpandedTasks(newExpanded);
+          }}
           >
             {mainTasks.some(task => !expandedTasks.has(task.id)) ? 'Expand All' : 'Collapse All'}
           </Button>
@@ -298,7 +299,15 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     checked={mainTask.completed}
                     onCheckedChange={(checked) => handleTaskToggle(mainTask.id, checked as boolean)}
                   />
-                  <div className="flex items-center gap-2 flex-grow">
+                  <div 
+                    className="flex items-center gap-2 flex-grow"
+                    onClick={(e) => {
+                      // Only open task details if clicking the container, not the title or buttons
+                      if (e.target === e.currentTarget) {
+                        setEditingTaskId(mainTask.id);
+                      }
+                    }}
+                  >
                     <EditableTaskTitle
                       task={mainTask}
                       onSave={(title) => handleTaskTitleChange(mainTask.id, title)}
@@ -307,15 +316,20 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                         mainTask.completed && "line-through text-muted-foreground"
                       )}
                     />
-                    {!readOnly && (
-                      <button
-                        onClick={() => handleDelete(mainTask.id)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:text-destructive"
-                        title="Delete task"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    )}
+                    <div className="flex items-center gap-1">
+                      {mainTask.notes && (
+                        <StickyNote className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      {!readOnly && (
+                        <button
+                          onClick={() => handleDelete(mainTask.id)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:text-destructive"
+                          title="Delete task"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                   {!mainTask.completed && (
                     <TaskTimer 
@@ -392,7 +406,15 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                           onCheckedChange={(checked) => handleTaskToggle(subtask.id, checked as boolean)}
                         />
                         <div className="flex flex-col flex-grow">
-                          <div className="flex items-center gap-2">
+                          <div 
+                            className="flex items-center gap-2"
+                            onClick={(e) => {
+                              // Only open task details if clicking the container, not the title or buttons
+                              if (e.target === e.currentTarget) {
+                                setEditingTaskId(subtask.id);
+                              }
+                            }}
+                          >
                             <EditableTaskTitle
                               task={subtask}
                               onSave={(title, createAnother) => handleTaskTitleChange(subtask.id, title, createAnother)}
@@ -402,15 +424,20 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                               )}
                               continuousCreate={true}
                             />
-                            {!readOnly && (
-                              <button
-                                onClick={() => handleDelete(subtask.id)}
-                                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:text-destructive"
-                                title="Delete subtask"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            )}
+                            <div className="flex items-center gap-1">
+                              {subtask.notes && (
+                                <StickyNote className="h-4 w-4 text-muted-foreground" />
+                              )}
+                              {!readOnly && (
+                                <button
+                                  onClick={() => handleDelete(subtask.id)}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:text-destructive"
+                                  title="Delete subtask"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              )}
+                            </div>
                           </div>
                           {subtask.estimatedMinutes && (
                             <span className="text-xs text-muted-foreground">
@@ -462,6 +489,15 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Task Editor Dialog */}
+      {editingTaskId && (
+        <TaskEditor
+          task={tasks.find(t => t.id === editingTaskId)!}
+          open={!!editingTaskId}
+          onOpenChange={(open) => !open && setEditingTaskId(null)}
+        />
+      )}
     </>
   );
 }
