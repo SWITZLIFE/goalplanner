@@ -187,12 +187,12 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
 
   const mainTasks = tasks
     .filter(task => !task.isSubtask)
-    .sort((a, b) => b.id - a.id);
+    .sort((a, b) => a.id - b.id); // Changed to ascending order
 
   const getOrderedSubtasks = (parentId: number) => {
     return tasks
       .filter(task => task.parentTaskId === parentId)
-      .sort((a, b) => b.id - a.id);
+      .sort((a, b) => a.id - b.id); // Changed to ascending order
   };
 
   return (
