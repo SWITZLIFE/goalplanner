@@ -223,7 +223,45 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ error: "Task not found" });
       }
 
-      // First delete any time tracking records for this task
+      // Stop any active timer for this task
+      const activeTimer = await db.query.timeTracking.findFirst({
+        where: and(
+          eq(timeTracking.taskId, taskIdInt),
+          eq(timeTracking.isActive, true)
+        ),
+      });
+
+      if (activeTimer) {
+        const endTime = new Date();
+        const minutesWorked = Math.floor((endTime.getTime() - activeTimer.startTime.getTime()) / 60000);
+        const coinsEarned = Math.max(1, minutesWorked);
+
+        // Update the timer to be inactive
+        await db.update(timeTracking)
+          .set({
+            endTime,
+            isActive: false,
+            coinsEarned,
+          })
+          .where(eq(timeTracking.id, activeTimer.id));
+
+        // Update user's coins
+        const [userRewards] = await db.select()
+          .from(rewards)
+          .where(eq(rewards.userId, activeTimer.userId))
+          .limit(1);
+
+        if (userRewards) {
+          await db.update(rewards)
+            .set({
+              coins: sql`${rewards.coins} + ${coinsEarned}`,
+              lastUpdated: new Date(),
+            })
+            .where(eq(rewards.userId, activeTimer.userId));
+        }
+      }
+
+      // Delete all time tracking records for this task
       await db.delete(timeTracking)
         .where(eq(timeTracking.taskId, taskIdInt));
 
