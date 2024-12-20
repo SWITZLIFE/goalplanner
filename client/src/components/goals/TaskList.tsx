@@ -140,7 +140,10 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
     return `${hours}h ${remainingMinutes} minutes`;
   };
 
-  const mainTasks = tasks.filter(task => !task.isSubtask);
+  // Sort tasks by creation date to maintain consistent order
+  const mainTasks = tasks
+    .filter(task => !task.isSubtask)
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   
   return (
     <div className="space-y-6">
