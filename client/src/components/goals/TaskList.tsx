@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
+import { TaskTimer } from "./TaskTimer";
+import { useToast } from "@/hooks/use-toast";
 
 interface TaskListProps {
   tasks: Task[];
@@ -73,6 +75,7 @@ function EditableTaskTitle({ task, onSave, className }: EditableTaskTitleProps) 
 
 export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: TaskListProps) {
   const { updateTask, createTask } = useGoals();
+  const { toast } = useToast();
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [showDatePicker, setShowDatePicker] = useState<{ taskId: number; date?: Date } | null>(null);
 
@@ -186,6 +189,17 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     mainTask.completed && "line-through text-muted-foreground"
                   )}
                 />
+                {!mainTask.completed && (
+                  <TaskTimer 
+                    taskId={mainTask.id}
+                    onTimerStop={(coinsEarned) => {
+                      toast({
+                        title: "Time Tracked!",
+                        description: `You earned ${coinsEarned} coins for your work.`
+                      });
+                    }}
+                  />
+                )}
                 {!readOnly && (
                   <>
                     <Button
