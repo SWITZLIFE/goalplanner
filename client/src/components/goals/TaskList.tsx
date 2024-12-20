@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 import type { Task } from "@db/schema";
 import { useGoals } from "@/hooks/use-goals";
 import { cn } from "@/lib/utils";
@@ -17,7 +19,7 @@ interface EditableTaskTitleProps {
 }
 
 function EditableTaskTitle({ task, onSave, className }: EditableTaskTitleProps) {
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(task.title === "New Task" || task.title === "New Subtask");
   const [title, setTitle] = useState(task.title);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -66,45 +68,48 @@ function EditableTaskTitle({ task, onSave, className }: EditableTaskTitleProps) 
 
 export function TaskList({ tasks, goalId }: TaskListProps) {
   const { updateTask, createTask } = useGoals();
-  const [newTaskTitle, setNewTaskTitle] = useState("");
-  const [newSubtaskTitles, setNewSubtaskTitles] = useState<Record<number, string>>({});
+  const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
 
   const handleTaskToggle = async (taskId: number, completed: boolean) => {
     await updateTask({ taskId, completed });
   };
 
   const handleTaskTitleChange = async (taskId: number, title: string) => {
-    await updateTask({ taskId, title });
+    if (title.trim()) {
+      await updateTask({ taskId, title });
+    } else {
+      // If the title is empty after editing, delete the task
+      // This will be implemented in the next step
+    }
+    setEditingTaskId(null);
   };
 
-  const handleAddTask = async (title: string) => {
-    if (title.trim()) {
-      try {
-        await createTask({
-          goalId,
-          title: title.trim(),
-          isSubtask: false,
-        });
-        setNewTaskTitle("");
-      } catch (error) {
-        console.error("Failed to create task:", error);
-      }
+  const handleAddTask = async () => {
+    try {
+      const newTask = await createTask({
+        goalId,
+        title: "New Task",
+        isSubtask: false,
+      });
+      // Set the new task in edit mode
+      setEditingTaskId(newTask.id);
+    } catch (error) {
+      console.error("Failed to create task:", error);
     }
   };
 
-  const handleAddSubtask = async (parentTaskId: number, title: string) => {
-    if (title.trim()) {
-      try {
-        await createTask({
-          goalId,
-          title: title.trim(),
-          isSubtask: true,
-          parentTaskId,
-        });
-        setNewSubtaskTitles(prev => ({ ...prev, [parentTaskId]: "" }));
-      } catch (error) {
-        console.error("Failed to create subtask:", error);
-      }
+  const handleAddSubtask = async (parentTaskId: number) => {
+    try {
+      const newSubtask = await createTask({
+        goalId,
+        title: "New Subtask",
+        isSubtask: true,
+        parentTaskId,
+      });
+      // Set the new subtask in edit mode
+      setEditingTaskId(newSubtask.id);
+    } catch (error) {
+      console.error("Failed to create subtask:", error);
     }
   };
 
@@ -121,6 +126,17 @@ export function TaskList({ tasks, goalId }: TaskListProps) {
   
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleAddTask}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Task
+        </Button>
+      </div>
+
       {mainTasks.map((mainTask) => {
         const subtasks = tasks.filter(task => task.parentTaskId === mainTask.id);
         
@@ -141,7 +157,14 @@ export function TaskList({ tasks, goalId }: TaskListProps) {
                     mainTask.completed && "line-through text-muted-foreground"
                   )}
                 />
-                
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleAddSubtask(mainTask.id)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Subtask
+                </Button>
               </div>
               {subtasks.some(task => task.estimatedMinutes) && (
                 <div className="text-xs text-muted-foreground ml-6">
@@ -179,38 +202,10 @@ export function TaskList({ tasks, goalId }: TaskListProps) {
                   </div>
                 </div>
               ))}
-            {/* Add subtask input */}
-              <Input
-                value={newSubtaskTitles[mainTask.id] || ""}
-                onChange={(e) => setNewSubtaskTitles(prev => ({ 
-                  ...prev, 
-                  [mainTask.id]: e.target.value 
-                }))}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newSubtaskTitles[mainTask.id]) {
-                    handleAddSubtask(mainTask.id, newSubtaskTitles[mainTask.id]);
-                  }
-                }}
-                placeholder="Add subtask..."
-                className="mt-2 h-7"
-              />
             </div>
           </div>
         );
       })}
-
-      {/* Add new task input */}
-      <Input
-        value={newTaskTitle}
-        onChange={(e) => setNewTaskTitle(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && newTaskTitle) {
-            handleAddTask(newTaskTitle);
-          }
-        }}
-        placeholder="Add new task..."
-        className="mt-4 h-8"
-      />
     </div>
   );
 }
