@@ -18,25 +18,35 @@ const generateICalString = (tasks: Task[]): string => {
   const header = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Task Management App//EN',
+    'PRODID:-//Task Management App//Microsoft Corporation//EN',
     'CALSCALE:GREGORIAN',
-    'METHOD:PUBLISH'
+    'METHOD:PUBLISH',
+    'X-WR-CALNAME:Task Management Calendar',
+    'X-WR-TIMEZONE:UTC',
+    'X-MS-OLK-FORCEINSPECTOROPEN:TRUE'
   ].join('\r\n');
 
   const events = tasks
     .filter(task => task.plannedDate)
     .map(task => {
       const date = new Date(task.plannedDate!);
-      const dateStr = format(date, "yyyyMMdd");
+      const nextDay = new Date(date);
+      nextDay.setDate(nextDay.getDate() + 1);
+      
       return [
         'BEGIN:VEVENT',
-        `DTSTART;VALUE=DATE:${dateStr}`,
-        `DTEND;VALUE=DATE:${dateStr}`,
-        `DTSTAMP:${format(now, "yyyyMMdd'T'HHmmss'Z'")}`,
-        `UID:${task.id}@taskmanagement.app`,
-        `CREATED:${format(new Date(task.createdAt), "yyyyMMdd'T'HHmmss'Z'")}`,
-        `DESCRIPTION:${task.completed ? 'Completed' : 'Active'} task`,
+        `DTSTART;VALUE=DATE:${format(date, "yyyyMMdd")}`,
+        `DTEND;VALUE=DATE:${format(nextDay, "yyyyMMdd")}`,
+        `DTSTAMP:${format(now, "yyyyMMddTHHmmssZ")}`,
+        `UID:${task.id}-${Date.now()}@taskmanagement.app`,
+        `CREATED:${format(new Date(task.createdAt), "yyyyMMddTHHmmssZ")}`,
+        `LAST-MODIFIED:${format(now, "yyyyMMddTHHmmssZ")}`,
+        'CLASS:PUBLIC',
+        `STATUS:${task.completed ? 'COMPLETED' : 'CONFIRMED'}`,
+        `CATEGORIES:${task.completed ? 'Completed Tasks' : 'Active Tasks'}`,
+        'TRANSP:TRANSPARENT',
         `SUMMARY:${task.title}`,
+        `DESCRIPTION:Status: ${task.completed ? 'Completed' : 'Active'}\\n\\nTask from Task Management App`,
         'END:VEVENT'
       ].join('\r\n');
     })
@@ -45,29 +55,7 @@ const generateICalString = (tasks: Task[]): string => {
   return `${header}\r\n${events}\r\nEND:VCALENDAR`;
 };
 
-const parseICalString = (icalString: string): { title: string; date: string }[] => {
-  const events: { title: string; date: string }[] = [];
-  const lines = icalString.split('\r\n');
-  let currentEvent: { title?: string; date?: string } = {};
 
-  lines.forEach(line => {
-    if (line.startsWith('BEGIN:VEVENT')) {
-      currentEvent = {};
-    } else if (line.startsWith('END:VEVENT') && currentEvent.title && currentEvent.date) {
-      events.push({ 
-        title: currentEvent.title, 
-        date: currentEvent.date 
-      });
-    } else if (line.startsWith('SUMMARY:')) {
-      currentEvent.title = line.substring(8);
-    } else if (line.startsWith('DTSTART;VALUE=DATE:')) {
-      const dateStr = line.substring(19);
-      currentEvent.date = `${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}`;
-    }
-  });
-
-  return events;
-};
 
 export function TaskViews({ tasks, goalId }: TaskViewsProps) {
   const [selectedDate, setSelectedDate] = useState<Date>();
@@ -130,36 +118,7 @@ export function TaskViews({ tasks, goalId }: TaskViewsProps) {
     }
   };
 
-  const handleCalendarImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    try {
-      const file = event.target.files?.[0];
-      if (!file) return;
-
-      const text = await file.text();
-      const events = parseICalString(text);
-
-      for (const event of events) {
-        await createTask({
-          goalId,
-          title: event.title,
-          isSubtask: false,
-          plannedDate: event.date,
-        });
-      }
-
-      toast({
-        title: "Calendar Imported",
-        description: `Successfully imported ${events.length} tasks.`,
-      });
-    } catch (error) {
-      console.error('Failed to import calendar:', error);
-      toast({
-        variant: "destructive",
-        title: "Import Failed",
-        description: "Failed to import calendar. Please check the file format.",
-      });
-    }
-  };
+  
 
   return (
     <Tabs defaultValue="tasks" className="w-full">
@@ -209,18 +168,10 @@ export function TaskViews({ tasks, goalId }: TaskViewsProps) {
               <button
                 onClick={exportCalendar}
                 className="p-2 border rounded-md hover:bg-gray-100"
+                title="Export to Outlook Calendar"
               >
-                📅 Export Calendar
+                📅 Export to Calendar
               </button>
-              <label className="p-2 border rounded-md hover:bg-gray-100 cursor-pointer">
-                📥 Import Calendar
-                <input
-                  type="file"
-                  accept=".ics,.ical"
-                  onChange={handleCalendarImport}
-                  className="hidden"
-                />
-              </label>
             </div>
           </div>
           
