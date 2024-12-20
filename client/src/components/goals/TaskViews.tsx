@@ -8,7 +8,7 @@ import { useGoals } from "@/hooks/use-goals";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Clock, Calendar as CalendarIcon, CheckCircle2, XCircle } from "lucide-react";
+import { Clock, Calendar as CalendarIcon, CheckCircle2, Circle, XCircle } from "lucide-react";
 
 interface TaskViewsProps {
   tasks: Task[];
@@ -181,7 +181,7 @@ export function TaskViews({ tasks, goalId }: TaskViewsProps) {
                   </>
                 ) : (
                   <>
-                    <XCircle className="h-5 w-5 text-blue-500" />
+                    <Circle className="h-5 w-5 text-blue-500" />
                     <span className="text-blue-600">In Progress</span>
                   </>
                 )}
@@ -218,7 +218,7 @@ export function TaskViews({ tasks, goalId }: TaskViewsProps) {
                           {subtask.completed ? (
                             <CheckCircle2 className="h-4 w-4 text-green-500" />
                           ) : (
-                            <XCircle className="h-4 w-4 text-blue-500" />
+                            <Circle className="h-4 w-4 text-blue-500" />
                           )}
                           <span>{subtask.title}</span>
                           {subtask.estimatedMinutes && (
