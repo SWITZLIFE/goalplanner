@@ -22,11 +22,12 @@ interface TaskListProps {
 
 interface EditableTaskTitleProps {
   task: Task;
-  onSave: (title: string) => void;
+  onSave: (title: string, createAnother?: boolean) => void;
   className?: string;
+  continuousCreate?: boolean;
 }
 
-function EditableTaskTitle({ task, onSave, className }: EditableTaskTitleProps) {
+function EditableTaskTitle({ task, onSave, className, continuousCreate }: EditableTaskTitleProps) {
   const [isEditing, setIsEditing] = useState(task.title === "New Task" || task.title === "New Subtask");
   const [title, setTitle] = useState(task.title);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -38,11 +39,18 @@ function EditableTaskTitle({ task, onSave, className }: EditableTaskTitleProps) 
     }
   }, [isEditing]);
 
-  const handleSave = () => {
-    if (title.trim() !== task.title) {
-      onSave(title.trim());
+  const handleSave = (createAnother = false) => {
+    if (title.trim()) {
+      onSave(title.trim(), createAnother);
     }
-    setIsEditing(false);
+    if (!createAnother) {
+      setIsEditing(false);
+    } else {
+      setTitle('');
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }
   };
 
   if (isEditing) {
@@ -51,9 +59,16 @@ function EditableTaskTitle({ task, onSave, className }: EditableTaskTitleProps) 
         ref={inputRef}
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        onBlur={handleSave}
+        onBlur={() => handleSave(false)}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') handleSave();
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            if (continuousCreate) {
+              handleSave(true);
+            } else {
+              handleSave(false);
+            }
+          }
           if (e.key === 'Escape') {
             setTitle(task.title);
             setIsEditing(false);
@@ -115,12 +130,21 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
     return { title };
   };
 
-  const handleTaskTitleChange = async (taskId: number, title: string) => {
+  const handleTaskTitleChange = async (taskId: number, title: string, createAnother = false) => {
     if (title.trim()) {
       const { title: cleanTitle, estimatedMinutes } = parseEstimatedTime(title);
       await updateTask({ taskId, title: cleanTitle, estimatedMinutes });
+      
+      if (createAnother) {
+        const task = tasks.find(t => t.id === taskId);
+        if (task?.parentTaskId) {
+          await handleAddSubtask(task.parentTaskId);
+        }
+      }
     }
-    setEditingTaskId(null);
+    if (!createAnother) {
+      setEditingTaskId(null);
+    }
   };
 
   const handleAddTask = async () => {
@@ -350,11 +374,12 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                           <div className="flex items-center gap-2">
                             <EditableTaskTitle
                               task={subtask}
-                              onSave={(title) => handleTaskTitleChange(subtask.id, title)}
+                              onSave={(title, createAnother) => handleTaskTitleChange(subtask.id, title, createAnother)}
                               className={cn(
                                 "text-sm",
                                 subtask.completed && "line-through text-muted-foreground"
                               )}
+                              continuousCreate={true}
                             />
                             {!readOnly && (
                               <button
@@ -374,6 +399,18 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                         </div>
                       </div>
                     ))}
+                    {/* Hover area for adding new subtask */}
+                    {!readOnly && (
+                      <div 
+                        className="flex items-center space-x-2 group h-8 px-8 -ml-6 cursor-pointer hover:bg-accent/50 rounded-sm"
+                        onClick={() => handleAddSubtask(mainTask.id)}
+                      >
+                        <Plus className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <span className="text-sm text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                          Add subtask
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </Collapsible.Content>
               </Collapsible.Root>
