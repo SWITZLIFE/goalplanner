@@ -47,17 +47,19 @@ export function useGoals() {
       taskId, 
       completed, 
       title,
-      estimatedMinutes 
+      estimatedMinutes,
+      plannedDate
     }: { 
       taskId: number; 
       completed?: boolean; 
       title?: string;
       estimatedMinutes?: number;
+      plannedDate?: string | null;
     }) => {
       const res = await fetch(`/api/tasks/${taskId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ completed, title, estimatedMinutes }),
+        body: JSON.stringify({ completed, title, estimatedMinutes, plannedDate }),
       });
       if (!res.ok) throw new Error("Failed to update task");
       return res.json();

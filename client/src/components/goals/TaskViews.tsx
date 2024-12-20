@@ -40,7 +40,7 @@ export function TaskViews({ tasks, goalId }: TaskViewsProps) {
       await updateTask({ 
         taskId, 
         title: task.title,
-        plannedDate: date?.toISOString() 
+        plannedDate: date ? date.toISOString() : null
       });
     } catch (error) {
       console.error('Failed to update task date:', error);
