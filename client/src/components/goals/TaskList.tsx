@@ -66,7 +66,6 @@ function SortableTask({ task, children, disabled = false }: SortableTaskProps) {
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
   };
 
   return (
@@ -75,11 +74,12 @@ function SortableTask({ task, children, disabled = false }: SortableTaskProps) {
       style={style}
       className={cn(
         "rounded-md",
-        isDragging && "opacity-50",
-        !disabled && "cursor-grab active:cursor-grabbing"
+        isDragging && "opacity-50"
       )}
     >
-      {children}
+      <div {...attributes} {...listeners} className="contents">
+        {children}
+      </div>
     </div>
   );
 }
@@ -217,8 +217,8 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
     if (!over || active.id === over.id) return;
 
     try {
-      const activeId = parseInt(active.id.toString().split('-')[1]);
-      const overId = parseInt(over.id.toString().split('-')[1]);
+      const activeId = parseInt(active.id.toString().replace('task-', ''));
+      const overId = parseInt(over.id.toString().replace('task-', ''));
       
       const activeTask = tasks.find(t => t.id === activeId);
       const overTask = tasks.find(t => t.id === overId);
@@ -238,14 +238,16 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
       if (oldIndex !== -1 && newIndex !== -1) {
         const reorderedTasks = arrayMove(relevantTasks, oldIndex, newIndex);
 
-        // Calculate new orders with larger gaps to prevent conflicts
-        const startOrder = 1000;
+        // Calculate new orders ensuring large gaps between items
+        const baseOrder = 1000;
         const orderGap = 2000;
 
         // Update orders for all affected tasks
         for (let i = 0; i < reorderedTasks.length; i++) {
           const task = reorderedTasks[i];
-          const newOrder = startOrder + (i * orderGap);
+          const newOrder = baseOrder + (i * orderGap);
+          
+          // Only update if order has changed
           if (task.order !== newOrder) {
             await updateTask({
               taskId: task.id,
@@ -355,7 +357,9 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     <div className="space-y-1">
                       <div className="flex items-center space-x-2 group">
                         {!readOnly && (
-                          <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab active:cursor-grabbing" />
+                          <div className="cursor-grab active:cursor-grabbing">
+                            <GripVertical className="h-4 w-4 text-muted-foreground" />
+                          </div>
                         )}
                         <Button
                           variant="ghost"
