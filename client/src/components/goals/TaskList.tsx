@@ -151,37 +151,36 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
     const destinationIndex = result.destination.index;
     
     try {
-      // Calculate new order based on destination
-      const getNewOrder = (tasks: Task[], index: number) => {
-        if (index === 0) return tasks[0]?.order ? tasks[0].order - 1000 : 0;
-        if (index === tasks.length) return tasks[tasks.length - 1]?.order ? tasks[tasks.length - 1].order + 1000 : index * 1000;
-        const prevOrder = tasks[index - 1]?.order ?? 0;
-        const nextOrder = tasks[index]?.order ?? (index + 1) * 1000;
-        return Math.floor((prevOrder + nextOrder) / 2);
+      const calculateOrderValue = (prev: number | null, next: number | null): number => {
+        const prevValue = prev ?? 0;
+        const nextValue = next ?? prevValue + 2000;
+        return Math.floor(prevValue + (nextValue - prevValue) / 2);
+      };
+
+      const reorderTasks = async (tasks: Task[], taskId: number, newIndex: number) => {
+        const tasksArray = Array.from(tasks);
+        const prevTask = newIndex > 0 ? tasksArray[newIndex - 1] : null;
+        const nextTask = newIndex < tasksArray.length ? tasksArray[newIndex] : null;
+        
+        const newOrder = calculateOrderValue(
+          prevTask?.order ?? null,
+          nextTask?.order ?? null
+        );
+
+        await updateTask({
+          taskId,
+          order: newOrder,
+        });
       };
 
       if (result.type === "MAIN_TASK") {
-        const updatedTasks = Array.from(mainTasks);
-        const [movedTask] = updatedTasks.splice(sourceIndex, 1);
-        updatedTasks.splice(destinationIndex, 0, movedTask);
-        
-        const newOrder = getNewOrder(updatedTasks, destinationIndex);
-        await updateTask({
-          taskId: movedTask.id,
-          order: newOrder,
-        });
+        const taskId = parseInt(result.draggableId.split('-')[1]);
+        await reorderTasks(mainTasks, taskId, destinationIndex);
       } else if (result.type.startsWith("SUBTASK-")) {
         const parentId = parseInt(result.type.split('-')[1]);
+        const taskId = parseInt(result.draggableId.split('-')[1]);
         const subtasks = getOrderedSubtasks(parentId);
-        const updatedSubtasks = Array.from(subtasks);
-        const [movedSubtask] = updatedSubtasks.splice(sourceIndex, 1);
-        updatedSubtasks.splice(destinationIndex, 0, movedSubtask);
-        
-        const newOrder = getNewOrder(updatedSubtasks, destinationIndex);
-        await updateTask({
-          taskId: movedSubtask.id,
-          order: newOrder,
-        });
+        await reorderTasks(subtasks, taskId, destinationIndex);
       }
     } catch (error) {
       console.error("Failed to update task order:", error);
