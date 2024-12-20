@@ -148,61 +148,34 @@ export function registerRoutes(app: Express): Server {
       if (plannedDate !== undefined) {
         updateData.plannedDate = plannedDate ? new Date(plannedDate) : null;
       }
-      if (typeof order === 'number') {
-        updateData.order = order;
+      if (typeof order === 'number') updateData.order = order;
+
+      console.log('Updating task with data:', { taskId, updateData });
+
+      const [updatedTask] = await db.update(tasks)
+        .set(updateData)
+        .where(eq(tasks.id, parseInt(taskId)))
+        .returning();
+
+      if (!updatedTask) {
+        return res.status(404).json({ error: "Task not found" });
       }
 
-      try {
-        const [updatedTask] = await db.update(tasks)
-          .set(updateData)
-          .where(eq(tasks.id, parseInt(taskId)))
-          .returning();
-
-        if (!updatedTask) {
-          return res.status(404).json({ error: "Task not found" });
-        }
-
-        // If this is a reordering operation, we need to ensure consistent ordering
-        if (typeof order === 'number') {
-          const otherTasks = await db.select()
-            .from(tasks)
-            .where(
-              and(
-                eq(tasks.goalId, updatedTask.goalId),
-                eq(tasks.isSubtask, updatedTask.isSubtask),
-                updatedTask.isSubtask 
-                  ? eq(tasks.parentTaskId, updatedTask.parentTaskId)
-                  : isNull(tasks.parentTaskId)
-              )
-            );
-          
-          // Sort tasks by order
-          const sortedTasks = otherTasks
-            .filter(t => t.id !== updatedTask.id)
-            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-
-          // Reorder tasks to maintain consistent spacing
-          let currentOrder = 0;
-          for (const task of sortedTasks) {
-            if (currentOrder === order) {
-              currentOrder += 1000;
-            }
-            if (task.order !== currentOrder) {
-              await db.update(tasks)
-                .set({ order: currentOrder })
-                .where(eq(tasks.id, task.id));
-            }
-            currentOrder += 1000;
-          }
-        }
-
-        return res.json(updatedTask);
-      } catch (error) {
-        console.error("Failed to update task:", error);
-        return res.status(500).json({ error: "Failed to update task" });
+      // Update goal progress
+      if (updatedTask && typeof completed !== 'undefined') {
+        const goalTasks = await db.select()
+          .from(tasks)
+          .where(eq(tasks.goalId, updatedTask.goalId));
+        
+        const completedTasks = goalTasks.filter(t => t.completed).length;
+        const progress = Math.round((completedTasks / goalTasks.length) * 100);
+        
+        await db.update(goals)
+          .set({ progress })
+          .where(eq(goals.id, updatedTask.goalId));
       }
 
-      // This section has been moved above and is now handled in the try-catch block
+      res.json(updatedTask);
     } catch (error) {
       res.status(500).json({ error: "Failed to update task" });
     }
@@ -223,45 +196,7 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ error: "Task not found" });
       }
 
-      // Stop any active timer for this task
-      const activeTimer = await db.query.timeTracking.findFirst({
-        where: and(
-          eq(timeTracking.taskId, taskIdInt),
-          eq(timeTracking.isActive, true)
-        ),
-      });
-
-      if (activeTimer) {
-        const endTime = new Date();
-        const minutesWorked = Math.floor((endTime.getTime() - activeTimer.startTime.getTime()) / 60000);
-        const coinsEarned = Math.max(1, minutesWorked);
-
-        // Update the timer to be inactive
-        await db.update(timeTracking)
-          .set({
-            endTime,
-            isActive: false,
-            coinsEarned,
-          })
-          .where(eq(timeTracking.id, activeTimer.id));
-
-        // Update user's coins
-        const [userRewards] = await db.select()
-          .from(rewards)
-          .where(eq(rewards.userId, activeTimer.userId))
-          .limit(1);
-
-        if (userRewards) {
-          await db.update(rewards)
-            .set({
-              coins: sql`${rewards.coins} + ${coinsEarned}`,
-              lastUpdated: new Date(),
-            })
-            .where(eq(rewards.userId, activeTimer.userId));
-        }
-      }
-
-      // Delete all time tracking records for this task
+      // First delete any time tracking records for this task
       await db.delete(timeTracking)
         .where(eq(timeTracking.taskId, taskIdInt));
 
@@ -403,7 +338,7 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ error: "No active timer found" });
       }
 
-      // Calculate time worked and coins earned
+      // Calculate coins earned (1 coin per minute)
       const endTime = new Date();
       const minutesWorked = Math.floor((endTime.getTime() - activeTimer.startTime.getTime()) / 60000);
       const coinsEarned = Math.max(1, minutesWorked); // Minimum 1 coin
@@ -418,21 +353,10 @@ export function registerRoutes(app: Express): Server {
         .where(eq(timeTracking.id, activeTimer.id))
         .returning();
 
-      // Get current task to check totalMinutesSpent
-      const currentTask = await db.query.tasks.findFirst({
-        where: eq(tasks.id, parseInt(taskId))
-      });
-
-      if (!currentTask) {
-        return res.status(404).json({ error: "Task not found" });
-      }
-
-      // Update task's total time, ensuring we handle null cases
+      // Update task's total time and get updated task
       const [updatedTask] = await db.update(tasks)
         .set({
-          totalMinutesSpent: currentTask.totalMinutesSpent 
-            ? currentTask.totalMinutesSpent + minutesWorked
-            : minutesWorked
+          totalMinutesSpent: sql`${tasks.totalMinutesSpent} + ${minutesWorked}`,
         })
         .where(eq(tasks.id, parseInt(taskId)))
         .returning();
