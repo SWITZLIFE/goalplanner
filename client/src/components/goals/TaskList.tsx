@@ -150,54 +150,41 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
     const sourceIndex = result.source.index;
     const destinationIndex = result.destination.index;
     
-    if (result.type === "MAIN_TASK") {
-      const updatedTasks = Array.from(mainTasks);
-      const [removed] = updatedTasks.splice(sourceIndex, 1);
-      updatedTasks.splice(destinationIndex, 0, removed);
-      
-      // Update orders
-      const updates = updatedTasks.map((task, index) => ({
-        taskId: task.id,
-        order: index * 1000,
-      }));
-      
-      try {
-        // Update each task's order
-        await Promise.all(updates.map(update => 
-          updateTask(update)
-        ));
-      } catch (error) {
-        console.error("Failed to update task order:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to update task order"
-        });
+    try {
+      if (result.type === "MAIN_TASK") {
+        const updatedTasks = Array.from(mainTasks);
+        const [removed] = updatedTasks.splice(sourceIndex, 1);
+        updatedTasks.splice(destinationIndex, 0, removed);
+        
+        // Update orders sequentially to avoid race conditions
+        for (let i = 0; i < updatedTasks.length; i++) {
+          await updateTask({
+            taskId: updatedTasks[i].id,
+            order: i * 1000,
+          });
+        }
+      } else if (result.type.startsWith("SUBTASK-")) {
+        const parentId = parseInt(result.type.split('-')[1]);
+        const subtasks = getOrderedSubtasks(parentId);
+        const updatedSubtasks = Array.from(subtasks);
+        const [removed] = updatedSubtasks.splice(sourceIndex, 1);
+        updatedSubtasks.splice(destinationIndex, 0, removed);
+        
+        // Update subtask orders sequentially
+        for (let i = 0; i < updatedSubtasks.length; i++) {
+          await updateTask({
+            taskId: updatedSubtasks[i].id,
+            order: i * 1000,
+          });
+        }
       }
-    } else if (result.type.startsWith("SUBTASK-")) {
-      const parentId = parseInt(result.type.split('-')[1]);
-      const subtasks = getOrderedSubtasks(parentId);
-      const updatedSubtasks = Array.from(subtasks);
-      const [removed] = updatedSubtasks.splice(sourceIndex, 1);
-      updatedSubtasks.splice(destinationIndex, 0, removed);
-      
-      const updates = updatedSubtasks.map((task, index) => ({
-        taskId: task.id,
-        order: index * 1000,
-      }));
-      
-      try {
-        await Promise.all(updates.map(update => 
-          updateTask(update)
-        ));
-      } catch (error) {
-        console.error("Failed to update subtask order:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to update subtask order"
-        });
-      }
+    } catch (error) {
+      console.error("Failed to update task order:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update task order"
+      });
     }
   };
 
