@@ -6,6 +6,7 @@ import { Plus } from "lucide-react";
 import type { Task } from "@db/schema";
 import { useGoals } from "@/hooks/use-goals";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 interface TaskListProps {
   tasks: Task[];
