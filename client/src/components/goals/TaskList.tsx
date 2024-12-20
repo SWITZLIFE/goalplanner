@@ -100,6 +100,9 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
     if (title.trim()) {
       const { title: cleanTitle, estimatedMinutes } = parseEstimatedTime(title);
       await updateTask({ taskId, title: cleanTitle, estimatedMinutes });
+    } else {
+      // If the title is empty after editing, delete the task
+      // This will be implemented in the next step
     }
     setEditingTaskId(null);
   };
@@ -133,17 +136,20 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
 
   const formatTime = (minutes: number) => {
     if (minutes < 60) {
-      return `${minutes}m`;
+      return `${minutes} minutes`;
     }
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;
-    return `${hours}h ${remainingMinutes}m`;
+    return `${hours}h ${remainingMinutes} minutes`;
   };
 
+  // Sort tasks by creation date to maintain consistent order
+  // Sort tasks by creation date to maintain consistent order
   const mainTasks = tasks
     .filter(task => !task.isSubtask)
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     
+  // Pre-sort subtasks to avoid reordering on re-render
   const getOrderedSubtasks = (parentId: number) => {
     return tasks
       .filter(task => task.parentTaskId === parentId)
@@ -195,6 +201,11 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     }}
                   />
                 )}
+                {mainTask.totalMinutesSpent > 0 && (
+                  <div className="text-sm text-muted-foreground">
+                    Total time spent: {Math.floor(mainTask.totalMinutesSpent / 60)}h {mainTask.totalMinutesSpent % 60}m
+                  </div>
+                )}
                 {!readOnly && (
                   <>
                     <Button
@@ -221,20 +232,15 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                 )}
               </div>
               <div className="flex justify-between items-center ml-6">
-                <div className="text-xs space-x-2">
+                <div className="text-xs text-muted-foreground">
                   {subtasks.some(task => task.estimatedMinutes) && (
-                    <span className="text-muted-foreground">
+                    <>
                       Total estimated time: {
                         formatTime(
                           subtasks.reduce((sum, task) => sum + (task.estimatedMinutes || 0), 0)
                         )
                       }
-                    </span>
-                  )}
-                  {mainTask.totalMinutesSpent > 0 && (
-                    <span className="text-blue-500">
-                      (Actual: {formatTime(mainTask.totalMinutesSpent)})
-                    </span>
+                    </>
                   )}
                 </div>
                 {!readOnly && mainTask.plannedDate && (
@@ -264,7 +270,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     />
                     {subtask.estimatedMinutes && (
                       <span className="text-xs text-muted-foreground">
-                        Estimated time: {formatTime(subtask.estimatedMinutes)}
+                        Estimated time: {subtask.estimatedMinutes} minutes
                       </span>
                     )}
                   </div>
@@ -275,6 +281,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         );
       })}
       
+      {/* Date Picker Dialog */}
       <Dialog 
         open={showDatePicker !== null} 
         onOpenChange={(open) => !open && setShowDatePicker(null)}
