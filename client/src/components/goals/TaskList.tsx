@@ -81,6 +81,15 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [showDatePicker, setShowDatePicker] = useState<{ taskId: number; date?: Date } | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
+  const [enabled, setEnabled] = useState(false);
+
+  // Enable drag and drop after initial render to avoid hydration issues
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setEnabled(true);
+    }, 0);
+    return () => clearTimeout(timeout);
+  }, []);
 
   const handleDelete = async (taskId: number) => {
     try {
@@ -234,44 +243,48 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   };
 
+  if (!enabled) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <>
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const mainTaskIds = mainTasks.map(task => task.id);
-                const newExpanded = new Set(expandedTasks);
-                
-                // If any tasks are expanded, collapse all. Otherwise, expand all
-                const shouldExpandAll = mainTaskIds.some(id => !expandedTasks.has(id));
-                
-                mainTaskIds.forEach(id => {
-                  if (shouldExpandAll) {
-                    newExpanded.add(id);
-                  } else {
-                    newExpanded.delete(id);
-                  }
-                });
-                
-                setExpandedTasks(newExpanded);
-              }}
-            >
-              {mainTasks.some(task => !expandedTasks.has(task.id)) ? 'Expand All' : 'Collapse All'}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleAddTask}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Task
-            </Button>
-          </div>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const mainTaskIds = mainTasks.map(task => task.id);
+              const newExpanded = new Set(expandedTasks);
+              
+              // If any tasks are expanded, collapse all. Otherwise, expand all
+              const shouldExpandAll = mainTaskIds.some(id => !expandedTasks.has(id));
+              
+              mainTaskIds.forEach(id => {
+                if (shouldExpandAll) {
+                  newExpanded.add(id);
+                } else {
+                  newExpanded.delete(id);
+                }
+              });
+              
+              setExpandedTasks(newExpanded);
+            }}
+          >
+            {mainTasks.some(task => !expandedTasks.has(task.id)) ? 'Expand All' : 'Collapse All'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleAddTask}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Task
+          </Button>
+        </div>
 
+        <DragDropContext onDragEnd={handleDragEnd}>
           <Droppable droppableId="main-tasks" type="MAIN_TASK">
             {(provided) => (
               <div
@@ -491,31 +504,31 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
               </div>
             )}
           </Droppable>
-        </div>
-      </DragDropContext>
+        </DragDropContext>
 
-      {/* Date Picker Dialog */}
-      <Dialog 
-        open={showDatePicker !== null} 
-        onOpenChange={(open) => !open && setShowDatePicker(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Select Task Date</DialogTitle>
-          </DialogHeader>
-          <Calendar
-            mode="single"
-            selected={showDatePicker?.date}
-            onSelect={(date) => {
-              if (showDatePicker && onUpdateTaskDate) {
-                onUpdateTaskDate(showDatePicker.taskId, date);
-                setShowDatePicker(null);
-              }
-            }}
-            className="rounded-md border"
-          />
-        </DialogContent>
-      </Dialog>
+        {/* Date Picker Dialog */}
+        <Dialog 
+          open={showDatePicker !== null} 
+          onOpenChange={(open) => !open && setShowDatePicker(null)}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Select Task Date</DialogTitle>
+            </DialogHeader>
+            <Calendar
+              mode="single"
+              selected={showDatePicker?.date}
+              onSelect={(date) => {
+                if (showDatePicker && onUpdateTaskDate) {
+                  onUpdateTaskDate(showDatePicker.taskId, date);
+                  setShowDatePicker(null);
+                }
+              }}
+              className="rounded-md border"
+            />
+          </DialogContent>
+        </Dialog>
+      </div>
     </>
   );
 }
