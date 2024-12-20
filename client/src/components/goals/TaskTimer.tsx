@@ -143,23 +143,23 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
         </div>
         {!activeTimer ? (
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() => startTimer.mutate()}
             disabled={startTimer.isPending}
+            title="Start Timer"
           >
-            <Timer className="h-4 w-4 mr-2" />
-            Start Timer
+            <Timer className="h-4 w-4" />
           </Button>
         ) : isCurrentTask ? (
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() => stopTimer.mutate()}
             disabled={stopTimer.isPending}
+            title="Stop Timer"
           >
-            <StopCircle className="h-4 w-4 mr-2" />
-            Stop Timer
+            <StopCircle className="h-4 w-4" />
           </Button>
         ) : (
           <Button variant="outline" size="sm" disabled>
