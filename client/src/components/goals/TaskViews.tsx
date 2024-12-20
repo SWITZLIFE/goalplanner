@@ -75,7 +75,7 @@ export function TaskViews({ tasks, goalId }: TaskViewsProps) {
 
   return (
     <>
-      <Tabs defaultValue="tasks" className="w-full max-w-5xl mx-auto px-4">
+      <Tabs defaultValue="tasks" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="tasks">Tasks</TabsTrigger>
           <TabsTrigger value="completed">Completed</TabsTrigger>

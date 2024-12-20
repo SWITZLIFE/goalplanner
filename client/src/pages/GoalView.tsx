@@ -42,7 +42,7 @@ export default function GoalView() {
 
       {/* Main Content Area */}
       <div className="flex-1 p-8 bg-white">
-        <div className="max-w-3xl mx-auto space-y-8">
+        <div className="space-y-8 mx-4">
           <div className="flex justify-between items-start">
             <div>
               <h1 className="text-2xl font-semibold mb-2">{goal.title}</h1>
