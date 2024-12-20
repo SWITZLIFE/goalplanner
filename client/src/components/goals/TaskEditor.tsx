@@ -21,16 +21,21 @@ export function TaskEditor({ task, open, onOpenChange }: TaskEditorProps) {
   const [title, setTitle] = useState(task.title);
   const [notes, setNotes] = useState(task.notes || "");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const { updateTask, deleteTask } = useGoals();
 
   const handleSave = async () => {
-    if (title.trim()) {
-      await updateTask({ 
-        taskId: task.id, 
-        title: title.trim(),
-        notes: notes.trim() || null,
-      });
-      onOpenChange(false);
+    try {
+      if (title.trim()) {
+        await updateTask({ 
+          taskId: task.id, 
+          title: title.trim(),
+          notes: notes.trim() || null,
+        });
+        onOpenChange(false);
+      }
+    } catch (error) {
+      console.error('Failed to save task:', error);
     }
   };
 
@@ -123,10 +128,15 @@ export function TaskEditor({ task, open, onOpenChange }: TaskEditorProps) {
               </Button>
               <Button
                 type="submit"
-                onClick={handleSave}
+                onClick={async () => {
+                  setIsSaving(true);
+                  await handleSave();
+                  setIsSaving(false);
+                }}
                 className="w-full"
+                disabled={isSaving}
               >
-                Save Changes
+                {isSaving ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           </div>
