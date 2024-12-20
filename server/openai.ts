@@ -93,5 +93,5 @@ Output: "Launch Goal Planner App"`;
   });
 
   const shortTitle = response.choices[0].message.content?.trim() || longTitle;
-  return shortTitle;
+  return shortTitle.replace(/^"|"$/g, '').trim();
 }
