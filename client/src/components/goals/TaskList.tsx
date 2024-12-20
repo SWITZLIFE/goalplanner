@@ -189,9 +189,13 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                           const date = mainTask.plannedDate ? undefined : new Date();
                           onUpdateTaskDate(mainTask.id, date);
                         }}
+                        className={cn(
+                          "text-xs",
+                          mainTask.plannedDate && "text-primary"
+                        )}
                       >
                         {mainTask.plannedDate ? (
-                          format(new Date(mainTask.plannedDate), 'MMM d')
+                          format(new Date(mainTask.plannedDate), 'MMM d, yyyy')
                         ) : (
                           "Set Date"
                         )}
