@@ -269,11 +269,11 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
 
         <DragDropContext onDragEnd={handleDragEnd}>
           <StrictModeDroppable droppableId="main-tasks" type="MAIN_TASK">
-            {(provided) => (
+            {(provided, snapshot) => (
               <div
                 ref={provided.innerRef}
                 {...provided.droppableProps}
-                className="space-y-2"
+                className={cn("space-y-2", snapshot.isDraggingOver && "bg-accent/50")}
               >
                 {mainTasks.map((mainTask, index) => (
                   <Draggable
@@ -419,11 +419,11 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                               droppableId={`subtasks-${mainTask.id}`} 
                               type={`SUBTASK-${mainTask.id}`}
                             >
-                              {(provided) => (
+                              {(provided, snapshot) => (
                                 <div
                                   ref={provided.innerRef}
                                   {...provided.droppableProps}
-                                  className="space-y-2"
+                                  className={cn("space-y-2", snapshot.isDraggingOver && "bg-accent/50")}
                                 >
                                   {getOrderedSubtasks(mainTask.id).map((subtask, index) => (
                                     <Draggable
