@@ -192,7 +192,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         return (
           <div key={mainTask.id} className="space-y-2">
             <div className="space-y-1">
-              <div className="flex items-center space-x-2 group relative pr-8">
+              <div className="flex items-center space-x-2 group relative">
                 <Checkbox
                   id={`task-${mainTask.id}`}
                   checked={mainTask.completed}
@@ -206,42 +206,6 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     mainTask.completed && "line-through text-muted-foreground"
                   )}
                 />
-                <div className="flex items-center gap-1 mr-6">
-                  {!mainTask.completed && (
-                    <TaskTimer 
-                      taskId={mainTask.id}
-                      totalMinutesSpent={mainTask.totalMinutesSpent || 0}
-                      onTimerStop={(coinsEarned) => {
-                        toast({
-                          title: "Time Tracked!",
-                          description: `You earned ${coinsEarned} coins for your work.`
-                        });
-                      }}
-                    />
-                  )}
-                  {!readOnly && (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleAddSubtask(mainTask.id)}
-                        title="Add Subtask"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                      {onUpdateTaskDate && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setShowDatePicker({ taskId: mainTask.id, date: mainTask.plannedDate ? new Date(mainTask.plannedDate) : undefined })}
-                          title={mainTask.plannedDate ? format(new Date(mainTask.plannedDate), 'dd/MM/yy') : "Set Date"}
-                        >
-                          <Calendar className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </>
-                  )}
-                </div>
                 {!readOnly && (
                   <button
                     onClick={() => handleDelete(mainTask.id)}
