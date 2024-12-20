@@ -72,11 +72,14 @@ export const rewardItems = pgTable("reward_items", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const goalRelations = relations(goals, ({ many }) => ({
-  tasks: many(tasks),
+export const goalsRelations = relations(goals, ({ many }) => ({
+  tasks: many(tasks, {
+    fields: [goals.id],
+    references: [tasks.goalId],
+  }),
 }));
 
-export const taskRelations = relations(tasks, ({ one }) => ({
+export const tasksRelations = relations(tasks, ({ one }) => ({
   goal: one(goals, {
     fields: [tasks.goalId],
     references: [goals.id],
