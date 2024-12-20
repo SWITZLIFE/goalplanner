@@ -245,7 +245,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                         </span>
                         {mainTask.totalMinutesSpent > 0 && (
                           <span className="text-blue-500 font-medium">
-                            (Actual: {Math.floor(mainTask.totalMinutesSpent / 60)}h {mainTask.totalMinutesSpent % 60}m)
+                            (Actual: {String(Math.floor(mainTask.totalMinutesSpent / 60)).padStart(2, '0')}:{String(mainTask.totalMinutesSpent % 60).padStart(2, '0')})
                           </span>
                         )}
                       </div>

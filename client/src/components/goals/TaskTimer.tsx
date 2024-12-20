@@ -91,7 +91,7 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
       onTimerStop?.(data.coinsEarned);
       toast({
         title: "Timer Stopped",
-        description: `You earned ${data.coinsEarned} coins! Total time: ${Math.floor(data.task.totalMinutesSpent / 60)}h ${data.task.totalMinutesSpent % 60}m`,
+        description: `You earned ${data.coinsEarned} coins! Total time: ${String(Math.floor(data.task.totalMinutesSpent / 60)).padStart(2, '0')}:${String(data.task.totalMinutesSpent % 60).padStart(2, '0')}`,
       });
     },
     onError: (error) => {
