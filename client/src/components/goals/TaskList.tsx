@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, ChevronRight } from "lucide-react";
+import * as Collapsible from "@radix-ui/react-collapsible";
 import type { Task } from "@db/schema";
 import { useGoals } from "@/hooks/use-goals";
 import { cn } from "@/lib/utils";
@@ -78,6 +79,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
   const { toast } = useToast();
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [showDatePicker, setShowDatePicker] = useState<{ taskId: number; date?: Date } | null>(null);
+  const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
 
   const handleDelete = async (taskId: number) => {
     try {
@@ -184,6 +186,28 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         <div key={mainTask.id} className="space-y-2">
           <div className="space-y-1">
             <div className="flex items-center space-x-2 group">
+              {/* Toggle icon for collapsible */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 p-0"
+                onClick={() => {
+                  const newExpanded = new Set(expandedTasks);
+                  if (expandedTasks.has(mainTask.id)) {
+                    newExpanded.delete(mainTask.id);
+                  } else {
+                    newExpanded.add(mainTask.id);
+                  }
+                  setExpandedTasks(newExpanded);
+                }}
+              >
+                <ChevronRight 
+                  className={cn(
+                    "h-4 w-4 transition-transform",
+                    expandedTasks.has(mainTask.id) ? "transform rotate-90" : ""
+                  )}
+                />
+              </Button>
               <Checkbox
                 id={`task-${mainTask.id}`}
                 checked={mainTask.completed}
@@ -279,8 +303,12 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
             </div>
           </div>
 
-          <div className="ml-6 space-y-2">
-            {getOrderedSubtasks(mainTask.id).map((subtask) => (
+          <Collapsible.Root 
+            open={expandedTasks.has(mainTask.id)}
+            className="ml-6 space-y-2"
+          >
+            <Collapsible.Content>
+              {getOrderedSubtasks(mainTask.id).map((subtask) => (
               <div key={subtask.id} className="flex items-center space-x-2 group">
                 <Checkbox
                   id={`task-${subtask.id}`}
@@ -315,7 +343,8 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                 </div>
               </div>
             ))}
-          </div>
+            </Collapsible.Content>
+          </Collapsible.Root>
         </div>
       ))}
 
