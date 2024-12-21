@@ -58,64 +58,14 @@ export function registerRoutes(app: Express): Server {
   // prefix all routes with /api
   // Goals API
   app.get("/api/goals", async (req, res) => {
-    // Check if user is authenticated
-    if (!req.isAuthenticated()) {
-      console.log("User not authenticated");
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
     try {
-      console.log("Fetching goals for user:", req.user.id);
-      
-      // Debug authentication state
-      console.log("Current user:", req.user);
-      
-      // Verify user ID is valid
-      if (!req.user?.id) {
-        console.error("Invalid user ID");
-        return res.status(401).json({ error: "Invalid user session" });
-      }
-      
-      // Only fetch goals for the authenticated user with strict validation
-      const userGoals = await db
-        .select({
-          id: goals.id,
-          userId: goals.userId,
-          title: goals.title,
-          description: goals.description,
-          targetDate: goals.targetDate,
-          progress: goals.progress,
-          totalTasks: goals.totalTasks,
-          createdAt: goals.createdAt,
-          visionStatement: goals.visionStatement,
-        })
-        .from(goals)
-        .where(and(
-          eq(goals.userId, req.user.id),
-          sql`goals.user_id = ${req.user.id}::integer` // Additional type-safe check
-        ))
-        .orderBy(goals.createdAt);
-      
-      // Add detailed logging
-      console.log("Current authenticated user:", {
-        id: req.user.id,
-        email: req.user.email
+      const allGoals = await db.query.goals.findMany({
+        with: {
+          tasks: true,
+        },
+        orderBy: (goals, { desc }) => [desc(goals.createdAt)],
       });
-      console.log("Found goals:", userGoals.length);
-      console.log("Goals details:", userGoals.map(g => ({
-        id: g.id,
-        userId: g.userId,
-        title: g.title
-      })));
-
-      // Double check that all returned goals belong to the current user
-      const validGoals = userGoals.filter(g => g.userId === req.user.id);
-      if (validGoals.length !== userGoals.length) {
-        console.error("Data inconsistency detected: Some goals don't belong to the current user");
-        return res.status(500).json({ error: "Data consistency error" });
-      }
-      
-      res.json(userGoals);
+      res.json(allGoals);
     } catch (error) {
       console.error("Failed to fetch goals:", error);
       res.status(500).json({ error: "Failed to fetch goals" });
@@ -124,53 +74,20 @@ export function registerRoutes(app: Express): Server {
 
   app.post("/api/goals", async (req, res) => {
     try {
-      // Check if user is authenticated first
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Not authenticated" });
-      }
-
       const { title, description, targetDate, totalTasks } = req.body;
       
       // Generate a shorter title using AI
       const shortTitle = await generateShortTitle(title);
       
-      // Get the authenticated user's ID
-      const userId = req.user.id;
-      console.log("Creating goal for user:", userId);
-
-      // Create the goal with explicit user ID check
-      const goalData = {
-        userId: req.user.id, // Always use req.user.id directly
-        title: shortTitle,
-        description: title, // Store original title as description
-        targetDate: new Date(targetDate),
-        totalTasks: totalTasks,
-        progress: 0,
-      };
-
-      console.log("Creating goal with data:", {
-        ...goalData,
-        userEmail: req.user.email
-      });
-
       const [newGoal] = await db.insert(goals)
-        .values(goalData)
+        .values({
+          title: shortTitle,
+          description: title, // Store original title as description
+          targetDate: new Date(targetDate),
+          totalTasks: totalTasks,
+          progress: 0,
+        })
         .returning();
-
-      // Verify the created goal belongs to the current user
-      if (newGoal.userId !== req.user.id) {
-        console.error("Goal created with wrong user ID:", {
-          goalUserId: newGoal.userId,
-          currentUserId: req.user.id
-        });
-        return res.status(500).json({ error: "Failed to create goal with correct user association" });
-      }
-
-      console.log("Successfully created goal:", {
-        goalId: newGoal.id,
-        userId: newGoal.userId,
-        title: newGoal.title
-      });
 
       // Create tasks and subtasks
       if (totalTasks > 0) {
@@ -181,17 +98,10 @@ export function registerRoutes(app: Express): Server {
         // Create tasks in the order they come from OpenAI
         // OpenAI has been instructed to return them in chronological order
         for (const task of breakdown) {
-          // Validate task structure
-          if (!task || typeof task !== 'object' || !task.title || !Array.isArray(task.subtasks)) {
-            console.error('Invalid task structure:', task);
-            continue;
-          }
-
-          // Create main task
           const [mainTask] = await db.insert(tasks)
             .values({
               goalId: newGoal.id,
-              title: task.title as string,
+              title: task.title,
               completed: false,
               isSubtask: false,
               isAiGenerated: true,
@@ -200,20 +110,14 @@ export function registerRoutes(app: Express): Server {
 
           // Create subtasks
           for (const subtask of task.subtasks) {
-            if (!subtask || typeof subtask !== 'object' || !subtask.title) {
-              console.error('Invalid subtask structure:', subtask);
-              continue;
-            }
-
             await db.insert(tasks)
               .values({
                 goalId: newGoal.id,
-                title: subtask.title as string,
+                title: subtask.title,
                 completed: false,
-                estimatedMinutes: typeof subtask.estimatedMinutes === 'number' ? subtask.estimatedMinutes : null,
+                estimatedMinutes: subtask.estimatedMinutes,
                 isSubtask: true,
                 parentTaskId: mainTask.id,
-                isAiGenerated: true,
               });
           }
         }
@@ -236,27 +140,19 @@ export function registerRoutes(app: Express): Server {
   // Delete goal endpoint
   app.delete("/api/goals/:goalId", async (req, res) => {
     try {
-      // Check if user is authenticated
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Not authenticated" });
-      }
-
       const { goalId } = req.params;
       const goalIdInt = parseInt(goalId);
 
-      // First verify the goal exists and belongs to the user
+      // First verify the goal exists
       const goalToDelete = await db.query.goals.findFirst({
-        where: and(
-          eq(goals.id, goalIdInt),
-          eq(goals.userId, req.user.id)
-        ),
+        where: eq(goals.id, goalIdInt),
         with: {
           tasks: true
         }
       });
 
       if (!goalToDelete) {
-        return res.status(404).json({ error: "Goal not found or unauthorized" });
+        return res.status(404).json({ error: "Goal not found" });
       }
 
       // Delete in correct order to handle foreign key constraints
@@ -289,25 +185,8 @@ export function registerRoutes(app: Express): Server {
   // Tasks API
   app.post("/api/goals/:goalId/tasks", async (req, res) => {
     try {
-      // Check if user is authenticated
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Not authenticated" });
-      }
-
       const { goalId } = req.params;
       const { title, isSubtask, parentTaskId, plannedDate } = req.body;
-      
-      // Verify the goal belongs to the user
-      const goal = await db.query.goals.findFirst({
-        where: and(
-          eq(goals.id, parseInt(goalId)),
-          eq(goals.userId, req.user.id)
-        ),
-      });
-
-      if (!goal) {
-        return res.status(404).json({ error: "Goal not found or unauthorized" });
-      }
       
       const [newTask] = await db.insert(tasks)
         .values({
@@ -329,25 +208,9 @@ export function registerRoutes(app: Express): Server {
 
   app.patch("/api/tasks/:taskId", async (req, res) => {
     try {
-      // Check if user is authenticated
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Not authenticated" });
-      }
-
       const { taskId } = req.params;
-      const { completed, title, estimatedMinutes, plannedDate, notes } = req.body;
-
-      // First get the task and verify it belongs to a goal owned by the user
-      const task = await db.query.tasks.findFirst({
-        where: eq(tasks.id, parseInt(taskId)),
-        with: {
-          goal: true
-        }
-      });
-
-      if (!task || task.goal.userId !== req.user.id) {
-        return res.status(404).json({ error: "Task not found or unauthorized" });
-      }
+      // Destructure only the fields we want to update, ignoring order
+  const { completed, title, estimatedMinutes, plannedDate, notes } = req.body;
       
       const updateData: Partial<typeof tasks.$inferInsert> = {};
       if (typeof completed !== 'undefined') updateData.completed = completed;
@@ -731,21 +594,11 @@ This is your personal cheerleader letter - make it feel warm, real, and full of 
   // Vision Board API
   app.get("/api/vision-board", async (req, res) => {
     try {
-      // Check if user is authenticated
-      if (!req.isAuthenticated()) {
-        console.log("Unauthorized attempt to access vision board");
-        return res.status(401).json({ error: "Not authenticated" });
-      }
-
-      const userId = req.user.id;
-      console.log("Fetching vision board for user:", userId);
-
+      const userId = 1; // TODO: Replace with actual user ID from auth
       const images = await db.select()
         .from(visionBoardImages)
         .where(eq(visionBoardImages.userId, userId))
         .orderBy(visionBoardImages.position);
-      
-      console.log(`Found ${images.length} vision board images for user:`, userId);
       res.json(images);
     } catch (error) {
       console.error("Failed to fetch vision board images:", error);
@@ -833,24 +686,12 @@ This is your personal cheerleader letter - make it feel warm, real, and full of 
   // Rewards API
   app.get("/api/rewards", async (req, res) => {
     try {
-      // Check if user is authenticated
-      if (!req.isAuthenticated()) {
-        console.log("Unauthorized attempt to access rewards");
-        return res.status(401).json({ error: "Not authenticated" });
-      }
-
-      const userId = req.user.id;
-      console.log("Fetching rewards for user:", userId);
-
       const [userRewards] = await db.select()
         .from(rewards)
-        .where(eq(rewards.userId, userId))
+        .where(eq(rewards.userId, 1)) // TODO: Replace with actual user ID when auth is added
         .limit(1);
-        
-      console.log("Found rewards for user:", userId, userRewards);
       res.json(userRewards || { coins: 0 });
     } catch (error) {
-      console.error("Failed to fetch rewards:", error);
       res.status(500).json({ error: "Failed to fetch rewards" });
     }
   });

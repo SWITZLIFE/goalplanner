@@ -35,7 +35,6 @@ export type SelectUser = typeof users.$inferSelect;
 
 export const goals = pgTable("goals", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
   title: text("title").notNull(),
   description: text("description"),
   targetDate: timestamp("target_date").notNull(),

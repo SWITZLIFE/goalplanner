@@ -67,8 +67,6 @@ export function setupAuth(app: Express) {
       },
       async (email, password, done) => {
         try {
-          console.log("Authenticating user with email:", email);
-          
           const [user] = await db
             .select()
             .from(users)
@@ -76,22 +74,14 @@ export function setupAuth(app: Express) {
             .limit(1);
 
           if (!user) {
-            console.log("User not found with email:", email);
             return done(null, false, { message: "Incorrect email." });
           }
-          
-          console.log("Found user:", { id: user.id, email: user.email });
-          
           const isMatch = await crypto.compare(password, user.password);
           if (!isMatch) {
-            console.log("Password did not match for user:", user.id);
             return done(null, false, { message: "Incorrect password." });
           }
-          
-          console.log("User authenticated successfully:", user.id);
           return done(null, user);
         } catch (err) {
-          console.error("Authentication error:", err);
           return done(err);
         }
       }
