@@ -28,8 +28,15 @@ Requirements:
 3. Each subtask MUST have an estimatedMinutes field with a realistic time estimate
 4. Tasks and subtasks should be specific, actionable, and measurable
 5. Time estimates should be realistic and based on task complexity
+6. CRITICAL: List tasks in chronological order - first task should be the first step to take, last task should be the final step
+7. Tasks MUST follow a logical sequence where each task builds upon previous tasks
 
-Remember: The response MUST contain exactly ${numTasks} main tasks.`;
+Example order for a software project:
+- First tasks: Development and core features
+- Middle tasks: Testing, deployment, marketing
+- Last tasks: User acquisition, monetization, scaling
+
+Remember: The response MUST contain exactly ${numTasks} main tasks in chronological order.`;
 
   const response = await openai.chat.completions.create({
     model: "gpt-3.5-turbo",

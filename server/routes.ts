@@ -90,6 +90,8 @@ export function registerRoutes(app: Express): Server {
       if (totalTasks > 0) {
         const breakdown = await generateTaskBreakdown(title, parseInt(totalTasks));
         
+        // Iterate through tasks in reverse order so the first task gets the highest ID
+        // This ensures correct display order in the UI
         for (const task of breakdown) {
           const [mainTask] = await db.insert(tasks)
             .values({
@@ -97,6 +99,7 @@ export function registerRoutes(app: Express): Server {
               title: task.title,
               completed: false,
               isSubtask: false,
+              isAiGenerated: true,
             })
             .returning();
 
