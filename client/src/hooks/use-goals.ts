@@ -6,6 +6,11 @@ export function useGoals() {
 
   const { data: goals = [], isLoading } = useQuery<Goal[]>({
     queryKey: ["/api/goals"],
+    queryFn: async () => {
+      const res = await fetch("/api/goals");
+      if (!res.ok) throw new Error("Failed to fetch goals");
+      return res.json();
+    }
   });
 
   const updateGoalMutation = useMutation({
