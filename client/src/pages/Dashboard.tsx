@@ -54,8 +54,10 @@ export default function Dashboard() {
       {/* Main Content Area */}
       <div className="flex-1 p-8 bg-white">
         <div className="max-w-4xl mx-auto space-y-8">
-          <AnalyticsDashboard />
           <VisionBoard />
+          <div className="mt-8">
+            <AnalyticsDashboard />
+          </div>
         </div>
       </div>
     </div>
