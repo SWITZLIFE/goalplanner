@@ -647,10 +647,22 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Generate vision statement using OpenAI
-      const prompt = `Write a warm, caring letter to yourself about your goal: "${goal.title}". This should feel like a gentle pep talk from your best friend who really gets you. Use these thoughts you shared to connect with your inner dreams:
+      const prompt = `Write a heartfelt letter from my present self to my future self about my goal: "${goal.title}". This letter should remind me of my core motivations and serve as a powerful reminder of why I started this journey. Use these reflections to craft the message:
 
-Your reflections:
+My reflections:
 ${answers.map((answer: string, index: number) => `${index + 1}. ${answer}`).join('\n')}
+
+Write the letter like this:
+1. Start with "Dear future me," (on its own line)
+2. Begin with why this goal deeply matters to me and what inspired me to start
+3. Include specific details about:
+   - The meaningful impact this will have on my life
+   - The growth and learning I'll experience along the way
+   - The positive changes I'll see as I make progress
+4. End with a powerful reminder of my inner strength and capability
+5. Sign it with "From, [current date] me"
+
+Keep it personal and authentic, using "I" and "my" throughout. Make it something I can read whenever I need to reconnect with my purpose.
 
 Write the letter like this:
 1. Start with "Dear friend," or something warm like that (on its own line)
