@@ -70,7 +70,12 @@ export default function ProfilePage() {
 
   return (
     <div className="container max-w-2xl mx-auto space-y-6">
-      <h1 className="text-3xl font-bold">Profile Settings</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Profile Settings</h1>
+        <Button variant="ghost" onClick={() => setLocation("/")}>
+          ← Back to Dashboard
+        </Button>
+      </div>
       
       <Card>
         <CardHeader>
