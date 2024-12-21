@@ -7,17 +7,29 @@ import { rewards, rewardItems, purchasedRewards, users } from "@db/schema";
 import { goals, tasks, timeTracking, visionBoardImages } from "@db/schema";
 import multer from "multer";
 import path from "path";
-import * as ObjectStore from "@replit/object-storage";
+import { Client } from "@replit/object-storage";
 import { generateTaskBreakdown, generateShortTitle } from "./openai";
 import { getCoachingAdvice } from "./coaching";
 import { setupAuth } from "./auth";
 import express from 'express';
 
 // Initialize Replit Object Storage client
-const storage = new ObjectStore.Client({
-  bucketName: process.env.REPL_SLUG || 'goal-navigator-bucket',
-  token: process.env.REPLIT_OBJECT_STORE_IDENTITY_TOKEN || ''
-});
+let storage: Client;
+try {
+  if (!process.env.REPLIT_OBJECT_STORE_IDENTITY_TOKEN) {
+    throw new Error('REPLIT_OBJECT_STORE_IDENTITY_TOKEN is not set');
+  }
+  
+  storage = new Client({
+    bucketId: 'replit-objstore-eeb9bfe2-6f36-4246-8d29-641ee71daebd',
+    token: process.env.REPLIT_OBJECT_STORE_IDENTITY_TOKEN,
+    ephemeral: false,
+  });
+  console.log('Object Storage client initialized successfully');
+} catch (error) {
+  console.error('Failed to initialize Object Storage client:', error);
+  throw error;
+}
 
 // Configure multer with memory storage for handling file uploads
 const multerStorage = multer.memoryStorage();
@@ -38,27 +50,47 @@ const upload = multer({
 // Helper function to upload file to Replit Object Storage
 async function uploadToReplitStorage(file: Express.Multer.File): Promise<string> {
   try {
+    // Generate a unique filename with timestamp and random number
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const fileName = uniqueSuffix + path.extname(file.originalname);
+    const fileName = `vision-board/${uniqueSuffix}${path.extname(file.originalname)}`;
     
-    // Upload file to Object Storage with metadata
-    await storage.put(fileName, file.buffer, {
+    // Validate file type and size
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    if (!allowedTypes.includes(file.mimetype)) {
+      throw new Error('Invalid file type. Only JPEG, PNG and GIF are allowed.');
+    }
+    
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      throw new Error('File size exceeds 5MB limit.');
+    }
+
+    // Create metadata object
+    const metadata = {
       'Content-Type': file.mimetype,
       'Original-Name': file.originalname,
       'Upload-Date': new Date().toISOString(),
-      'File-Size': file.size.toString()
-    });
+      'File-Size': file.size.toString(),
+      'Upload-Type': 'vision-board'
+    };
+
+    // Upload file to Object Storage
+    await storage.putObject(fileName, file.buffer, metadata);
     
     console.log('File uploaded successfully:', {
       fileName,
       contentType: file.mimetype,
-      size: file.size
+      size: file.size,
+      metadata
     });
     
     return fileName;
   } catch (error) {
     console.error('Error uploading to storage:', error);
-    throw error;
+    if (error instanceof Error) {
+      throw new Error(`File upload failed: ${error.message}`);
+    }
+    throw new Error('File upload failed');
   }
 }
 
@@ -74,30 +106,52 @@ export function registerRoutes(app: Express): Server {
   // Setup authentication middleware and routes
   setupAuth(app);
 
-  // Serve files from Replit Object Storage
+  // Serve files from Replit Object Storage with enhanced security and caching
   app.get('/api/files/:filename', requireAuth, async (req, res) => {
     try {
       const filename = req.params.filename;
-      console.log('Retrieving file:', filename);
+      const userId = req.user!.id;
       
-      // Get file data and metadata from Object Storage
-      const fileData = await storage.get(filename);
-      const metadata = await storage.getMetadata(filename);
+      // Security: Validate filename format and path
+      if (!filename.startsWith('vision-board/') || filename.includes('..')) {
+        return res.status(403).json({ error: 'Invalid file access' });
+      }
+
+      console.log('Retrieving file:', filename, 'for user:', userId);
       
-      if (!fileData) {
-        console.error('File not found:', filename);
+      // Check if the file exists and get metadata
+      try {
+        const metadata = await storage.headObject(filename);
+        if (!metadata) {
+          console.error('File not found:', filename);
+          return res.status(404).json({ error: 'File not found' });
+        }
+
+        // Get the actual file data
+        const fileData = await storage.getObject(filename);
+        if (!fileData) {
+          console.error('File data missing:', filename);
+          return res.status(404).json({ error: 'File data not found' });
+        }
+
+        // Set appropriate headers
+        res.setHeader('Content-Type', metadata['Content-Type'] || 'application/octet-stream');
+        res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+        res.setHeader('Content-Length', metadata['File-Size'] || '0');
+        res.setHeader('Last-Modified', metadata['Upload-Date'] || new Date().toISOString());
+        
+        // Send the file with proper streaming
+        res.send(fileData);
+        
+        console.log('File served successfully:', {
+          filename,
+          size: metadata['File-Size'],
+          type: metadata['Content-Type']
+        });
+      } catch (error) {
+        console.error('Storage operation failed:', error);
         return res.status(404).json({ error: 'File not found' });
       }
-
-      console.log('File metadata:', metadata);
-
-      // Set content type from metadata
-      if (metadata && metadata['Content-Type']) {
-        res.setHeader('Content-Type', metadata['Content-Type']);
-      }
-      
-      // Send the file content
-      res.send(fileData);
     } catch (error) {
       console.error('Error serving file:', error);
       res.status(500).json({ 
