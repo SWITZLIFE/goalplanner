@@ -75,6 +75,12 @@ export function RewardStore() {
         return <Gift className="h-6 w-6" />;
       case 'star':
         return <Star className="h-6 w-6" />;
+      case 'crown':
+        return <Award className="h-6 w-6 text-yellow-500" />;
+      case 'diamond':
+        return <Star className="h-6 w-6 text-blue-500" />;
+      case 'paintbrush':
+        return <Tag className="h-6 w-6 text-purple-500" />;
       default:
         return <Tag className="h-6 w-6" />;
     }

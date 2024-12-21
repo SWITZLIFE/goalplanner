@@ -594,9 +594,13 @@ export function registerRoutes(app: Express): Server {
 
   app.get("/api/rewards/items", async (req, res) => {
     try {
-      const items = await db.select().from(rewardItems);
+      const items = await db.query.rewardItems.findMany({
+        orderBy: (rewardItems, { asc }) => [asc(rewardItems.cost)],
+      });
+      console.log('Fetched reward items:', items);
       res.json(items);
     } catch (error) {
+      console.error('Error fetching reward items:', error);
       res.status(500).json({ error: "Failed to fetch reward items" });
     }
   });
