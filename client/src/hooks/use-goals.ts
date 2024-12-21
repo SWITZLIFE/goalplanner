@@ -41,7 +41,7 @@ export function useGoals() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/goals", user?.id] });
     },
   });
 
@@ -56,7 +56,7 @@ export function useGoals() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/goals", user?.id] });
     },
   });
 
@@ -82,7 +82,7 @@ export function useGoals() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/goals", user?.id] });
     },
   });
 
@@ -111,7 +111,7 @@ export function useGoals() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/goals", user?.id] });
     },
   });
 
@@ -124,7 +124,7 @@ export function useGoals() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/goals", user?.id] });
     },
   });
 
@@ -137,7 +137,7 @@ export function useGoals() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/goals", user?.id] });
     },
   });
 
