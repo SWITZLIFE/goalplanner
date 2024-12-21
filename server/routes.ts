@@ -983,6 +983,17 @@ Remember to:
     }
   });
 
+  app.post("/api/future-message/generate", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const message = await generateDailyMessage(userId);
+      res.json({ message, isRead: false });
+    } catch (error) {
+      console.error("Failed to generate future message:", error);
+      res.status(500).json({ error: "Failed to generate future message" });
+    }
+  });
+
   app.post("/api/future-message/read", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;

@@ -88,15 +88,9 @@ export async function getTodayMessage(userId: number) {
     ),
   });
 
-  if (existingMessage) {
-    return existingMessage;
-  }
-
-  // If no message exists for today, generate a new one
-  const message = await generateDailyMessage(userId);
-  
-  return {
-    message,
+  // Only return the existing message if it exists, don't generate a new one
+  return existingMessage || {
+    message: null,
     isRead: false,
   };
 }
