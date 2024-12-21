@@ -1,122 +1,103 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { InsertUser, SelectUser } from "@db/schema";
 
-interface AuthResponse {
+type RequestResult = {
+  ok: true;
+} | {
+  ok: false;
   message: string;
-  user: SelectUser;
+};
+
+async function handleRequest(
+  url: string,
+  method: string,
+  body?: InsertUser
+): Promise<RequestResult> {
+  try {
+    const response = await fetch(url, {
+      method,
+      headers: body ? { "Content-Type": "application/json" } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      if (response.status >= 500) {
+        return { ok: false, message: response.statusText };
+      }
+
+      const message = await response.text();
+      return { ok: false, message };
+    }
+
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, message: e.toString() };
+  }
 }
 
-// Cache key for user data
-const USER_QUERY_KEY = ['user'] as const;
+async function fetchUser(): Promise<SelectUser | null> {
+  const response = await fetch('/api/user', {
+    credentials: 'include'
+  });
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      return null;
+    }
+
+    if (response.status >= 500) {
+      throw new Error(`${response.status}: ${response.statusText}`);
+    }
+
+    throw new Error(`${response.status}: ${await response.text()}`);
+  }
+
+  return response.json();
+}
 
 export function useUser() {
   const queryClient = useQueryClient();
 
-  // Main user query - with proper caching
-  const { data: user, isLoading } = useQuery({
-    queryKey: USER_QUERY_KEY,
-    queryFn: async () => {
-      try {
-        const response = await fetch('/api/user', {
-          credentials: 'include'
-        });
-
-        if (response.status === 401) {
-          return null;
-        }
-
-        if (!response.ok) {
-          throw new Error(await response.text());
-        }
-
-        return response.json() as Promise<SelectUser>;
-      } catch (error) {
-        console.error('Error fetching user:', error);
-        return null;
-      }
-    },
-    // Prevent unnecessary refetching
+  const { data: user, error, isLoading } = useQuery<SelectUser | null, Error>({
+    queryKey: ['user'],
+    queryFn: fetchUser,
     staleTime: Infinity,
-    cacheTime: Infinity,
-    retry: false,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
+    retry: false
   });
 
-  // Handle login
-  const loginMutation = useMutation({
-    mutationFn: async (credentials: InsertUser) => {
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(credentials),
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-
-      return response.json() as Promise<AuthResponse>;
-    },
-    onSuccess: (data) => {
-      // Set the user data in cache without triggering a refetch
-      queryClient.setQueryData(USER_QUERY_KEY, data.user);
-    },
-  });
-
-  // Handle logout
-  const logoutMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch('/api/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-    },
+  const loginMutation = useMutation<RequestResult, Error, InsertUser>({
+    mutationFn: (userData) => handleRequest('/api/login', 'POST', userData),
     onSuccess: () => {
-      // Clear user data and reset cache
-      queryClient.setQueryData(USER_QUERY_KEY, null);
+      queryClient.invalidateQueries({ queryKey: ['user'] });
+    },
+  });
+
+  const logoutMutation = useMutation<RequestResult, Error>({
+    mutationFn: () => handleRequest('/api/logout', 'POST'),
+    onSuccess: () => {
+      // Clear all queries from cache to ensure complete data isolation
       queryClient.clear();
-      // Redirect to home page
+      // Force refetch of user query to update authentication state
+      queryClient.invalidateQueries({ queryKey: ['user'] });
+      // Reset queryClient state
+      queryClient.setQueryData(['user'], null);
+      // Force a page reload to clear all React state
       window.location.href = '/';
     },
   });
 
-  // Handle registration
-  const registerMutation = useMutation({
-    mutationFn: async (userData: InsertUser) => {
-      const response = await fetch('/api/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-
-      return response.json() as Promise<AuthResponse>;
-    },
-    onSuccess: (data) => {
-      // Set the user data in cache without triggering a refetch
-      queryClient.setQueryData(USER_QUERY_KEY, data.user);
+  const registerMutation = useMutation<RequestResult, Error, InsertUser>({
+    mutationFn: (userData) => handleRequest('/api/register', 'POST', userData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user'] });
     },
   });
 
   return {
     user,
     isLoading,
-    isAuthenticated: !!user,
+    error,
     login: loginMutation.mutateAsync,
     logout: logoutMutation.mutateAsync,
     register: registerMutation.mutateAsync,

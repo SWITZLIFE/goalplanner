@@ -8,7 +8,6 @@ interface VisionBoardImage {
   id: number;
   imageUrl: string;
   position: number;
-  imageKey: string; // Added imageKey
 }
 
 export function VisionBoard() {
@@ -150,7 +149,7 @@ export function VisionBoard() {
             {image ? (
               <>
                 <img
-                  src={`/api/vision-board/images/${encodeURIComponent(image.imageKey)}`}
+                  src={image.imageUrl}
                   alt={`Vision board image ${index + 1}`}
                   className="w-full h-full object-cover"
                 />

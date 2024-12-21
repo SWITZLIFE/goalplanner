@@ -1,6 +1,6 @@
 import passport from "passport";
 import { IVerifyOptions, Strategy as LocalStrategy } from "passport-local";
-import { type Express, Request, Response, NextFunction } from "express";
+import { type Express } from "express";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
@@ -36,26 +36,15 @@ declare global {
   }
 }
 
-export function requireAuth(req: Request, res: Response, next: NextFunction) {
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ error: "You must be logged in to access this resource" });
-  }
-  next();
-}
-
 export function setupAuth(app: Express) {
   const MemoryStore = createMemoryStore(session);
   const sessionSettings: session.SessionOptions = {
     secret: process.env.REPL_ID || "porygon-supremacy",
     resave: false,
     saveUninitialized: false,
-    rolling: true,
-    name: 'goalNavigator.sid',
     cookie: {
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
       httpOnly: true,
-      sameSite: 'lax',
-      path: '/',
       secure: app.get("env") === "production",
     },
     store: new MemoryStore({
@@ -66,7 +55,9 @@ export function setupAuth(app: Express) {
 
   if (app.get("env") === "production") {
     app.set("trust proxy", 1);
-    sessionSettings.cookie!.secure = true;
+    sessionSettings.cookie = {
+      secure: true,
+    };
   }
 
   app.use(session(sessionSettings));
@@ -169,6 +160,7 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
+    // Use a simpler schema for login that only validates email format
     const loginSchema = z.object({
       email: z.string().email("Invalid email format"),
       password: z.string()
@@ -205,17 +197,20 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/logout", (req, res) => {
+    // First logout the user
     req.logout((err) => {
       if (err) {
         return res.status(500).send("Logout failed");
       }
       
+      // Then destroy the session
       req.session.destroy((err) => {
         if (err) {
           console.error("Session destruction failed:", err);
           return res.status(500).send("Logout partially failed");
         }
         
+        // Clear session cookie
         res.clearCookie('connect.sid');
         res.json({ message: "Logout successful" });
       });
@@ -226,6 +221,7 @@ export function setupAuth(app: Express) {
     if (req.isAuthenticated()) {
       return res.json(req.user);
     }
+
     res.status(401).send("Not logged in");
   });
 
