@@ -60,50 +60,48 @@ export function registerRoutes(app: Express): Server {
   }
   app.use('/uploads', express.static(uploadsDir));
 
-  // Protect all /api routes except auth routes
+  // Protect all /api routes except auth routes with enhanced session verification
   app.use('/api', (req, res, next) => {
-    // Skip auth for login/register/logout routes
-    if (req.path.startsWith('/login') || req.path.startsWith('/register') || req.path.startsWith('/logout') || req.path.startsWith('/user')) {
+    // Skip auth for public routes
+    if (req.path.startsWith('/login') || 
+        req.path.startsWith('/register') || 
+        req.path.startsWith('/logout') || 
+        req.path.startsWith('/user')) {
       return next();
     }
 
-    // Check authentication
-    if (!req.isAuthenticated()) {
+    // Enhanced session verification
+    if (!req.isAuthenticated() || !req.session) {
       return res.status(401).json({ error: "You must be logged in to access this resource" });
     }
 
-    // Add user check middleware for data isolation
+    // Strict user verification
     const userId = req.user?.id;
     if (!userId) {
+      // Clear invalid session
+      req.session.destroy((err) => {
+        if (err) console.error("Session destruction failed:", err);
+      });
       return res.status(401).json({ error: "Invalid user session" });
     }
 
-    // Store userId in res.locals for use in routes
+    // Store userId in res.locals for route handlers
     res.locals.userId = userId;
 
-    next();
-  });
-
-  // Protect all /api routes except auth routes
-  app.use('/api', (req, res, next) => {
-    // Skip auth for login/register/logout routes
-    if (req.path.startsWith('/login') || req.path.startsWith('/register') || req.path.startsWith('/logout') || req.path.startsWith('/user')) {
-      return next();
+    // Add timestamp verification
+    const sessionStart = req.session.createdAt;
+    if (!sessionStart) {
+      req.session.createdAt = new Date();
+    } else {
+      // Check if session is too old (24 hours)
+      const sessionAge = Date.now() - new Date(sessionStart).getTime();
+      if (sessionAge > 24 * 60 * 60 * 1000) {
+        req.session.destroy((err) => {
+          if (err) console.error("Session destruction failed:", err);
+        });
+        return res.status(401).json({ error: "Session expired" });
+      }
     }
-
-    // Check authentication
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "You must be logged in to access this resource" });
-    }
-
-    // Add user check middleware for data isolation
-    const userId = req.user?.id;
-    if (!userId) {
-      return res.status(401).json({ error: "Invalid user session" });
-    }
-
-    // Store userId in res.locals for use in routes
-    res.locals.userId = userId;
 
     next();
   });

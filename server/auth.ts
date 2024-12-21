@@ -42,9 +42,14 @@ export function setupAuth(app: Express) {
     secret: process.env.REPL_ID || "porygon-supremacy",
     resave: false,
     saveUninitialized: false,
-    cookie: {},
+    cookie: {
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      httpOnly: true,
+      secure: app.get("env") === "production",
+    },
     store: new MemoryStore({
       checkPeriod: 86400000, // prune expired entries every 24h
+      stale: false, // Don't serve stale sessions
     }),
   };
 
@@ -192,12 +197,23 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/logout", (req, res) => {
+    // First logout the user
     req.logout((err) => {
       if (err) {
         return res.status(500).send("Logout failed");
       }
-
-      res.json({ message: "Logout successful" });
+      
+      // Then destroy the session
+      req.session.destroy((err) => {
+        if (err) {
+          console.error("Session destruction failed:", err);
+          return res.status(500).send("Logout partially failed");
+        }
+        
+        // Clear session cookie
+        res.clearCookie('connect.sid');
+        res.json({ message: "Logout successful" });
+      });
     });
   });
 
