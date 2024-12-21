@@ -16,10 +16,15 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-const storage = multer.memoryStorage();
-
-const { ObjectStorage } = require("@replit/object-storage");
-const objectStorage = new ObjectStorage();
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
 
 const upload = multer({
   storage: storage,
@@ -635,9 +640,8 @@ This is your personal cheerleader letter - make it feel warm, real, and full of 
         return res.status(400).json({ error: "No image file provided" });
       }
 
-      const filename = Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(req.file.originalname);
-      await objectStorage.put(filename, req.file.buffer);
-      const imageUrl = await objectStorage.getSignedUrl(filename);
+      const imageUrl = `/uploads/${req.file.filename}`;
+      console.log('Image URL:', imageUrl);
 
       const [newImage] = await db.insert(visionBoardImages)
         .values({
