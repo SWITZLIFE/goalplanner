@@ -14,8 +14,8 @@ import { setupAuth } from "./auth";
 import express from 'express';
 
 // Configure multer for handling file uploads
-import { ObjectStorage } from '@replit/object-storage';
-const objectStorage = new ObjectStorage();
+import { Client } from '@replit/object-storage';
+const objectStorage = new Client();
 
 const storage = multer.memoryStorage();
 
