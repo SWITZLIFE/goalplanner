@@ -336,28 +336,34 @@ app.post("/api/goals/:goalId/vision", async (req, res) => {
     }
 
     // Generate vision statement using OpenAI
-    const prompt = `Write a deeply personal and heartfelt letter to yourself about your goal: "${goal.title}". Use these responses to understand your inner motivation and dreams:
+    const prompt = `Write a warm, caring letter to yourself about your goal: "${goal.title}". This should feel like a gentle pep talk from your best friend who really gets you. Use these thoughts you shared to connect with your inner dreams:
 
-Responses to reflection questions:
+Your reflections:
 ${answers.map((answer: string, index: number) => `${index + 1}. ${answer}`).join('\n')}
 
-Format your response as an intimate letter that:
-- Starts with "Dear [You/Your Name]," or a similar personal greeting
-- Speaks in first person ("I", "my", "we") to maintain personal connection
-- References specific details from your answers to make it uniquely yours
-- Acknowledges your fears and dreams with empathy and understanding
-- Reminds you of your inner strength and past achievements
-- Paints a vivid picture of how achieving this goal will transform your life
-- Ends with an encouraging closing that makes you feel empowered
+Write the letter like this:
+1. Start with "Dear friend," or something warm like that (on its own line)
+2. Add a short opening paragraph sharing how proud you are to see yourself taking on this goal
+3. Write 2-3 paragraphs from the heart about:
+   - The amazing journey you're on and why it matters so much to you
+   - How you're growing and what you're learning about yourself
+   - The wonderful changes you'll see as you make progress
+4. End with a warm, encouraging closing (on its own line)
+5. Sign it with something like "With love and belief in you," (on its own line)
 
-Style:
-- Write 100-200 words
-- Use warm, emotional language that speaks to the heart
-- Make it feel like a letter you'd write to yourself in a moment of deep reflection
-- Focus on the emotional journey and personal transformation
-- Include specific details from the responses to make it deeply personal
+Make it feel like:
+- A warm hug in letter form (100-200 words)
+- Like chatting with a close friend who really believes in you
+- Something you'd read when you need a boost of motivation
+- Super personal, using "I" and "my" throughout
 
-Remember: This is a private letter to yourself about your deepest motivations and dreams. Make every word count and truly resonate with your heart.`;
+Remember to:
+- Add line breaks between paragraphs (this is important!)
+- Keep the tone super friendly and caring
+- Share specific little details from your reflections
+- Make it feel like a cozy conversation, not a formal letter
+
+This is your personal cheerleader letter - make it feel warm, real, and full of heart! 💝`;
 
     const openaiResponse = await openai.chat.completions.create({
       model: "gpt-4", // Using GPT-4 for high-quality personalized responses
