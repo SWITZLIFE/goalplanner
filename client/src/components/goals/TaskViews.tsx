@@ -46,14 +46,11 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
     return acc;
   }, []);
 
-  // Use allTasks for calendar view, initialTasks for other views
-  const tasks = goalFilter === 'all' ? allTasks : initialTasks;
-
-  // Get all main tasks (non-subtasks)
-  const mainTasks = tasks.filter(task => !task.isSubtask);
+  // Get all main tasks (non-subtasks) from the current goal's tasks
+  const mainTasks = initialTasks.filter(task => !task.isSubtask);
   
-  // Get subtasks for a given parent task
-  const getSubtasks = (parentId: number) => tasks.filter(task => task.parentTaskId === parentId);
+  // Get subtasks for a given parent task from the current goal's tasks
+  const getSubtasks = (parentId: number) => initialTasks.filter(task => task.parentTaskId === parentId);
   
   // Split main tasks into active and completed
   const activeMainTasks = mainTasks.filter(task => !task.completed);
@@ -70,6 +67,23 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
     ...completedMainTasks,
     ...completedMainTasks.flatMap(task => getSubtasks(task.id))
   ];
+
+  // Get tasks for calendar view (can include tasks from all goals)
+  const getCalendarTasks = () => {
+    // Use all tasks if filter is set to 'all', otherwise use only current goal's tasks
+    const baseTasks = goalFilter === 'all' ? allTasks : initialTasks;
+    
+    // Apply task status filter
+    let filtered = baseTasks;
+    if (taskFilter === 'active') {
+      filtered = filtered.filter(task => !task.completed);
+    } else if (taskFilter === 'completed') {
+      filtered = filtered.filter(task => task.completed);
+    }
+
+    // Only return tasks with planned dates
+    return filtered.filter(task => task.plannedDate !== null);
+  };
 
   // Get filtered tasks based on selected filters
   const getFilteredTasks = () => {
@@ -192,9 +206,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                   onChange={(e) => setGoalFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
                 >
                   <option value="all">All Goals</option>
-                  {goals.map(g => (
-                    <option key={g.id} value={g.id}>{g.title}</option>
-                  ))}
+                  <option value={goalId}>{goal.title}</option>
                 </select>
               </div>
               <div className="flex gap-2">
@@ -254,7 +266,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                   const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), i - mondayStartDay + 1);
                   const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
                   const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
-                  const dayTasks = getFilteredTasks().filter(task => 
+                  const dayTasks = getCalendarTasks().filter(task => 
                     task.plannedDate && 
                     format(new Date(task.plannedDate), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
                   );
