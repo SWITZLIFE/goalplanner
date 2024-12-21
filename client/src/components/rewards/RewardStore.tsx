@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Award, Gift, Star, Tag } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 
 interface RewardItem {
@@ -97,17 +97,18 @@ export function RewardStore() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {rewardItems.map((reward) => (
-          <Card key={reward.id} className="transition-shadow hover:shadow-md">
-            <CardHeader>
+          <Card key={reward.id} className="transition-shadow hover:shadow-md flex flex-col h-[200px]">
+            <CardHeader className="flex-1">
               <CardTitle className="flex items-center gap-2">
                 {getIcon(reward.icon)}
                 {reward.name}
               </CardTitle>
-              <CardDescription>{reward.description}</CardDescription>
+              <CardDescription className="line-clamp-2">{reward.description}</CardDescription>
             </CardHeader>
-            <CardFooter className="flex justify-between">
-              <div className="text-yellow-500 font-medium">{reward.cost} coins</div>
-              <Dialog>
+            <CardFooter className="mt-auto border-t pt-4">
+              <div className="flex justify-between items-center w-full">
+                <div className="text-yellow-500 font-medium">{reward.cost} coins</div>
+                <Dialog>
                 <DialogTrigger asChild>
                   <Button 
                     variant="secondary"
@@ -136,6 +137,7 @@ export function RewardStore() {
                   </DialogContent>
                 )}
               </Dialog>
+              </div>
             </CardFooter>
           </Card>
         ))}
