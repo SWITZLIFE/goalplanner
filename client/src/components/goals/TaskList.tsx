@@ -123,19 +123,40 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
     if (!task) return;
 
     try {
-      // Update the main task
-      await updateTask({ taskId, completed });
+      // Only update the specified task's completion status
+      await updateTask({ 
+        taskId, 
+        completed,
+        // Preserve other task properties
+        title: task.title,
+        notes: task.notes,
+        estimatedMinutes: task.estimatedMinutes,
+        plannedDate: task.plannedDate,
+        isSubtask: task.isSubtask,
+        parentTaskId: task.parentTaskId
+      });
       
-      // Only modify subtasks when completing a main task
+      // If completing a main task, complete all subtasks
       if (!task.isSubtask && completed) {
         const subtasks = tasks.filter(t => t.parentTaskId === taskId);
         await Promise.all(
           subtasks.map(subtask => 
-            updateTask({ taskId: subtask.id, completed: true })
+            updateTask({ 
+              taskId: subtask.id, 
+              completed: true,
+              // Preserve subtask properties
+              title: subtask.title,
+              notes: subtask.notes,
+              estimatedMinutes: subtask.estimatedMinutes,
+              plannedDate: subtask.plannedDate,
+              isSubtask: true,
+              parentTaskId: taskId
+            })
           )
         );
       }
-      // When uncompleting, we don't modify the subtasks - they keep their state
+      // When uncompleting, we explicitly do not modify the subtasks
+      // They maintain their current state
       
       toast({
         title: "Success",
@@ -245,10 +266,11 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
       return a.id - b.id;
     });
 
+  // Get all subtasks for a parent task, regardless of completion status
   const getOrderedSubtasks = (parentId: number) => {
     return tasks
       .filter(task => task.parentTaskId === parentId)
-      .sort((a, b) => a.id - b.id); // Changed to ascending order
+      .sort((a, b) => a.id - b.id);
   };
 
   return (
