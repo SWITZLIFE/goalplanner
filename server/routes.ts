@@ -653,6 +653,11 @@ Remember to:
       console.log('Generated vision statement:', visionStatement);
 
       try {
+        // Validate vision statement before saving
+        if (!visionStatement || visionStatement.trim().length === 0) {
+          throw new Error("Generated vision statement is empty");
+        }
+
         // Update the goal with the new vision statement
         const [updatedGoal] = await db.update(goals)
           .set({ 
@@ -669,7 +674,23 @@ Remember to:
           throw new Error("Failed to update goal with vision statement");
         }
 
-        res.json({ visionStatement });
+        // Verify the update was successful
+        const verifiedGoal = await db.query.goals.findFirst({
+          where: and(
+            eq(goals.id, parseInt(goalId)),
+            eq(goals.userId, userId)
+          ),
+        });
+
+        if (!verifiedGoal || verifiedGoal.visionStatement !== visionStatement) {
+          throw new Error("Vision statement verification failed");
+        }
+
+        // Return both the vision statement and the updated goal
+        res.json({ 
+          visionStatement,
+          goal: verifiedGoal
+        });
       } catch (dbError) {
         console.error("Failed to update goal in database:", dbError);
         res.status(500).json({ 

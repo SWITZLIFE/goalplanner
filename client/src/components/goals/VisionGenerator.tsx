@@ -59,14 +59,24 @@ export function VisionGenerator({ goalId, onVisionGenerated }: VisionGeneratorPr
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ answers }),
+        credentials: 'include'
       });
 
       if (!response.ok) {
-        throw new Error("Failed to generate vision statement");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to generate vision statement");
       }
 
       const data = await response.json();
+      
+      if (!data.visionStatement) {
+        throw new Error("No vision statement received from server");
+      }
+
+      // Update parent component state first
       onVisionGenerated(data.visionStatement);
+      
+      // Then close dialog and show success message
       setIsOpen(false);
       toast({
         title: "Vision Statement Generated!",
@@ -76,7 +86,7 @@ export function VisionGenerator({ goalId, onVisionGenerated }: VisionGeneratorPr
       console.error("Failed to generate vision:", error);
       toast({
         title: "Error",
-        description: "Failed to generate vision statement. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to generate vision statement. Please try again.",
         variant: "destructive",
       });
     } finally {
