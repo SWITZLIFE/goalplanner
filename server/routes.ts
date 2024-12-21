@@ -32,26 +32,27 @@ const upload = multer({
   }
 });
 
-// Helper function to upload file to Replit Database
+// Helper function to upload file to Replit Object Storage
 async function uploadToReplitStorage(file: Express.Multer.File): Promise<string> {
   try {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const fileName = uniqueSuffix + path.extname(file.originalname);
-    const key = `files:${fileName}`;
+    const key = `file:${fileName}`;
     
-    // Convert buffer to base64 for storage
+    // Convert file buffer to base64 for storage
     const fileData = {
       content: file.buffer.toString('base64'),
       contentType: file.mimetype,
       originalName: file.originalname,
       size: file.size,
-      uploadedAt: new Date().toISOString()
+      uploadDate: new Date().toISOString()
     };
 
     // Store in Replit Database
     await storage.set(key, fileData);
+    
     console.log('File uploaded successfully:', {
-      key,
+      fileName,
       contentType: file.mimetype,
       size: file.size
     });
@@ -79,10 +80,10 @@ export function registerRoutes(app: Express): Server {
   app.get('/api/files/:filename', requireAuth, async (req, res) => {
     try {
       const filename = req.params.filename;
-      const key = `files:${filename}`;
+      const key = `file:${filename}`;
       console.log('Retrieving file:', key);
       
-      // Get file data from database
+      // Get file data from Replit Database
       const fileData = await storage.get(key);
       
       if (!fileData) {
@@ -107,8 +108,8 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error('Error serving file:', error);
       res.status(500).json({ 
-        error: 'Error serving file',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        error: "Error serving file",
+        details: error instanceof Error ? error.message : "Unknown error"
       });
     }
   });
