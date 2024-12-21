@@ -17,7 +17,9 @@ import express from 'express';
 import { Client } from '@replit/object-storage';
 
 const storage = multer.memoryStorage();
-const objectStorage = new Client();
+const objectStorage = new Client({
+  defaultBucketName: process.env.REPLIT_BUCKET_ID || '',
+});
 
 const upload = multer({
   storage: storage,
