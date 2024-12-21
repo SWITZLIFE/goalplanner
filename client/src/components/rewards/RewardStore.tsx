@@ -13,6 +13,14 @@ interface RewardItem {
   cost: number;
   icon: string;
   type: 'digital' | 'perk' | 'discount';
+  createdAt: string;
+}
+
+interface UserRewards {
+  id: number;
+  userId: number;
+  coins: number;
+  lastUpdated: string;
 }
 
 export function RewardStore() {
@@ -23,7 +31,7 @@ export function RewardStore() {
     queryKey: ["/api/rewards/items"],
   });
 
-  const { data: userRewards } = useQuery({
+  const { data: userRewards } = useQuery<UserRewards>({
     queryKey: ["/api/rewards"],
     staleTime: 0,
     gcTime: 1000 * 60,
