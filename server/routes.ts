@@ -215,59 +215,103 @@ export function registerRoutes(app: Express): Server {
           const breakdown = await generateTaskBreakdown(title, parseInt(totalTasks));
           console.log('Task breakdown from OpenAI:', JSON.stringify(breakdown, null, 2));
 
+          const createdTasks = [];
+          
           // Create tasks in the order they come from OpenAI
           for (const task of breakdown) {
+            if (!task.title) continue;
+
             try {
+              // Create main task with strict user association
               const [mainTask] = await db.insert(tasks)
                 .values({
                   goalId: newGoal.id,
-                  userId,
-                  title: task.title || 'Untitled Task',
+                  userId: userId, // Explicitly set userId
+                  title: task.title,
                   completed: false,
                   isSubtask: false,
                   isAiGenerated: true,
                 })
                 .returning();
 
-              // Create subtasks
+              if (!mainTask) continue;
+
+              createdTasks.push(mainTask);
+
+              // Create subtasks with strict user association
               if (task.subtasks && Array.isArray(task.subtasks)) {
                 for (const subtask of task.subtasks) {
-                  await db.insert(tasks)
+                  if (!subtask.title) continue;
+
+                  const [createdSubtask] = await db.insert(tasks)
                     .values({
                       goalId: newGoal.id,
-                      userId,
-                      title: subtask.title || 'Untitled Subtask',
+                      userId: userId, // Explicitly set userId
+                      title: subtask.title,
                       completed: false,
                       estimatedMinutes: subtask.estimatedMinutes || null,
                       isSubtask: true,
                       parentTaskId: mainTask.id,
-                    });
+                      isAiGenerated: true,
+                    })
+                    .returning();
+
+                  if (createdSubtask) {
+                    createdTasks.push(createdSubtask);
+                  }
                 }
               }
             } catch (taskError) {
               console.error('Error creating task:', taskError);
-              // Continue with other tasks even if one fails
+              continue;
             }
           }
         } catch (breakdownError) {
           console.error('Error generating task breakdown:', breakdownError);
-          // Continue without tasks if breakdown fails
         }
       }
 
 
-      // Fetch the complete goal with tasks
-      const goalWithTasks = await db.query.goals.findFirst({
-        where: and(
-          eq(goals.id, newGoal.id),
-          eq(goals.userId, userId)
-        ),
-        with: {
-          tasks: true,
-        },
-      });
+      // Fetch the complete goal with tasks, ensuring proper user isolation
+      const goalWithTasks = await db.select({
+        id: goals.id,
+        title: goals.title,
+        description: goals.description,
+        targetDate: goals.targetDate,
+        progress: goals.progress,
+        totalTasks: goals.totalTasks,
+        createdAt: goals.createdAt,
+        visionStatement: goals.visionStatement,
+        visionResponses: goals.visionResponses,
+        userId: goals.userId,
+      })
+      .from(goals)
+      .where(and(
+        eq(goals.id, newGoal.id),
+        eq(goals.userId, userId)
+      ))
+      .limit(1);
 
-      res.json(goalWithTasks);
+      if (!goalWithTasks || goalWithTasks.length === 0) {
+        throw new Error("Failed to fetch created goal");
+      }
+
+      // Get tasks for this goal with user isolation
+      const goalTasks = await db.select()
+        .from(tasks)
+        .where(and(
+          eq(tasks.goalId, newGoal.id),
+          eq(tasks.userId, userId)
+        ))
+        .orderBy(tasks.createdAt);
+
+      // Combine goal and tasks
+      const response = {
+        ...goalWithTasks[0],
+        tasks: goalTasks
+      };
+
+      res.json(response);
     } catch (error) {
       console.error("Failed to create goal:", error);
       res.status(500).json({ error: "Failed to create goal" });
