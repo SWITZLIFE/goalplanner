@@ -142,6 +142,14 @@ export const visionBoardImages = pgTable("vision_board_images", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const futureMessages = pgTable("future_messages", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  message: text("message").notNull(),
+  isRead: boolean("is_read").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Relations for remaining tables
 export const rewardItemsRelations = relations(rewardItems, ({ many }) => ({
   purchases: many(purchasedRewards),
@@ -201,3 +209,12 @@ export type TimeTracking = typeof timeTracking.$inferSelect;
 export type NewTimeTracking = typeof timeTracking.$inferInsert;
 export type VisionBoardImage = typeof visionBoardImages.$inferSelect;
 export type NewVisionBoardImage = typeof visionBoardImages.$inferInsert;
+export type FutureMessage = typeof futureMessages.$inferSelect;
+export type NewFutureMessage = typeof futureMessages.$inferInsert;
+
+export const futureMessagesRelations = relations(futureMessages, ({ one }) => ({
+  user: one(users, {
+    fields: [futureMessages.userId],
+    references: [users.id],
+  }),
+}));

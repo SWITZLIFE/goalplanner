@@ -1,4 +1,5 @@
 import type { Express, Request, Response, NextFunction } from "express";
+import { getTodayMessage, markMessageAsRead } from "./future-message";
 import { createServer, type Server } from "http";
 import { db } from "@db";
 import { eq, desc, and, isNull, sql } from "drizzle-orm";
@@ -970,6 +971,29 @@ Remember to:
       res.status(500).json({ error: "Failed to fetch current timer" });
     }
   });
+  // Future Message API
+  app.get("/api/future-message/today", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const message = await getTodayMessage(userId);
+      res.json(message);
+    } catch (error) {
+      console.error("Failed to get future message:", error);
+      res.status(500).json({ error: "Failed to get future message" });
+    }
+  });
+
+  app.post("/api/future-message/read", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      await markMessageAsRead(userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to mark message as read:", error);
+      res.status(500).json({ error: "Failed to mark message as read" });
+    }
+  });
+
 
   // Vision Board API
   app.get("/api/vision-board", requireAuth, async (req, res) => {

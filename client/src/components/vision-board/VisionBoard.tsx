@@ -10,6 +10,8 @@ interface VisionBoardImage {
   position: number;
 }
 
+import { FutureMessage } from "./FutureMessage";
+
 export function VisionBoard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -120,6 +122,7 @@ export function VisionBoard() {
 
   return (
     <div className="space-y-4">
+      <FutureMessage />
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Vision Board</h2>
         <Button
