@@ -38,6 +38,38 @@ function requireAuth(req: express.Request, res: express.Response, next: express.
 }
 
 export function registerRoutes(app: Express): Server {
+// Profile photo upload route
+app.post("/api/user/profile-photo", requireAuth, upload.single('photo'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const userId = req.user!.id;
+    
+    // Upload to Supabase storage
+    const imageUrl = await uploadFileToSupabase(req.file);
+    
+    // Update user's profile photo URL in database
+    const [updatedUser] = await db.update(users)
+      .set({ profilePhotoUrl: imageUrl })
+      .where(eq(users.id, userId))
+      .returning();
+
+    if (!updatedUser) {
+      throw new Error("Failed to update user profile");
+    }
+
+    res.json({ 
+      message: "Profile photo updated successfully",
+      profilePhotoUrl: imageUrl 
+    });
+  } catch (error) {
+    console.error("Failed to upload profile photo:", error);
+    res.status(500).json({ error: "Failed to upload profile photo" });
+  }
+});
+
   // Setup authentication middleware and routes
   setupAuth(app);
 

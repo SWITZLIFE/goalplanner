@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
 import { useLocation } from "wouter";
 
@@ -15,6 +16,14 @@ export default function ProfilePage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
+  // Get initials from email
+  const initials = user?.email
+    ?.split('@')[0]
+    ?.split('.')
+    ?.map(part => part[0])
+    ?.join('')
+    ?.toUpperCase() || '';
 
   if (!user) {
     setLocation("/");
@@ -83,9 +92,80 @@ export default function ProfilePage() {
           <CardDescription>View and manage your account details</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Email</Label>
-            <Input value={user.email} disabled />
+          <div className="space-y-6">
+            <div className="flex items-center gap-4">
+              <Avatar className="h-20 w-20">
+                {user.profilePhotoUrl ? (
+                  <AvatarImage src={user.profilePhotoUrl} alt="Profile photo" />
+                ) : (
+                  <AvatarFallback className="bg-primary text-primary-foreground text-xl">
+                    {initials}
+                  </AvatarFallback>
+                )}
+              </Avatar>
+              <div>
+                <Button
+                  variant="outline"
+                  onClick={() => document.getElementById('photo-upload')?.click()}
+                >
+                  Change Photo
+                </Button>
+                <input
+                  id="photo-upload"
+                  type="file"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+
+                    if (!file.type.startsWith('image/')) {
+                      toast({
+                        title: "Error",
+                        description: "Please select an image file",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+
+                    const formData = new FormData();
+                    formData.append('photo', file);
+
+                    try {
+                      const response = await fetch('/api/user/profile-photo', {
+                        method: 'POST',
+                        body: formData,
+                        credentials: 'include',
+                      });
+
+                      if (!response.ok) {
+                        throw new Error('Failed to upload photo');
+                      }
+
+                      const data = await response.json();
+                      toast({
+                        title: "Success",
+                        description: "Profile photo updated successfully",
+                      });
+
+                      // Refresh the page to show the new photo
+                      window.location.reload();
+                    } catch (error) {
+                      toast({
+                        title: "Error",
+                        description: "Failed to upload profile photo",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input value={user.email} disabled />
+            </div>
           </div>
           
           {!isChangingPassword ? (

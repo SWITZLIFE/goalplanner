@@ -4,7 +4,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser } from "@/hooks/use-user";
 import { useToast } from "@/hooks/use-toast";
 
@@ -51,9 +51,13 @@ export function UserMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger className="hover:opacity-80">
         <Avatar>
-          <AvatarFallback className="bg-primary text-primary-foreground">
-            {initials}
-          </AvatarFallback>
+          {user.profilePhotoUrl ? (
+            <AvatarImage src={user.profilePhotoUrl} alt="Profile photo" />
+          ) : (
+            <AvatarFallback className="bg-primary text-primary-foreground">
+              {initials}
+            </AvatarFallback>
+          )}
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
