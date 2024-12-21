@@ -29,14 +29,14 @@ export default function Dashboard() {
 
         <CreateGoalDialog />
         
-        <div className="mt-6 space-y-3">
+        <div className="mt-6">
           <Link href="/rewards">
             <Button variant="outline" className="w-full">
               <Gift className="mr-2 h-4 w-4" />
               Reward Store
             </Button>
           </Link>
-          <Link href="/analytics">
+          <Link href="/analytics" className="block mt-4">
             <Button variant="outline" className="w-full">
               <BarChart2 className="mr-2 h-4 w-4" />
               View Analytics
