@@ -29,7 +29,7 @@ export default function Dashboard() {
 
         <CreateGoalDialog />
         
-        <div className="space-y-2">
+        <div className="mt-6 space-y-3">
           <Link href="/rewards">
             <Button variant="outline" className="w-full">
               <Gift className="mr-2 h-4 w-4" />
