@@ -109,58 +109,61 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ error: "User not found" });
       }
 
-      // Get all goals that belong to this user only, with tasks in a single query
-      const goalsWithTasks = await db.transaction(async (tx) => {
-        // Get user's goals first
-        const userGoals = await tx.select({
-          id: goals.id,
-          title: goals.title,
-          description: goals.description,
-          targetDate: goals.targetDate,
-          progress: goals.progress,
-          totalTasks: goals.totalTasks,
-          createdAt: goals.createdAt,
-          visionStatement: goals.visionStatement,
-          visionResponses: goals.visionResponses,
-          userId: goals.userId,
-        })
-        .from(goals)
-        .where(eq(goals.userId, userId))
-        .orderBy(desc(goals.createdAt));
+      // Get user's goals first
+      const userGoals = await db.select({
+        id: goals.id,
+        title: goals.title,
+        description: goals.description,
+        targetDate: goals.targetDate,
+        progress: goals.progress,
+        totalTasks: goals.totalTasks,
+        createdAt: goals.createdAt,
+        visionStatement: goals.visionStatement,
+        visionResponses: goals.visionResponses,
+        userId: goals.userId,
+      })
+      .from(goals)
+      .where(eq(goals.userId, userId))
+      .orderBy(desc(goals.createdAt));
 
-        // Verify data isolation
-        if (userGoals.some(goal => goal.userId !== userId)) {
-          console.error('Data isolation breach detected');
-          throw new Error("Data isolation error");
-        }
+      // Verify data isolation
+      if (userGoals.some(goal => goal.userId !== userId)) {
+        console.error('Data isolation breach detected for user:', userId);
+        return res.status(403).json({ error: "Unauthorized access" });
+      }
 
-        // Get all tasks for these goals in a single query
-        const goalIds = userGoals.map(g => g.id);
-        const allTasks = goalIds.length > 0 ? await tx.select()
-          .from(tasks)
-          .where(
-            and(
-              eq(tasks.userId, userId),
-              sql`${tasks.goalId} = ANY(${goalIds})`
-            )
+      // Get all tasks for these goals
+      const goalIds = userGoals.map(g => g.id);
+      const allTasks = goalIds.length > 0 ? await db.select()
+        .from(tasks)
+        .where(
+          and(
+            eq(tasks.userId, userId),
+            sql`${tasks.goalId} = ANY(${goalIds})`
           )
-          .orderBy(tasks.createdAt) : [];
+        )
+        .orderBy(tasks.createdAt) : [];
 
-        // Group tasks by goalId
-        const tasksByGoalId = allTasks.reduce((acc, task) => {
-          if (!acc[task.goalId]) {
-            acc[task.goalId] = [];
-          }
-          acc[task.goalId].push(task);
-          return acc;
-        }, {} as Record<number, typeof tasks.$inferSelect[]>);
+      // Verify task ownership
+      if (allTasks.some(task => task.userId !== userId)) {
+        console.error('Task ownership breach detected for user:', userId);
+        return res.status(403).json({ error: "Unauthorized access" });
+      }
 
-        // Combine goals with their tasks
-        return userGoals.map(goal => ({
-          ...goal,
-          tasks: tasksByGoalId[goal.id] || []
-        }));
-      });
+      // Group tasks by goalId
+      const tasksByGoalId = allTasks.reduce((acc, task) => {
+        if (!acc[task.goalId]) {
+          acc[task.goalId] = [];
+        }
+        acc[task.goalId].push(task);
+        return acc;
+      }, {} as Record<number, typeof tasks.$inferSelect[]>);
+
+      // Combine goals with their tasks
+      const goalsWithTasks = userGoals.map(goal => ({
+        ...goal,
+        tasks: tasksByGoalId[goal.id] || []
+      }));
 
       console.log('Found goals:', goalsWithTasks.length);
       res.json(goalsWithTasks);
