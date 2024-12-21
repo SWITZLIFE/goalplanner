@@ -42,6 +42,46 @@ export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
   // Create endpoint to serve vision board images securely
+  // Create endpoint to serve vision board images securely
+  app.get('/api/vision-board/images/:key', requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const key = req.params.key;
+
+      // Verify this image belongs to the user
+      const [image] = await db.select()
+        .from(visionBoardImages)
+        .where(and(
+          eq(visionBoardImages.userId, userId),
+          eq(visionBoardImages.imageKey, key)
+        ))
+        .limit(1);
+
+      if (!image) {
+        return res.status(404).json({ error: "Image not found" });
+      }
+
+      const file = await getFile(key);
+      if (!file) {
+        return res.status(404).json({ error: "Image not found in storage" });
+      }
+
+      // Determine content type based on file extension
+      const ext = key.split('.').pop()?.toLowerCase();
+      const contentType = {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif'
+      }[ext || ''] || 'application/octet-stream';
+
+      res.setHeader('Content-Type', contentType);
+      res.send(file);
+    } catch (error) {
+      console.error("Error serving image:", error);
+      res.status(500).json({ error: "Failed to serve image" });
+    }
+  });
   app.get('/api/vision-board/images/:key', requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
