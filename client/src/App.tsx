@@ -5,6 +5,7 @@ import GoalView from "./pages/GoalView";
 import RewardPage from "./pages/RewardPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import AuthPage from "./pages/AuthPage";
+import AnalyticsPage from "./pages/AnalyticsPage";
 import { Header } from "@/components/Header";
 import { useUser } from "@/hooks/use-user";
 
@@ -47,6 +48,7 @@ function App() {
           <Route path="/" component={Dashboard} />
           <Route path="/goals/:id" component={GoalView} />
           <Route path="/rewards" component={RewardPage} />
+          <Route path="/analytics" component={AnalyticsPage} />
         </Switch>
       </main>
     </div>

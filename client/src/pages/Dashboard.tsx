@@ -2,9 +2,8 @@ import { CreateGoalDialog } from "@/components/goals/CreateGoalDialog";
 import { VisionBoard } from "@/components/vision-board/VisionBoard";
 import { GoalCard } from "@/components/goals/GoalCard";
 import { CoinBalance } from "@/components/rewards/CoinBalance";
-import { AnalyticsDashboard } from "@/components/analytics/AnalyticsDashboard";
 import { useGoals } from "@/hooks/use-goals";
-import { Gift, Loader2 } from "lucide-react";
+import { Gift, Loader2, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 
@@ -30,12 +29,20 @@ export default function Dashboard() {
 
         <CreateGoalDialog />
         
-        <Link href="/rewards">
-          <Button variant="outline" className="w-full mt-4">
-            <Gift className="mr-2 h-4 w-4" />
-            Reward Store
-          </Button>
-        </Link>
+        <div className="space-y-2">
+          <Link href="/rewards">
+            <Button variant="outline" className="w-full">
+              <Gift className="mr-2 h-4 w-4" />
+              Reward Store
+            </Button>
+          </Link>
+          <Link href="/analytics">
+            <Button variant="outline" className="w-full">
+              <BarChart2 className="mr-2 h-4 w-4" />
+              View Analytics
+            </Button>
+          </Link>
+        </div>
         
         <div className="mt-8 space-y-4">
           <h2 className="text-sm font-medium text-gray-600">Your Goals</h2>
@@ -55,9 +62,7 @@ export default function Dashboard() {
       <div className="flex-1 p-8 bg-white">
         <div className="max-w-4xl mx-auto space-y-8">
           <VisionBoard />
-          <div className="mt-8">
-            <AnalyticsDashboard />
-          </div>
+          
         </div>
       </div>
     </div>
