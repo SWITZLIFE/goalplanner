@@ -2,8 +2,25 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
 import { eq, desc, and, isNull, sql } from "drizzle-orm";
-import { rewards, rewardItems, purchasedRewards, users } from "@db/schema";
-import { goals, tasks, timeTracking, visionBoardImages } from "@db/schema";
+import { 
+  rewards, 
+  rewardItems, 
+  purchasedRewards, 
+  users,
+  goals, 
+  tasks, 
+  timeTracking, 
+  visionBoardImages,
+  dailyMotivations,
+  type NewDailyMotivation
+} from "@db/schema";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import { generateTaskBreakdown, generateShortTitle, openai } from "./openai";
+import { getCoachingAdvice } from "./coaching";
+import { setupAuth } from "./auth";
+import { uploadFileToSupabase } from './supabase';
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -874,6 +891,109 @@ Remember to:
     }
   });
 
+  // Daily Motivation API
+  app.get("/api/motivation/daily", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      
+      // Get today's motivation if it exists
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const [motivation] = await db.select()
+        .from(dailyMotivations)
+        .where(and(
+          eq(dailyMotivations.userId, userId),
+          sql`DATE(${dailyMotivations.generatedAt}) = DATE(${today})`
+        ))
+        .limit(1);
+
+      if (motivation) {
+        res.json({ message: motivation.message });
+      } else {
+        res.status(404).json({ message: null });
+      }
+    } catch (error) {
+      console.error("Failed to fetch daily motivation:", error);
+      res.status(500).json({ error: "Failed to fetch daily motivation" });
+    }
+  });
+
+  app.post("/api/motivation/daily/generate", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+
+      // Get all active goals for the user
+      const userGoals = await db.select({
+        title: goals.title,
+        progress: goals.progress,
+        totalTasks: goals.totalTasks
+      })
+      .from(goals)
+      .where(eq(goals.userId, userId));
+
+      // Generate a personalized message using OpenAI
+      const prompt = `As an AI motivational coach, write a brief, encouraging message (max 30 words) for someone working on these goals:
+
+      Goals Progress:
+      ${userGoals.map(g => `- ${g.title}: ${g.progress}% complete (${g.totalTasks} tasks)`).join('\n')}
+
+      Write a motivating message that:
+      1. Is personal and specific to their goals
+      2. Acknowledges their progress
+      3. Encourages them to keep going
+      4. Is 30 words or less
+      5. Has a warm, friendly tone
+
+      Format the response as JSON:
+      {
+        "message": "your message here"
+      }
+      `;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: "You are a motivational coach who writes brief, impactful messages. Keep responses under 30 words."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        response_format: { type: "json_object" },
+      });
+
+      const { message } = JSON.parse(response.choices[0].message.content);
+
+      // Delete any existing motivation for today
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      await db.delete(dailyMotivations)
+        .where(and(
+          eq(dailyMotivations.userId, userId),
+          sql`DATE(${dailyMotivations.generatedAt}) = DATE(${today})`
+        ));
+
+      // Store the new motivation
+      const [newMotivation] = await db.insert(dailyMotivations)
+        .values({
+          userId,
+          message,
+          generatedAt: new Date()
+        })
+        .returning();
+
+      res.json({ message });
+    } catch (error) {
+      console.error("Failed to generate daily motivation:", error);
+      res.status(500).json({ error: "Failed to generate daily motivation" });
+    }
+  });
+
   app.post("/api/tasks/:taskId/timer/stop", requireAuth, async (req, res) => {
     try {
       const { taskId } = req.params;
@@ -986,7 +1106,16 @@ Remember to:
     }
   });
 
-  // Daily Motivation API
+  import { 
+  dailyMotivations,
+  goals,
+  users,
+} from "@db/schema";
+import { eq, and, sql } from "drizzle-orm";
+import { db } from "@db";
+import { openai } from "./openai";
+
+// Daily Motivation API
   app.get("/api/motivation/daily", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
