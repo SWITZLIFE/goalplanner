@@ -64,24 +64,16 @@ export function TaskViews({ tasks, goalId, goal }: TaskViewsProps) {
   const getFilteredTasks = () => {
     let filtered = tasks;
     
-    // Apply task status filter
-    if (taskFilter === 'active') {
-      const activeMainTasks = filtered.filter(task => !task.isSubtask && !task.completed);
-      filtered = [
-        ...activeMainTasks,
-        ...activeMainTasks.flatMap(task => tasks.filter(t => t.parentTaskId === task.id))
-      ];
-    } else if (taskFilter === 'completed') {
-      const completedMainTasks = filtered.filter(task => !task.isSubtask && task.completed);
-      filtered = [
-        ...completedMainTasks,
-        ...completedMainTasks.flatMap(task => tasks.filter(t => t.parentTaskId === task.id))
-      ];
-    }
-    
-    // Apply goal filter if specific goal is selected
+    // First apply goal filter
     if (goalFilter !== 'all') {
       filtered = filtered.filter(task => task.goalId === goalFilter);
+    }
+    
+    // Then apply task status filter
+    if (taskFilter === 'active') {
+      filtered = filtered.filter(task => !task.completed);
+    } else if (taskFilter === 'completed') {
+      filtered = filtered.filter(task => task.completed);
     }
     
     return filtered;
@@ -89,7 +81,10 @@ export function TaskViews({ tasks, goalId, goal }: TaskViewsProps) {
 
   // Get tasks for selected date
   const tasksForDate = (date: Date) => {
-    return tasks.filter(task => 
+    // First get filtered tasks based on current filters
+    const filtered = getFilteredTasks();
+    // Then filter by date
+    return filtered.filter(task => 
       task.plannedDate && 
       format(new Date(task.plannedDate), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
     );
