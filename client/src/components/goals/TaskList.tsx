@@ -239,8 +239,9 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         return b.id - a.id;
       }
       
-      // For AI tasks, sort by ID ascending to maintain logical sequence (first task first)
-      return a.id - b.id;
+      // For AI tasks, sort by ID descending since IDs are assigned in reverse order
+      // Latest created task (lowest ID) should appear at the bottom
+      return b.id - a.id;
     });
 
   const getOrderedSubtasks = (parentId: number) => {
