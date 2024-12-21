@@ -58,14 +58,20 @@ export function registerRoutes(app: Express): Server {
   // prefix all routes with /api
   // Goals API
   app.get("/api/goals", async (req, res) => {
+    // Check if user is authenticated
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
     try {
-      const allGoals = await db.query.goals.findMany({
+      const userGoals = await db.query.goals.findMany({
+        where: eq(goals.userId, req.user.id),
         with: {
           tasks: true,
         },
         orderBy: (goals, { desc }) => [desc(goals.createdAt)],
       });
-      res.json(allGoals);
+      res.json(userGoals);
     } catch (error) {
       console.error("Failed to fetch goals:", error);
       res.status(500).json({ error: "Failed to fetch goals" });
@@ -79,8 +85,14 @@ export function registerRoutes(app: Express): Server {
       // Generate a shorter title using AI
       const shortTitle = await generateShortTitle(title);
       
+      // Check if user is authenticated
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
       const [newGoal] = await db.insert(goals)
         .values({
+          userId: req.user.id,
           title: shortTitle,
           description: title, // Store original title as description
           targetDate: new Date(targetDate),
