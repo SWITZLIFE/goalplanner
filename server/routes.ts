@@ -7,29 +7,20 @@ import { rewards, rewardItems, purchasedRewards, users } from "@db/schema";
 import { goals, tasks, timeTracking, visionBoardImages } from "@db/schema";
 import multer from "multer";
 import path from "path";
-import fs from "fs";
+import Database from "@replit/database";
 import { generateTaskBreakdown, generateShortTitle } from "./openai";
 import { getCoachingAdvice } from "./coaching";
 import { setupAuth } from "./auth";
 import express from 'express';
 
-// Configure multer for handling file uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadDir = path.join(process.cwd(), "uploads");
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
+// Initialize Replit Database for Storage
+const storage = new Database();
+
+// Configure multer with memory storage for handling file uploads
+const multerStorage = multer.memoryStorage();
 
 const upload = multer({
-  storage: storage,
+  storage: multerStorage,
   fileFilter: (req, file, cb) => {
     if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
       return cb(new Error('Only image files are allowed!'));
@@ -40,6 +31,24 @@ const upload = multer({
     fileSize: 5 * 1024 * 1024 // 5MB limit
   }
 });
+
+// Helper function to upload file to Replit Database Storage
+async function uploadToReplitStorage(file: Express.Multer.File): Promise<string> {
+  const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+  const fileName = uniqueSuffix + path.extname(file.originalname);
+  const key = `uploads/${fileName}`;
+  
+  // Convert buffer to base64 for storage
+  const base64Data = file.buffer.toString('base64');
+  await storage.set(key, {
+    data: base64Data,
+    contentType: file.mimetype,
+    originalName: file.originalname
+  });
+  
+  // Return the storage key
+  return key;
+}
 
 // Authentication middleware
 function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
@@ -53,12 +62,27 @@ export function registerRoutes(app: Express): Server {
   // Setup authentication middleware and routes
   setupAuth(app);
 
-  // Ensure uploads directory exists and serve uploaded files
-  const uploadsDir = path.join(process.cwd(), 'uploads');
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-  }
-  app.use('/uploads', express.static(uploadsDir));
+  // Serve files from Replit Database Storage
+  app.get('/api/files/uploads/:filename', requireAuth, async (req, res) => {
+    try {
+      const key = `uploads/${req.params.filename}`;
+      const fileData = await storage.get(key);
+      
+      if (!fileData) {
+        return res.status(404).send('File not found');
+      }
+
+      // Convert stored data back to buffer
+      const buffer = Buffer.from(fileData.data, 'base64');
+      
+      // Set content type from stored metadata
+      res.setHeader('Content-Type', fileData.contentType);
+      res.send(buffer);
+    } catch (error) {
+      console.error('Error serving file:', error);
+      res.status(500).send('Error serving file');
+    }
+  });
 
   // Protect all /api routes except auth routes with enhanced session verification
   app.use('/api', (req, res, next) => {
@@ -888,7 +912,7 @@ Remember to:
 
   app.post("/api/vision-board/upload", requireAuth, upload.single('image'), async (req, res) => {
     try {
-      console.log('Processing image upload request:', req.file);
+      console.log('Processing image upload request');
       const userId = req.user!.id;
 
       // Check if user already has 12 images
@@ -920,8 +944,10 @@ Remember to:
         return res.status(400).json({ error: "No image file provided" });
       }
 
-      const imageUrl = `/uploads/${req.file.filename}`;
-      console.log('Image URL:', imageUrl);
+      // Upload to Replit Storage
+      const storageKey = await uploadToReplitStorage(req.file);
+      const imageUrl = `/api/files/${storageKey}`;
+      console.log('Storage URL:', imageUrl);
 
       const [newImage] = await db.insert(visionBoardImages)
         .values({
