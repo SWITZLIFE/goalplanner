@@ -7,9 +7,21 @@ import { Task } from "@db/schema";
 import { useGoals } from "@/hooks/use-goals";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Clock, Calendar as CalendarIcon, CheckCircle2, Circle, Quote } from "lucide-react";
 import { VisionGenerator } from "./VisionGenerator";
+
+interface Goal {
+  id: number;
+  title: string;
+  description: string;
+  targetDate: string;
+  progress: number;
+  totalTasks: number;
+  visionStatement: string | null;
+  visionResponses: string | null;
+}
 
 interface TaskViewsProps {
   tasks: Task[];
@@ -204,19 +216,45 @@ export function TaskViews({ tasks, goalId, goal }: TaskViewsProps) {
               goalId={goalId} 
               onVisionGenerated={async (vision) => {
                 try {
-                  await updateGoal({ 
-                    goalId,
-                    visionStatement: vision
+                  if (!vision) {
+                    throw new Error("No vision statement received");
+                  }
+                  
+                  const response = await fetch(`/api/goals/${goalId}`, {
+                    method: 'PATCH',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ 
+                      visionStatement: vision 
+                    })
                   });
+
+                  if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || "Failed to save vision statement");
+                  }
+
+                  const updatedGoal = await response.json();
+                  
+                  // Verify the update was successful
+                  if (!updatedGoal.visionStatement) {
+                    throw new Error("Vision statement was not saved correctly");
+                  }
+                  
                   toast({
                     title: "Vision Updated",
                     description: "Your vision statement has been saved.",
                   });
+
+                  // Force a refresh of the goals data
+                  queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
                 } catch (error) {
                   console.error("Failed to update vision:", error);
                   toast({
                     title: "Error",
-                    description: "Failed to save vision statement",
+                    description: error instanceof Error ? error.message : "Failed to save vision statement",
                     variant: "destructive",
                   });
                 }
