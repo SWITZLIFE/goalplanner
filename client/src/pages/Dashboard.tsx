@@ -3,7 +3,7 @@ import { VisionBoard } from "@/components/vision-board/VisionBoard";
 import { GoalCard } from "@/components/goals/GoalCard";
 import { CoinBalance } from "@/components/rewards/CoinBalance";
 import { useGoals } from "@/hooks/use-goals";
-import { Gift, Loader2, BarChart2, MessageCircle } from "lucide-react";
+import { Gift, Loader2, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 
@@ -40,12 +40,6 @@ export default function Dashboard() {
             <Button variant="outline" className="w-full">
               <BarChart2 className="mr-2 h-4 w-4" />
               View Analytics
-            </Button>
-          </Link>
-          <Link href="/chat" className="block mt-4">
-            <Button variant="outline" className="w-full">
-              <MessageCircle className="mr-2 h-4 w-4" />
-              Chat Room
             </Button>
           </Link>
         </div>
