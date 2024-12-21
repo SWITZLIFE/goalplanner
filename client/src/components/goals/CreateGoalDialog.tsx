@@ -12,11 +12,13 @@ export function CreateGoalDialog() {
   const [title, setTitle] = useState("");
   const [targetDate, setTargetDate] = useState("");
   const [totalTasks, setTotalTasks] = useState("1");
+  const [isLoading, setIsLoading] = useState(false);
   
   const { createGoal } = useGoals();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
+    setIsLoading(true);
     e.preventDefault();
     try {
       await createGoal({
@@ -30,6 +32,7 @@ export function CreateGoalDialog() {
         description: "Your new goal has been created successfully.",
       });
     } catch (error) {
+      setIsLoading(false);
       toast({
         title: "Error",
         description: "Failed to create goal. Please try again.",
@@ -82,7 +85,16 @@ export function CreateGoalDialog() {
               required
             />
           </div>
-          <Button type="submit" className="w-full">Create Goal</Button>
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                Generating Tasks...
+              </>
+            ) : (
+              'Create Goal'
+            )}
+          </Button>
         </form>
       </DialogContent>
     </Dialog>
