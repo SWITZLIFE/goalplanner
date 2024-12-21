@@ -123,28 +123,28 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
     if (!task) return;
 
     try {
-      // Only update the specified task's completion status
-      await updateTask({ 
-        taskId, 
+      // Update the task's completion status while preserving all other properties
+      const taskUpdate = {
+        taskId,
         completed,
-        // Preserve other task properties
         title: task.title,
         notes: task.notes,
         estimatedMinutes: task.estimatedMinutes,
         plannedDate: task.plannedDate,
         isSubtask: task.isSubtask,
         parentTaskId: task.parentTaskId
-      });
+      };
+
+      await updateTask(taskUpdate);
       
-      // If completing a main task, complete all subtasks
+      // Only modify subtasks when completing (not uncompleting) a main task
       if (!task.isSubtask && completed) {
         const subtasks = tasks.filter(t => t.parentTaskId === taskId);
         await Promise.all(
           subtasks.map(subtask => 
-            updateTask({ 
-              taskId: subtask.id, 
+            updateTask({
+              taskId: subtask.id,
               completed: true,
-              // Preserve subtask properties
               title: subtask.title,
               notes: subtask.notes,
               estimatedMinutes: subtask.estimatedMinutes,
@@ -155,8 +155,8 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
           )
         );
       }
-      // When uncompleting, we explicitly do not modify the subtasks
-      // They maintain their current state
+      // When uncompleting a task, do not modify its subtasks
+      // This ensures subtasks retain their state when parent is uncompleted
       
       toast({
         title: "Success",
