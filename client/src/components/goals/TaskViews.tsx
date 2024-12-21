@@ -204,19 +204,29 @@ export function TaskViews({ tasks, goalId, goal }: TaskViewsProps) {
               goalId={goalId} 
               onVisionGenerated={async (vision) => {
                 try {
-                  await updateGoal({ 
+                  const updatedGoal = await updateGoal({ 
                     goalId,
                     visionStatement: vision
                   });
-                  toast({
-                    title: "Vision Updated",
-                    description: "Your vision statement has been saved.",
-                  });
+                  if (updatedGoal) {
+                    toast({
+                      title: "Vision Updated",
+                      description: "Your vision statement has been saved.",
+                    });
+                    // Force a refresh of the goal data
+                    await queryClient.invalidateQueries(['goal', goalId]);
+                  } else {
+                    throw new Error("Failed to update goal");
+                  }
                 } catch (error) {
                   console.error("Failed to update vision:", error);
                   toast({
                     title: "Error",
-                    description: "Failed to save vision statement",
+                    description: "Failed to save vision statement. Please try again.",
+                    variant: "destructive"
+                  });
+                }
+              }}atement",
                     variant: "destructive",
                   });
                 }
