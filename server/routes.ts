@@ -13,23 +13,11 @@ import { getCoachingAdvice } from "./coaching";
 import { setupAuth } from "./auth";
 import express from 'express';
 
-// Configure multer for handling file uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadDir = path.join(process.cwd(), "uploads");
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
+import { uploadFileToSupabase } from './supabase';
 
+// Configure multer for handling file uploads
 const upload = multer({
-  storage: storage,
+  storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
     if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
       return cb(new Error('Only image files are allowed!'));
@@ -53,12 +41,13 @@ export function registerRoutes(app: Express): Server {
   // Setup authentication middleware and routes
   setupAuth(app);
 
-  // Ensure uploads directory exists and serve uploaded files
-  const uploadsDir = path.join(process.cwd(), 'uploads');
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-  }
-  app.use('/uploads', express.static(uploadsDir));
+  // Configure CORS headers for Supabase Storage URLs
+  app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', process.env.SUPABASE_URL);
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    next();
+  });
 
   // Protect all /api routes except auth routes with enhanced session verification
   app.use('/api', (req, res, next) => {
@@ -888,7 +877,7 @@ Remember to:
 
   app.post("/api/vision-board/upload", requireAuth, upload.single('image'), async (req, res) => {
     try {
-      console.log('Processing image upload request:', req.file);
+      console.log('Processing image upload request');
       const userId = req.user!.id;
 
       // Check if user already has 12 images
@@ -920,8 +909,9 @@ Remember to:
         return res.status(400).json({ error: "No image file provided" });
       }
 
-      const imageUrl = `/uploads/${req.file.filename}`;
-      console.log('Image URL:', imageUrl);
+      // Upload file to Supabase Storage
+      const imageUrl = await uploadFileToSupabase(req.file);
+      console.log('Supabase Image URL:', imageUrl);
 
       const [newImage] = await db.insert(visionBoardImages)
         .values({
@@ -934,7 +924,10 @@ Remember to:
       res.json(newImage);
     } catch (error) {
       console.error("Failed to upload image:", error);
-      res.status(500).json({ error: "Failed to upload image" });
+      res.status(500).json({ 
+        error: "Failed to upload image",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
