@@ -74,8 +74,12 @@ export function AnalyticsDashboard() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{Math.round(totalTaskTime / 60)}h</div>
-            <p className="text-xs text-muted-foreground">{totalTaskTime} minutes tracked</p>
+            <div className="text-2xl font-bold">
+              {Math.floor(allTasks.reduce((sum, task) => sum + (task.totalMinutesSpent || 0), 0) / 60)}h
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {Math.round(totalTaskTime / 60)}h estimated to complete
+            </p>
           </CardContent>
         </Card>
       </div>
