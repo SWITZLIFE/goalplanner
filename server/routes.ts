@@ -14,11 +14,18 @@ import { setupAuth } from "./auth";
 import express from 'express';
 
 // Configure multer for handling file uploads
-import { Client } from '@replit/object-storage';
-
-const storage = multer.memoryStorage();
-const objectStorage = new Client({
-  defaultBucketName: process.env.REPLIT_BUCKET_ID || '',
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = path.join(process.cwd(), "uploads");
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
 });
 
 const upload = multer({
@@ -881,13 +888,15 @@ Remember to:
 
   app.post("/api/vision-board/upload", requireAuth, upload.single('image'), async (req, res) => {
     try {
-      console.log('Processing image upload request');
+      console.log('Processing image upload request:', req.file);
       const userId = req.user!.id;
 
       // Check if user already has 12 images
       const imageCount = await db.select({ count: sql<number>`count(*)` })
         .from(visionBoardImages)
         .where(eq(visionBoardImages.userId, userId));
+
+      console.log('Current image count:', imageCount[0].count);
 
       if (imageCount[0].count >= 12) {
         return res.status(400).json({ error: "Maximum number of images (12) reached" });
@@ -904,13 +913,15 @@ Remember to:
         nextPosition++;
       }
 
+      console.log('Using position:', nextPosition);
+
       if (!req.file) {
+        console.error('No file uploaded');
         return res.status(400).json({ error: "No image file provided" });
       }
 
-      const filename = req.body.filename;
-      await objectStorage.put(filename, req.file.buffer);
-      const imageUrl = await objectStorage.getSignedUrl(filename);
+      const imageUrl = `/uploads/${req.file.filename}`;
+      console.log('Image URL:', imageUrl);
 
       const [newImage] = await db.insert(visionBoardImages)
         .values({
