@@ -499,8 +499,9 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
             <Calendar
               mode="single"
               selected={showDatePicker?.date}
+              disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
               onSelect={(date) => {
-                if (showDatePicker && onUpdateTaskDate) {
+                if (showDatePicker && onUpdateTaskDate && date) {
                   onUpdateTaskDate(showDatePicker.taskId, date);
                   setShowDatePicker(null);
                 }
