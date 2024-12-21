@@ -78,8 +78,10 @@ export function useUser() {
     onSuccess: () => {
       // Clear all queries from cache to ensure complete data isolation
       queryClient.clear();
-      // Invalidate user query to trigger a refetch if needed
+      // Force refetch of user query to update authentication state
       queryClient.invalidateQueries({ queryKey: ['user'] });
+      // Reset queryClient state
+      queryClient.setQueryData(['user'], null);
     },
   });
 

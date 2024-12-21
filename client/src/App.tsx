@@ -26,7 +26,15 @@ function App() {
     return <ResetPasswordPage />;
   }
 
-  if (!user) {
+  // If not authenticated (and not on reset password page), show auth page
+  if (!user && !resetToken) {
+    // Remove any stale data from localStorage
+    localStorage.clear();
+    // Force reload if we somehow have stale DOM state
+    if (document.querySelector('.dashboard-content')) {
+      window.location.href = '/';
+      return null;
+    }
     return <AuthPage />;
   }
 
