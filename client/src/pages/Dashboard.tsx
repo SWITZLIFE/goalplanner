@@ -19,7 +19,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="h-screen flex overflow-hidden">
+    <div className="min-h-screen flex">
       {/* Left Sidebar */}
       <div className="w-96 border-r p-6 bg-gray-50">
         <div className="flex justify-between items-center mb-6">
@@ -59,7 +59,7 @@ export default function Dashboard() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 p-8 bg-white overflow-y-auto">
+      <div className="flex-1 p-8 bg-white">
         <div className="max-w-4xl mx-auto space-y-8">
           <VisionBoard />
           
