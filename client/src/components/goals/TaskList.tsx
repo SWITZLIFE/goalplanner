@@ -224,7 +224,14 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
 
   const mainTasks = tasks
     .filter(task => !task.isSubtask)
-    .sort((a, b) => b.id - a.id); // Descending order - newest tasks first
+    .sort((a, b) => {
+      // If both tasks are AI-generated or both are manually created, sort by ID ascending
+      // Otherwise, manually created tasks go to the top
+      if ((a.isAiGenerated && b.isAiGenerated) || (!a.isAiGenerated && !b.isAiGenerated)) {
+        return a.isAiGenerated ? a.id - b.id : b.id - a.id;
+      }
+      return a.isAiGenerated ? 1 : -1;
+    });
 
   const getOrderedSubtasks = (parentId: number) => {
     return tasks
