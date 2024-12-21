@@ -228,7 +228,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
       // If both tasks are AI-generated or both are manually created, sort by ID ascending
       // Otherwise, manually created tasks go to the top
       if ((a.isAiGenerated && b.isAiGenerated) || (!a.isAiGenerated && !b.isAiGenerated)) {
-        return a.isAiGenerated ? b.id - a.id : b.id - a.id;
+        return a.isAiGenerated ? a.id - b.id : b.id - a.id;
       }
       return a.isAiGenerated ? 1 : -1;
     });
