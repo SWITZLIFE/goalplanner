@@ -13,11 +13,21 @@ export function useGoals() {
     queryKey: ["/api/goals", user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
-      const res = await fetch("/api/goals");
-      if (!res.ok) throw new Error("Failed to fetch goals");
-      return res.json();
+      const res = await fetch("/api/goals", {
+        credentials: 'include' // Include credentials for auth
+      });
+      if (!res.ok) {
+        if (res.status === 401) {
+          throw new Error("Please login to view your goals");
+        }
+        throw new Error("Failed to fetch goals");
+      }
+      const data = await res.json();
+      // Additional client-side validation
+      return data.filter((goal: Goal) => goal.userId === user.id);
     },
-    enabled: !!user?.id
+    enabled: !!user?.id,
+    staleTime: 30000 // Cache for 30 seconds
   });
 
   const updateGoalMutation = useMutation({

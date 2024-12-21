@@ -109,9 +109,9 @@ export function registerRoutes(app: Express): Server {
   });
 
   // Goals API
-  app.get("/api/goals", requireAuth, async (req, res) => {
+  app.get("/api/goals", async (req, res) => {
     try {
-      const userId = req.user!.id;
+      const userId = res.locals.userId; // Get userId from middleware
       console.log('Fetching goals for user:', userId);
 
       // First verify the user exists
@@ -125,7 +125,7 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ error: "User not found" });
       }
 
-      // Get all goals that belong to this user only
+      // Get all goals that belong to this user only with strict filtering
       const userGoals = await db.select({
         id: goals.id,
         title: goals.title,
