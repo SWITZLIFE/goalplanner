@@ -113,7 +113,11 @@ export default function GoalView() {
           </div>
 
           <div className="space-y-2">
-            <GoalProgress progress={goal.progress} />
+            <GoalProgress 
+              progress={goal.progress}
+              targetDate={goal.targetDate}
+              createdAt={goal.createdAt}
+            />
             <p className="text-sm text-muted-foreground">{goal.progress}% completed</p>
           </div>
 
