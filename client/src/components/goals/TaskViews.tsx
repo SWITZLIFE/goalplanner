@@ -38,9 +38,27 @@ export function TaskViews({ tasks, goalId, goal }: TaskViewsProps) {
   const { updateTask, createTask, updateGoal } = useGoals();
   const { toast } = useToast();
 
-  // Split tasks into active and completed
-  const activeTasks = tasks.filter(task => !task.completed);
-  const completedTasks = tasks.filter(task => task.completed);
+  // Get all main tasks (non-subtasks)
+  const mainTasks = tasks.filter(task => !task.isSubtask);
+  
+  // Get subtasks for a given parent task
+  const getSubtasks = (parentId: number) => tasks.filter(task => task.parentTaskId === parentId);
+  
+  // Split main tasks into active and completed
+  const activeMainTasks = mainTasks.filter(task => !task.completed);
+  const completedMainTasks = mainTasks.filter(task => task.completed);
+  
+  // For active view: Include active main tasks and ALL their subtasks
+  const activeTasks = [
+    ...activeMainTasks,
+    ...activeMainTasks.flatMap(task => getSubtasks(task.id))
+  ];
+  
+  // For completed view: Include completed main tasks and ALL their subtasks
+  const completedTasks = [
+    ...completedMainTasks,
+    ...completedMainTasks.flatMap(task => getSubtasks(task.id))
+  ];
 
   // Filter tasks based on selected filters
   const getFilteredTasks = () => {
@@ -48,9 +66,17 @@ export function TaskViews({ tasks, goalId, goal }: TaskViewsProps) {
     
     // Apply task status filter
     if (taskFilter === 'active') {
-      filtered = filtered.filter(task => !task.completed);
+      const activeMainTasks = filtered.filter(task => !task.isSubtask && !task.completed);
+      filtered = [
+        ...activeMainTasks,
+        ...activeMainTasks.flatMap(task => tasks.filter(t => t.parentTaskId === task.id))
+      ];
     } else if (taskFilter === 'completed') {
-      filtered = filtered.filter(task => task.completed);
+      const completedMainTasks = filtered.filter(task => !task.isSubtask && task.completed);
+      filtered = [
+        ...completedMainTasks,
+        ...completedMainTasks.flatMap(task => tasks.filter(t => t.parentTaskId === task.id))
+      ];
     }
     
     // Apply goal filter if specific goal is selected
