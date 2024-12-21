@@ -13,15 +13,20 @@ interface ChatMessage {
 
 export function setupWebSocketServer(server: Server) {
   const wss = new WebSocketServer({ 
-    server,
-    path: '/api/ws/chat',
-    verifyClient: (info: any, cb: any) => {
+    noServer: true,
+  });
+
+  server.on('upgrade', (request, socket, head) => {
+    if (request.url === '/api/ws/chat') {
       // Skip vite HMR connections
-      if (info.req.headers['sec-websocket-protocol'] === 'vite-hmr') {
-        cb(false);
+      if (request.headers['sec-websocket-protocol'] === 'vite-hmr') {
+        socket.destroy();
         return;
       }
-      cb(true);
+
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit('connection', ws, request);
+      });
     }
   });
 
@@ -29,6 +34,7 @@ export function setupWebSocketServer(server: Server) {
 
   wss.on('connection', async (ws) => {
     clients.add(ws);
+    console.log('Client connected to chat');
 
     // Send last 50 messages on connection
     try {
@@ -36,21 +42,31 @@ export function setupWebSocketServer(server: Server) {
         orderBy: (messages, { desc }) => [desc(messages.timestamp)],
         limit: 50,
         with: {
-          user: true
+          user: {
+            columns: {
+              id: true,
+              username: true,
+              email: true
+            }
+          }
         }
       });
 
       const formattedMessages = messages.map(msg => ({
         id: msg.id.toString(),
         userId: msg.userId,
-        username: msg.user.username || msg.user.email.split('@')[0],
+        username: msg.user?.username || msg.user?.email?.split('@')[0] || 'Anonymous',
         message: msg.message,
         timestamp: msg.timestamp.toISOString()
       }));
 
-      ws.send(JSON.stringify(formattedMessages.reverse()));
+      ws.send(JSON.stringify({
+        type: 'initial',
+        messages: formattedMessages.reverse()
+      }));
     } catch (error) {
       console.error('Error fetching messages:', error);
+      ws.send(JSON.stringify({ type: 'error', message: 'Failed to load messages' }));
     }
 
     ws.on('message', async (data) => {

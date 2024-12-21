@@ -28,9 +28,25 @@ export default function ChatRoom() {
     const socket = new WebSocket(`${wsProtocol}//${window.location.host}/api/ws/chat`);
 
     socket.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      setMessages((prev) => [...prev, message]);
-      scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+      try {
+        const data = JSON.parse(event.data);
+        console.log('Received message:', data);
+        
+        if (data.type === 'initial') {
+          setMessages(data.messages || []);
+        } else if (data.type === 'error') {
+          console.error('Chat error:', data.message);
+        } else {
+          setMessages((prev) => [...prev, data]);
+        }
+        
+        // Scroll to bottom after messages update
+        setTimeout(() => {
+          scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+        }, 100);
+      } catch (error) {
+        console.error('Error parsing message:', error);
+      }
     };
 
     socket.onopen = () => {
@@ -86,7 +102,7 @@ export default function ChatRoom() {
               >
                 <Avatar className="h-8 w-8">
                   <AvatarFallback>
-                    {msg.username.slice(0, 2).toUpperCase()}
+                    {msg.username ? msg.username.slice(0, 2).toUpperCase() : 'AN'}
                   </AvatarFallback>
                 </Avatar>
                 <div
