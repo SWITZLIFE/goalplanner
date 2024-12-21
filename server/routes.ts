@@ -75,9 +75,11 @@ export function registerRoutes(app: Express): Server {
       const userId = req.user.id;
       console.log("Using user ID for query:", userId);
       
+      // Only fetch goals for the authenticated user
       const userGoals = await db.select()
         .from(goals)
-        .where(eq(goals.userId, userId));
+        .where(eq(goals.userId, req.user.id))
+        .orderBy(goals.createdAt);
       
       console.log("Found goals:", userGoals.length);
       console.log("Goals user IDs:", userGoals.map(g => g.userId));
@@ -91,19 +93,23 @@ export function registerRoutes(app: Express): Server {
 
   app.post("/api/goals", async (req, res) => {
     try {
+      // Check if user is authenticated first
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
       const { title, description, targetDate, totalTasks } = req.body;
       
       // Generate a shorter title using AI
       const shortTitle = await generateShortTitle(title);
       
-      // Check if user is authenticated
-      if (!req.isAuthenticated()) {
-        return res.status(401).json({ error: "Not authenticated" });
-      }
+      // Get the authenticated user's ID
+      const userId = req.user.id;
+      console.log("Creating goal for user:", userId);
 
       const [newGoal] = await db.insert(goals)
         .values({
-          userId: req.user.id,
+          userId: userId,
           title: shortTitle,
           description: title, // Store original title as description
           targetDate: new Date(targetDate),
@@ -111,6 +117,8 @@ export function registerRoutes(app: Express): Server {
           progress: 0,
         })
         .returning();
+
+      console.log("Created goal:", newGoal);
 
       // Create tasks and subtasks
       if (totalTasks > 0) {
