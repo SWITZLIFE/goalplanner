@@ -126,7 +126,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
       // Update the main task
       await updateTask({ taskId, completed });
       
-      // If this is a main task being completed, also complete all subtasks
+      // Only modify subtasks when completing a main task
       if (!task.isSubtask && completed) {
         const subtasks = tasks.filter(t => t.parentTaskId === taskId);
         await Promise.all(
@@ -135,6 +135,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
           )
         );
       }
+      // When uncompleting, we don't modify the subtasks - they keep their state
       
       toast({
         title: "Success",
