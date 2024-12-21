@@ -13,7 +13,9 @@ async function handleAuthRequest(
 ): Promise<AuthResponse> {
   const response = await fetch(url, {
     method,
-    headers: body ? { "Content-Type": "application/json" } : undefined,
+    headers: {
+      ...(body ? { "Content-Type": "application/json" } : {}),
+    },
     body: body ? JSON.stringify(body) : undefined,
     credentials: "include",
   });
@@ -27,59 +29,79 @@ async function handleAuthRequest(
 }
 
 async function fetchUser(): Promise<SelectUser | null> {
-  const response = await fetch('/api/user', {
-    credentials: 'include'
-  });
+  try {
+    const response = await fetch('/api/user', {
+      credentials: 'include'
+    });
 
-  if (!response.ok) {
     if (response.status === 401) {
       return null;
     }
-    throw new Error(await response.text());
-  }
 
-  return response.json();
+    if (!response.ok) {
+      throw new Error(await response.text());
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error('Error fetching user:', error);
+    return null;
+  }
 }
 
 export function useUser() {
   const queryClient = useQueryClient();
 
-  const { data: user, error, isLoading } = useQuery<SelectUser | null, Error>({
+  const { data: user, isLoading } = useQuery<SelectUser | null>({
     queryKey: ['user'],
     queryFn: fetchUser,
-    staleTime: Infinity,
+    staleTime: 300000, // 5 minutes
+    cacheTime: 300000, // 5 minutes
     retry: false,
     refetchOnWindowFocus: false,
-    refetchOnMount: false
+    refetchOnMount: true,
+    refetchInterval: false
   });
 
-  const loginMutation = useMutation<AuthResponse, Error, InsertUser>({
-    mutationFn: (userData) => handleAuthRequest('/api/login', 'POST', userData),
+  const loginMutation = useMutation({
+    mutationFn: async (userData: InsertUser) => {
+      const response = await handleAuthRequest('/api/login', 'POST', userData);
+      return response;
+    },
     onSuccess: (data) => {
       queryClient.setQueryData(['user'], data.user);
+      // Prevent immediate refetch
+      queryClient.invalidateQueries({ queryKey: ['user'], refetchType: 'none' });
     },
   });
 
-  const logoutMutation = useMutation<void, Error>({
+  const logoutMutation = useMutation({
     mutationFn: async () => {
       await handleAuthRequest('/api/logout', 'POST');
-      // Clear all queries and reset state
+      queryClient.setQueryData(['user'], null);
       queryClient.clear();
+    },
+    onSuccess: () => {
       window.location.href = '/';
-    }
+    },
   });
 
-  const registerMutation = useMutation<AuthResponse, Error, InsertUser>({
-    mutationFn: (userData) => handleAuthRequest('/api/register', 'POST', userData),
+  const registerMutation = useMutation({
+    mutationFn: async (userData: InsertUser) => {
+      const response = await handleAuthRequest('/api/register', 'POST', userData);
+      return response;
+    },
     onSuccess: (data) => {
       queryClient.setQueryData(['user'], data.user);
+      // Prevent immediate refetch
+      queryClient.invalidateQueries({ queryKey: ['user'], refetchType: 'none' });
     },
   });
 
   return {
     user,
     isLoading,
-    error,
+    isAuthenticated: !!user,
     login: loginMutation.mutateAsync,
     logout: logoutMutation.mutateAsync,
     register: registerMutation.mutateAsync,
