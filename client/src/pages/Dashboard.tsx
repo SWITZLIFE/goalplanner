@@ -19,9 +19,9 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="h-screen flex overflow-hidden">
       {/* Left Sidebar */}
-      <div className="w-96 border-r p-6 bg-gray-50">
+      <div className="w-96 border-r p-6 bg-gray-50 overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-xl font-semibold">Goal Planner</h1>
           <CoinBalance />
@@ -59,7 +59,7 @@ export default function Dashboard() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 p-8 bg-white">
+      <div className="flex-1 p-8 bg-white overflow-y-auto">
         <div className="max-w-4xl mx-auto space-y-8">
           <VisionBoard />
           
