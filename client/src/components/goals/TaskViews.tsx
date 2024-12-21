@@ -198,7 +198,7 @@ export function TaskViews({ tasks, goalId, goal }: TaskViewsProps) {
               </div>
               
               <div className="grid grid-cols-7 text-center border-b">
-                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+                {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(day => (
                   <div key={day} className="p-2 font-medium border-r last:border-r-0">
                     {day}
                   </div>
@@ -209,7 +209,9 @@ export function TaskViews({ tasks, goalId, goal }: TaskViewsProps) {
                 {Array.from({ length: 35 }, (_, i) => {
                   const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
                   const startDay = startOfMonth.getDay(); // 0 = Sunday
-                  const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), i - startDay + 1);
+                  // Convert Sunday = 0 to Monday = 0 by shifting the days
+                  const mondayStartDay = startDay === 0 ? 6 : startDay - 1;
+                  const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), i - mondayStartDay + 1);
                   const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
                   const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
                   const dayTasks = getFilteredTasks().filter(task => 
