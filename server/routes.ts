@@ -3,7 +3,7 @@ import { openai } from "./openai";
 import { createServer, type Server } from "http";
 import { db } from "@db";
 import { eq } from "drizzle-orm";
-import { rewards, rewardItems, purchasedRewards } from "@db/schema";
+import { rewards, rewardItems, purchasedRewards, users } from "@db/schema";
 import { goals, tasks, timeTracking, visionBoardImages } from "@db/schema";
 import { and, isNull, sql } from "drizzle-orm";
 import multer from "multer";
@@ -97,8 +97,25 @@ export function registerRoutes(app: Express): Server {
       const userId = req.user!.id;
       console.log('Creating goal for user:', userId);
 
+      // Verify user exists
+      const [user] = await db.select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (!user) {
+        console.error('User not found:', userId);
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Validate input
+      if (!title || !targetDate) {
+        return res.status(400).json({ error: "Title and target date are required" });
+      }
+
       // Generate a shorter title using AI
       const shortTitle = await generateShortTitle(title);
+      console.log('Generated short title:', shortTitle);
 
       const [newGoal] = await db.insert(goals)
         .values({
@@ -106,7 +123,7 @@ export function registerRoutes(app: Express): Server {
           title: shortTitle,
           description: title, // Store original title as description
           targetDate: new Date(targetDate),
-          totalTasks: totalTasks,
+          totalTasks: totalTasks || 0,
           progress: 0,
         })
         .returning();
@@ -115,38 +132,50 @@ export function registerRoutes(app: Express): Server {
 
       // Create tasks and subtasks
       if (totalTasks > 0) {
-        const breakdown = await generateTaskBreakdown(title, parseInt(totalTasks));
+        try {
+          const breakdown = await generateTaskBreakdown(title, parseInt(totalTasks));
+          console.log('Task breakdown from OpenAI:', JSON.stringify(breakdown, null, 2));
 
-        console.log('Task breakdown from OpenAI:', JSON.stringify(breakdown, null, 2));
+          // Create tasks in the order they come from OpenAI
+          for (const task of breakdown) {
+            try {
+              const [mainTask] = await db.insert(tasks)
+                .values({
+                  goalId: newGoal.id,
+                  userId,
+                  title: task.title || 'Untitled Task',
+                  completed: false,
+                  isSubtask: false,
+                  isAiGenerated: true,
+                })
+                .returning();
 
-        // Create tasks in the order they come from OpenAI
-        for (const task of breakdown) {
-          const [mainTask] = await db.insert(tasks)
-            .values({
-              goalId: newGoal.id,
-              userId,
-              title: task.title,
-              completed: false,
-              isSubtask: false,
-              isAiGenerated: true,
-            })
-            .returning();
-
-          // Create subtasks
-          for (const subtask of task.subtasks) {
-            await db.insert(tasks)
-              .values({
-                goalId: newGoal.id,
-                userId,
-                title: subtask.title,
-                completed: false,
-                estimatedMinutes: subtask.estimatedMinutes,
-                isSubtask: true,
-                parentTaskId: mainTask.id,
-              });
+              // Create subtasks
+              if (task.subtasks && Array.isArray(task.subtasks)) {
+                for (const subtask of task.subtasks) {
+                  await db.insert(tasks)
+                    .values({
+                      goalId: newGoal.id,
+                      userId,
+                      title: subtask.title || 'Untitled Subtask',
+                      completed: false,
+                      estimatedMinutes: subtask.estimatedMinutes || null,
+                      isSubtask: true,
+                      parentTaskId: mainTask.id,
+                    });
+                }
+              }
+            } catch (taskError) {
+              console.error('Error creating task:', taskError);
+              // Continue with other tasks even if one fails
+            }
           }
+        } catch (breakdownError) {
+          console.error('Error generating task breakdown:', breakdownError);
+          // Continue without tasks if breakdown fails
         }
       }
+
 
       // Fetch the complete goal with tasks
       const goalWithTasks = await db.query.goals.findFirst({
