@@ -11,34 +11,18 @@ const openai = new OpenAI({
 export async function generateDailyMessage(userId: number) {
   try {
     // Get all goals and their progress for the user
-    const userGoals = await db.select({
-      id: goals.id,
-      title: goals.title,
-      progress: goals.progress,
-      totalTasks: goals.totalTasks,
-      tasks: tasks
-    })
-    .from(goals)
-    .where(eq(goals.userId, userId))
-    .leftJoin(tasks, eq(goals.id, tasks.goalId));
-
-    // Process the results to group tasks by goal
-    const goalsMap = new Map();
-    userGoals.forEach(record => {
-      if (!goalsMap.has(record.id)) {
-        goalsMap.set(record.id, {
-          title: record.title,
-          progress: record.progress,
-          totalTasks: record.totalTasks,
-          tasks: []
-        });
-      }
-      if (record.tasks) {
-        goalsMap.get(record.id).tasks.push(record.tasks);
-      }
+    const userGoals = await db.query.goals.findMany({
+      where: eq(goals.userId, userId),
+      columns: {
+        id: true,
+        title: true,
+        progress: true,
+        totalTasks: true,
+      },
+      with: {
+        tasks: true,
+      },
     });
-
-    const goals = Array.from(goalsMap.values());
 
     const goalsContext = goals.map(goal => ({
       title: goal.title,

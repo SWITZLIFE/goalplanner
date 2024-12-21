@@ -44,12 +44,34 @@ export function FutureMessage() {
     },
   });
 
+  const loadingState = (
+    <div className="mb-8 bg-primary/5 rounded-lg p-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold">Message from Your Future Self</h2>
+      </div>
+      <div className="h-20 flex items-center justify-center">
+        <div className="animate-pulse">Loading your daily message...</div>
+      </div>
+    </div>
+  );
+
+  const errorState = (
+    <div className="mb-8 bg-primary/5 rounded-lg p-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold">Message from Your Future Self</h2>
+      </div>
+      <div className="mt-4 text-muted-foreground">
+        Your message will appear here soon.
+      </div>
+    </div>
+  );
+
   if (isLoading) {
-    return <div className="h-20 flex items-center justify-center">Loading...</div>;
+    return loadingState;
   }
 
   if (!message) {
-    return null;
+    return errorState;
   }
 
   return (
