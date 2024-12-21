@@ -1,5 +1,6 @@
 import { CoinBalance } from "@/components/rewards/CoinBalance";
 import { RewardStore } from "@/components/rewards/RewardStore";
+import { PurchasedRewards } from "@/components/rewards/PurchasedRewards";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
@@ -18,6 +19,7 @@ export default function RewardPage() {
           <CoinBalance />
         </div>
         <RewardStore />
+        <PurchasedRewards />
       </div>
     </div>
   );

@@ -591,6 +591,24 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ error: "Failed to fetch rewards" });
     }
   });
+  // Get purchased rewards
+  app.get("/api/rewards/purchased", async (req, res) => {
+    try {
+      const userId = 1; // TODO: Replace with actual user ID when auth is added
+      const purchasedItems = await db.query.purchasedRewards.findMany({
+        where: eq(purchasedRewards.userId, userId),
+        with: {
+          rewardItem: true,
+        },
+        orderBy: (purchasedRewards, { desc }) => [desc(purchasedRewards.purchaseDate)],
+      });
+      res.json(purchasedItems);
+    } catch (error) {
+      console.error('Error fetching purchased rewards:', error);
+      res.status(500).json({ error: "Failed to fetch purchased rewards" });
+    }
+  });
+
 
   app.get("/api/rewards/items", async (req, res) => {
     try {
@@ -658,13 +676,23 @@ export function registerRoutes(app: Express): Server {
         throw new Error("Failed to update user rewards");
       }
 
+      // Record the purchase
+      const [purchasedReward] = await db.insert(purchasedRewards)
+        .values({
+          userId,
+          rewardItemId: item.id,
+          isActive: true,
+        })
+        .returning();
+
       res.json({ 
         message: "Purchase successful",
         item: {
           name: item.name,
           cost: item.cost
         },
-        newBalance: updatedRewards.coins
+        newBalance: updatedRewards.coins,
+        purchasedReward
       });
     } catch (error) {
       console.error("Purchase error:", error);
