@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, jsonb, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 import { z } from "zod";
@@ -207,6 +207,7 @@ export const chatMessages = pgTable("chat_messages", {
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   message: text("message").notNull(),
   timestamp: timestamp("timestamp").defaultNow().notNull(),
+  reactions: jsonb("reactions").default({}).notNull(), // Changed to jsonb
 });
 
 export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({

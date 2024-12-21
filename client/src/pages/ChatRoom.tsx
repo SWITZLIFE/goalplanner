@@ -5,8 +5,14 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Send } from "lucide-react";
+import { ArrowLeft, Send, Smile } from "lucide-react";
 import { Link } from "wouter";
+import EmojiPicker from "emoji-picker-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface ChatMessage {
   id: string;
@@ -14,6 +20,7 @@ interface ChatMessage {
   username: string;
   message: string;
   timestamp: string;
+  reactions?: Record<string, { emoji: string; users: number[] }>;
 }
 
 export default function ChatRoom() {
@@ -121,6 +128,49 @@ export default function ChatRoom() {
                     </span>
                   </div>
                   <p className="mt-1 text-sm">{msg.message}</p>
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {msg.reactions && Object.entries(msg.reactions).map(([key, reaction]) => (
+                      <Button
+                        key={key}
+                        variant="outline"
+                        size="sm"
+                        className="px-2 py-0 h-6"
+                        onClick={() => {
+                          if (ws?.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify({
+                              type: 'reaction',
+                              messageId: msg.id,
+                              emoji: reaction.emoji,
+                              userId: user?.id
+                            }));
+                          }
+                        }}
+                      >
+                        {reaction.emoji} {reaction.users.length}
+                      </Button>
+                    ))}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="px-2 py-0 h-6">
+                          <Smile className="h-3 w-3" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0">
+                        <EmojiPicker
+                          onEmojiClick={(emoji) => {
+                            if (ws?.readyState === WebSocket.OPEN) {
+                              ws.send(JSON.stringify({
+                                type: 'reaction',
+                                messageId: msg.id,
+                                emoji: emoji.emoji,
+                                userId: user?.id
+                              }));
+                            }
+                          }}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
               </div>
             ))}
@@ -136,6 +186,20 @@ export default function ChatRoom() {
               placeholder="Type your message..."
               className="flex-1"
             />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <Smile className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-full p-0">
+                <EmojiPicker
+                  onEmojiClick={(emoji) => {
+                    setNewMessage((prev) => prev + emoji.emoji);
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
             <Button type="submit" size="icon">
               <Send className="h-4 w-4" />
             </Button>

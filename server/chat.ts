@@ -11,6 +11,15 @@ interface ChatMessage {
   timestamp: string;
 }
 
+interface ReactionMessage {
+  type: 'reaction';
+  messageId: string;
+  emoji: string;
+  userId: number;
+}
+
+type WebSocketMessage = ChatMessage | ReactionMessage;
+
 export function setupWebSocketServer(server: Server) {
   const wss = new WebSocketServer({ 
     noServer: true,
@@ -71,34 +80,84 @@ export function setupWebSocketServer(server: Server) {
 
     ws.on('message', async (data) => {
       try {
-        const message: ChatMessage = JSON.parse(data.toString());
-        
-        // Store message in database
-        const [savedMessage] = await db.insert(chatMessages).values({
-          userId: message.userId,
-          message: message.message,
-          timestamp: new Date(message.timestamp)
-        }).returning();
+        const message: WebSocketMessage = JSON.parse(data.toString());
 
-        // Get user info
-        const user = await db.query.users.findFirst({
-          where: eq(users.id, message.userId),
-        });
+        if ('type' in message && message.type === 'reaction') {
+          // Handle reaction
+          const [updatedMessage] = await db
+            .select()
+            .from(chatMessages)
+            .where(eq(chatMessages.id, parseInt(message.messageId)));
 
-        const broadcastMessage = {
-          id: savedMessage.id.toString(),
-          userId: savedMessage.userId,
-          username: user?.username || user?.email.split('@')[0],
-          message: savedMessage.message,
-          timestamp: savedMessage.timestamp.toISOString()
-        };
-
-        // Broadcast to all connected clients
-        clients.forEach((client) => {
-          if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify(broadcastMessage));
+          if (!updatedMessage) {
+            console.error('Message not found:', message.messageId);
+            return;
           }
-        });
+
+          const reactions = updatedMessage.reactions as Record<string, { emoji: string; users: number[] }>;
+          const reactionKey = message.emoji;
+          
+          if (!reactions[reactionKey]) {
+            reactions[reactionKey] = { emoji: message.emoji, users: [] };
+          }
+
+          const userIndex = reactions[reactionKey].users.indexOf(message.userId);
+          if (userIndex === -1) {
+            reactions[reactionKey].users.push(message.userId);
+          } else {
+            reactions[reactionKey].users.splice(userIndex, 1);
+            if (reactions[reactionKey].users.length === 0) {
+              delete reactions[reactionKey];
+            }
+          }
+
+          await db
+            .update(chatMessages)
+            .set({ reactions })
+            .where(eq(chatMessages.id, parseInt(message.messageId)));
+
+          // Broadcast reaction update
+          const broadcastMessage = {
+            type: 'reaction_update',
+            messageId: message.messageId,
+            reactions
+          };
+
+          clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify(broadcastMessage));
+            }
+          });
+        } else {
+          // Handle new message
+          const [savedMessage] = await db.insert(chatMessages).values({
+            userId: message.userId,
+            message: message.message,
+            timestamp: new Date(message.timestamp),
+            reactions: {}
+          }).returning();
+
+          // Get user info
+          const user = await db.query.users.findFirst({
+            where: eq(users.id, message.userId),
+          });
+
+          const broadcastMessage = {
+            id: savedMessage.id.toString(),
+            userId: savedMessage.userId,
+            username: user?.username || user?.email.split('@')[0],
+            message: savedMessage.message,
+            timestamp: savedMessage.timestamp.toISOString(),
+            reactions: {}
+          };
+
+          // Broadcast to all connected clients
+          clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify(broadcastMessage));
+            }
+          });
+        }
       } catch (error) {
         console.error('Error handling message:', error);
       }
