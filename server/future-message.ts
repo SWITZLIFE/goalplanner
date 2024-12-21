@@ -37,11 +37,12 @@ Rules:
 3. Focus on progress and potential
 4. Use an encouraging, optimistic tone
 5. Make it personal based on their goals
+6. IMPORTANT: You must respond with a JSON object
 
 Current Goals Context:
 ${JSON.stringify(goalsContext, null, 2)}
 
-Response Format:
+Respond with a JSON object in this exact format:
 {
   "message": "your motivational message here"
 }`;
