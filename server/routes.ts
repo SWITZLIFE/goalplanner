@@ -2,10 +2,9 @@ import type { Express } from "express";
 import { openai } from "./openai";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { eq } from "drizzle-orm";
+import { eq, desc, and, isNull, sql } from "drizzle-orm";
 import { rewards, rewardItems, purchasedRewards, users } from "@db/schema";
 import { goals, tasks, timeTracking, visionBoardImages } from "@db/schema";
-import { and, isNull, sql } from "drizzle-orm";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -61,7 +60,15 @@ export function registerRoutes(app: Express): Server {
   }
   app.use('/uploads', express.static(uploadsDir));
 
-  // Protect all /api routes except auth routes and enforce user data isolation
+  // Authentication middleware
+  function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "You must be logged in to access this resource" });
+    }
+    next();
+  }
+
+  // Protect all /api routes except auth routes
   app.use('/api', (req, res, next) => {
     // Skip auth for login/register/logout routes
     if (req.path.startsWith('/login') || req.path.startsWith('/register') || req.path.startsWith('/logout') || req.path.startsWith('/user')) {
@@ -81,12 +88,6 @@ export function registerRoutes(app: Express): Server {
 
     // Store userId in res.locals for use in routes
     res.locals.userId = userId;
-
-    // Additional security check - if URL contains a different userId, block the request
-    const urlUserId = req.params.userId;
-    if (urlUserId && parseInt(urlUserId) !== userId) {
-      return res.status(403).json({ error: "Unauthorized access to other user's data" });
-    }
 
     next();
   });
