@@ -229,12 +229,12 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
       if (a.isAiGenerated !== b.isAiGenerated) {
         return a.isAiGenerated ? 1 : -1;
       }
-      // For manual tasks, sort by ID descending
-      // For AI tasks, preserve the order
+      // For manual tasks, sort by ID descending (newest first)
       if (!a.isAiGenerated) {
         return b.id - a.id;
       }
-      return b.id - a.id; // Reverse AI task order
+      // For AI tasks, sort by ID ascending to maintain logical sequence
+      return a.id - b.id;
     });
 
   const getOrderedSubtasks = (parentId: number) => {
