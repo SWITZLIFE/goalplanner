@@ -130,10 +130,12 @@ export function setupWebSocketServer(server: Server) {
           });
         } else {
           // Handle new message
+          // Handle new message
+          const timestamp = new Date();
           const [savedMessage] = await db.insert(chatMessages).values({
             userId: message.userId,
             message: message.message,
-            timestamp: new Date(message.timestamp),
+            timestamp,
             reactions: {}
           }).returning();
 

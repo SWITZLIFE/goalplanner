@@ -43,6 +43,12 @@ export default function ChatRoom() {
           setMessages(data.messages || []);
         } else if (data.type === 'error') {
           console.error('Chat error:', data.message);
+        } else if (data.type === 'reaction_update') {
+          setMessages(prev => prev.map(msg => 
+            msg.id === data.messageId 
+              ? { ...msg, reactions: data.reactions }
+              : msg
+          ));
         } else {
           setMessages((prev) => [...prev, data]);
         }
