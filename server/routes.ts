@@ -43,6 +43,14 @@ import { getCoachingAdvice } from "./coaching";
 import { setupAuth } from "./auth";
 import express from 'express';
 
+// Authentication middleware
+function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "You must be logged in to access this resource" });
+  }
+  next();
+}
+
 export function registerRoutes(app: Express): Server {
   // Setup authentication middleware and routes
   setupAuth(app);
@@ -54,18 +62,28 @@ export function registerRoutes(app: Express): Server {
   }
   app.use('/uploads', express.static(uploadsDir));
 
+  // Protect all /api routes except auth routes
+  app.use('/api', (req, res, next) => {
+    if (req.path.startsWith('/login') || req.path.startsWith('/register') || req.path.startsWith('/logout') || req.path.startsWith('/user')) {
+      return next();
+    }
+    requireAuth(req, res, next);
+  });
+
   // put application routes here
   // prefix all routes with /api
   // Goals API
   app.get("/api/goals", async (req, res) => {
     try {
-      const allGoals = await db.query.goals.findMany({
+      const userId = req.user!.id;
+      const userGoals = await db.query.goals.findMany({
+        where: eq(goals.userId, userId),
         with: {
           tasks: true,
         },
         orderBy: (goals, { desc }) => [desc(goals.createdAt)],
       });
-      res.json(allGoals);
+      res.json(userGoals);
     } catch (error) {
       console.error("Failed to fetch goals:", error);
       res.status(500).json({ error: "Failed to fetch goals" });
@@ -75,12 +93,14 @@ export function registerRoutes(app: Express): Server {
   app.post("/api/goals", async (req, res) => {
     try {
       const { title, description, targetDate, totalTasks } = req.body;
+      const userId = req.user!.id;
       
       // Generate a shorter title using AI
       const shortTitle = await generateShortTitle(title);
       
       const [newGoal] = await db.insert(goals)
         .values({
+          userId,
           title: shortTitle,
           description: title, // Store original title as description
           targetDate: new Date(targetDate),
@@ -105,6 +125,7 @@ export function registerRoutes(app: Express): Server {
               completed: false,
               isSubtask: false,
               isAiGenerated: true,
+              userId, // Assign userId to tasks
             })
             .returning();
 
@@ -118,6 +139,7 @@ export function registerRoutes(app: Express): Server {
                 estimatedMinutes: subtask.estimatedMinutes,
                 isSubtask: true,
                 parentTaskId: mainTask.id,
+                userId, // Assign userId to subtasks
               });
           }
         }
@@ -142,10 +164,14 @@ export function registerRoutes(app: Express): Server {
     try {
       const { goalId } = req.params;
       const goalIdInt = parseInt(goalId);
+      const userId = req.user!.id;
 
-      // First verify the goal exists
+      // First verify the goal exists and belongs to the user
       const goalToDelete = await db.query.goals.findFirst({
-        where: eq(goals.id, goalIdInt),
+        where: and(
+          eq(goals.id, goalIdInt),
+          eq(goals.userId, userId)
+        ),
         with: {
           tasks: true
         }
@@ -187,10 +213,24 @@ export function registerRoutes(app: Express): Server {
     try {
       const { goalId } = req.params;
       const { title, isSubtask, parentTaskId, plannedDate } = req.body;
+      const userId = req.user!.id;
+      
+      // Verify the goal belongs to the user
+      const goal = await db.query.goals.findFirst({
+        where: and(
+          eq(goals.id, parseInt(goalId)),
+          eq(goals.userId, userId)
+        )
+      });
+
+      if (!goal) {
+        return res.status(404).json({ error: "Goal not found or unauthorized" });
+      }
       
       const [newTask] = await db.insert(tasks)
         .values({
           goalId: parseInt(goalId),
+          userId,
           title,
           completed: false,
           isSubtask: isSubtask || false,
@@ -209,8 +249,21 @@ export function registerRoutes(app: Express): Server {
   app.patch("/api/tasks/:taskId", async (req, res) => {
     try {
       const { taskId } = req.params;
+      const userId = req.user!.id;
       // Destructure only the fields we want to update, ignoring order
-  const { completed, title, estimatedMinutes, plannedDate, notes } = req.body;
+      const { completed, title, estimatedMinutes, plannedDate, notes } = req.body;
+      
+      // First verify the task belongs to the user
+      const task = await db.query.tasks.findFirst({
+        where: and(
+          eq(tasks.id, parseInt(taskId)),
+          eq(tasks.userId, userId)
+        )
+      });
+
+      if (!task) {
+        return res.status(404).json({ error: "Task not found or unauthorized" });
+      }
       
       const updateData: Partial<typeof tasks.$inferInsert> = {};
       if (typeof completed !== 'undefined') updateData.completed = completed;
@@ -227,11 +280,14 @@ export function registerRoutes(app: Express): Server {
 
       const [updatedTask] = await db.update(tasks)
         .set(updateData)
-        .where(eq(tasks.id, parseInt(taskId)))
+        .where(and(
+          eq(tasks.id, parseInt(taskId)),
+          eq(tasks.userId, userId)
+        ))
         .returning();
 
       if (!updatedTask) {
-        return res.status(404).json({ error: "Task not found" });
+        return res.status(404).json({ error: "Task not found or unauthorized" });
       }
 
       // Update goal progress
@@ -259,14 +315,18 @@ export function registerRoutes(app: Express): Server {
     try {
       const { taskId } = req.params;
       const taskIdInt = parseInt(taskId);
+      const userId = req.user!.id;
 
-      // First, verify the task exists and get its details
+      // First, verify the task exists and belongs to the user
       const taskToDelete = await db.query.tasks.findFirst({
-        where: eq(tasks.id, taskIdInt)
+        where: and(
+          eq(tasks.id, taskIdInt),
+          eq(tasks.userId, userId)
+        )
       });
 
       if (!taskToDelete) {
-        return res.status(404).json({ error: "Task not found" });
+        return res.status(404).json({ error: "Task not found or unauthorized" });
       }
 
       // First delete any time tracking records for this task

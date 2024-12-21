@@ -35,6 +35,7 @@ export type SelectUser = typeof users.$inferSelect;
 
 export const goals = pgTable("goals", {
   id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description"),
   targetDate: timestamp("target_date").notNull(),
@@ -47,7 +48,8 @@ export const goals = pgTable("goals", {
 
 export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
-  goalId: integer("goal_id").notNull().references(() => goals.id),
+  goalId: integer("goal_id").notNull().references(() => goals.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   completed: boolean("completed").default(false).notNull(),
   estimatedMinutes: integer("estimated_minutes"),
@@ -58,66 +60,15 @@ export const tasks = pgTable("tasks", {
   isSubtask: boolean("is_subtask").default(false).notNull(),
   notes: text("notes"),
   isAiGenerated: boolean("is_ai_generated").default(false).notNull(),
-  // Note: order field exists in DB but is no longer used in the application
   order: integer("order"),
 });
 
-export const rewards = pgTable("rewards", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
-  coins: integer("coins").default(0).notNull(),
-  lastUpdated: timestamp("last_updated").defaultNow().notNull(),
-});
-
-export const rewardItems = pgTable("reward_items", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  description: text("description"),
-  cost: integer("cost").notNull(),
-  icon: text("icon").notNull(), // Lucide icon name
-  type: text("type").notNull(), // 'digital', 'perk', 'discount'
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export const purchasedRewards = pgTable("purchased_rewards", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  rewardItemId: integer("reward_item_id").notNull().references(() => rewardItems.id, { onDelete: "cascade" }),
-  purchasedAt: timestamp("purchased_at").defaultNow().notNull(),
-});
-
-// Add relations for rewardItems
-export const rewardItemsRelations = relations(rewardItems, ({ many }) => ({
-  purchases: many(purchasedRewards),
-}));
-
-// Add relations for purchasedRewards
-export const purchasedRewardsRelations = relations(purchasedRewards, ({ one }) => ({
+// Define relations
+export const goalsRelations = relations(goals, ({ one, many }) => ({
   user: one(users, {
-    fields: [purchasedRewards.userId],
+    fields: [goals.userId],
     references: [users.id],
   }),
-  rewardItem: one(rewardItems, {
-    fields: [purchasedRewards.rewardItemId],
-    references: [rewardItems.id],
-  }),
-}));
-
-export type PurchasedReward = typeof purchasedRewards.$inferSelect;
-export type InsertPurchasedReward = typeof purchasedRewards.$inferInsert;
-
-export const timeTracking = pgTable("time_tracking", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
-  taskId: integer("task_id").notNull().references(() => tasks.id),
-  startTime: timestamp("start_time").notNull(),
-  endTime: timestamp("end_time"),
-  coinsEarned: integer("coins_earned").default(0),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export const goalsRelations = relations(goals, ({ many }) => ({
   tasks: many(tasks, {
     fields: [goals.id],
     references: [tasks.goalId],
@@ -129,36 +80,82 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
     fields: [tasks.goalId],
     references: [goals.id],
   }),
+  user: one(users, {
+    fields: [tasks.userId],
+    references: [users.id],
+  }),
+  parentTask: one(tasks, {
+    fields: [tasks.parentTaskId],
+    references: [tasks.id],
+  }),
+  subtasks: many(tasks, {
+    fields: [tasks.id],
+    references: [tasks.parentTaskId],
+  }),
   timeTrackingSessions: many(timeTracking, {
     fields: [tasks.id],
     references: [timeTracking.taskId],
   }),
 }));
 
-export const insertGoalSchema = createInsertSchema(goals);
-export const selectGoalSchema = createSelectSchema(goals);
-// Create custom task update schema that includes order
-export const insertTaskSchema = createInsertSchema(tasks);
-export const selectTaskSchema = createSelectSchema(tasks);
-export const updateTaskSchema = selectTaskSchema.partial().extend({
-  completed: z.boolean().optional(),
-  title: z.string().optional(),
-  estimatedMinutes: z.number().optional().nullable(),
-  plannedDate: z.string().optional().nullable(),
-  notes: z.string().optional().nullable(),
+export const rewards = pgTable("rewards", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  coins: integer("coins").default(0).notNull(),
+  lastUpdated: timestamp("last_updated").defaultNow().notNull(),
 });
 
-// Define the base types from the schema
-export type BaseGoal = typeof goals.$inferSelect;
-export type NewGoal = typeof goals.$inferInsert;
-export type Task = typeof tasks.$inferSelect;
-export type NewTask = typeof tasks.$inferInsert;
-export type UpdateTask = z.infer<typeof updateTaskSchema>;
+export const rewardItems = pgTable("reward_items", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  cost: integer("cost").notNull(),
+  icon: text("icon").notNull(),
+  type: text("type").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 
-// Extend the Goal type to include tasks
-export interface Goal extends BaseGoal {
-  tasks?: Task[];
-}
+export const purchasedRewards = pgTable("purchased_rewards", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  rewardItemId: integer("reward_item_id").notNull().references(() => rewardItems.id, { onDelete: "cascade" }),
+  purchasedAt: timestamp("purchased_at").defaultNow().notNull(),
+});
+
+export const timeTracking = pgTable("time_tracking", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time"),
+  coinsEarned: integer("coins_earned").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const visionBoardImages = pgTable("vision_board_images", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  imageUrl: text("image_url").notNull(),
+  position: integer("position").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Relations for remaining tables
+export const rewardItemsRelations = relations(rewardItems, ({ many }) => ({
+  purchases: many(purchasedRewards),
+}));
+
+export const purchasedRewardsRelations = relations(purchasedRewards, ({ one }) => ({
+  user: one(users, {
+    fields: [purchasedRewards.userId],
+    references: [users.id],
+  }),
+  rewardItem: one(rewardItems, {
+    fields: [purchasedRewards.rewardItemId],
+    references: [rewardItems.id],
+  }),
+}));
 
 export const timeTrackingRelations = relations(timeTracking, ({ one }) => ({
   user: one(users, {
@@ -171,14 +168,6 @@ export const timeTrackingRelations = relations(timeTracking, ({ one }) => ({
   }),
 }));
 
-export const visionBoardImages = pgTable("vision_board_images", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
-  imageUrl: text("image_url").notNull(),
-  position: integer("position").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
 export const visionBoardRelations = relations(visionBoardImages, ({ one }) => ({
   user: one(users, {
     fields: [visionBoardImages.userId],
@@ -186,12 +175,28 @@ export const visionBoardRelations = relations(visionBoardImages, ({ one }) => ({
   }),
 }));
 
-export const insertVisionBoardImageSchema = createInsertSchema(visionBoardImages);
-export const selectVisionBoardImageSchema = createSelectSchema(visionBoardImages);
-export type VisionBoardImage = typeof visionBoardImages.$inferSelect;
-export type NewVisionBoardImage = typeof visionBoardImages.$inferInsert;
+// Type definitions and schemas
+export const insertGoalSchema = createInsertSchema(goals);
+export const selectGoalSchema = createSelectSchema(goals);
+export const insertTaskSchema = createInsertSchema(tasks);
+export const selectTaskSchema = createSelectSchema(tasks);
+export const updateTaskSchema = selectTaskSchema.partial().extend({
+  completed: z.boolean().optional(),
+  title: z.string().optional(),
+  estimatedMinutes: z.number().optional().nullable(),
+  plannedDate: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+});
 
-export const insertTimeTrackingSchema = createInsertSchema(timeTracking);
-export const selectTimeTrackingSchema = createSelectSchema(timeTracking);
+export type BaseGoal = typeof goals.$inferSelect;
+export type NewGoal = typeof goals.$inferInsert;
+export type Task = typeof tasks.$inferSelect;
+export type NewTask = typeof tasks.$inferInsert;
+export type UpdateTask = z.infer<typeof updateTaskSchema>;
+export type Goal = BaseGoal & { tasks?: Task[] };
+export type PurchasedReward = typeof purchasedRewards.$inferSelect;
+export type InsertPurchasedReward = typeof purchasedRewards.$inferInsert;
 export type TimeTracking = typeof timeTracking.$inferSelect;
 export type NewTimeTracking = typeof timeTracking.$inferInsert;
+export type VisionBoardImage = typeof visionBoardImages.$inferSelect;
+export type NewVisionBoardImage = typeof visionBoardImages.$inferInsert;
