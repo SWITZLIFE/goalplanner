@@ -139,7 +139,7 @@ export function registerRoutes(app: Express): Server {
         .where(
           and(
             eq(tasks.userId, userId),
-            sql`${tasks.goalId} = ANY(${goalIds})`
+            inArray(tasks.goalId, goalIds)
           )
         )
         .orderBy(tasks.createdAt) : [];
