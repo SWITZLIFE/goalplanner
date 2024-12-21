@@ -55,6 +55,7 @@ export const tasks = pgTable("tasks", {
   parentTaskId: integer("parent_task_id").references(() => tasks.id),
   isSubtask: boolean("is_subtask").default(false).notNull(),
   notes: text("notes"),
+  isAiGenerated: boolean("is_ai_generated").default(false).notNull(),
   // Note: order field exists in DB but is no longer used in the application
   order: integer("order"),
 });
