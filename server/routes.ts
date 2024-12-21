@@ -63,14 +63,21 @@ export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
   // Serve files from Replit Database Storage
-  app.get('/api/files/uploads/:filename', requireAuth, async (req, res) => {
+  app.get('/api/files/:key(*)', requireAuth, async (req, res) => {
     try {
-      const key = `uploads/${req.params.filename}`;
+      const key = req.params.key;
+      console.log('Retrieving file with key:', key);
       const fileData = await storage.get(key);
       
       if (!fileData) {
+        console.error('File not found:', key);
         return res.status(404).send('File not found');
       }
+
+      console.log('Retrieved file data:', { 
+        contentType: fileData.contentType,
+        hasData: !!fileData.data
+      });
 
       // Convert stored data back to buffer
       const buffer = Buffer.from(fileData.data, 'base64');
@@ -80,7 +87,10 @@ export function registerRoutes(app: Express): Server {
       res.send(buffer);
     } catch (error) {
       console.error('Error serving file:', error);
-      res.status(500).send('Error serving file');
+      res.status(500).json({ 
+        error: 'Error serving file',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
