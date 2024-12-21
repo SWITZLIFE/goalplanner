@@ -76,7 +76,8 @@ export function useUser() {
   const logoutMutation = useMutation<RequestResult, Error>({
     mutationFn: () => handleRequest('/api/logout', 'POST'),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user'] });
+      // Clear all queries on logout to prevent data leaks
+      queryClient.clear();
     },
   });
 
