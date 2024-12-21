@@ -84,17 +84,22 @@ async function uploadToReplitStorage(file: Express.Multer.File): Promise<string>
       'Upload-Type': 'vision-board'
     };
 
-    // Upload file to Object Storage
-    await storage.putObject(fileName, file.buffer, metadata);
-    
-    console.log('File uploaded successfully:', {
-      fileName,
-      contentType: file.mimetype,
-      size: file.size,
-      metadata
-    });
-    
-    return fileName;
+    // Upload file to Object Storage using the upload method
+    try {
+      await storage.upload(fileName, file.buffer, metadata);
+      
+      console.log('File uploaded successfully:', {
+        fileName,
+        contentType: file.mimetype,
+        size: file.size,
+        metadata
+      });
+      
+      return fileName;
+    } catch (uploadError) {
+      console.error('Upload error details:', uploadError);
+      throw new Error(`File upload failed: ${uploadError instanceof Error ? uploadError.message : 'Unknown error'}`);
+    }
   } catch (error) {
     console.error('Error uploading to storage:', error);
     if (error instanceof Error) {
@@ -131,18 +136,24 @@ export function registerRoutes(app: Express): Server {
       
       // Check if the file exists and get metadata
       try {
+        // Get file metadata
         const metadata = await storage.headObject(filename);
         if (!metadata) {
           console.error('File not found:', filename);
           return res.status(404).json({ error: 'File not found' });
         }
 
-        // Get the actual file data
-        const fileData = await storage.getObject(filename);
+        // Get the actual file data using our get method
+        const fileData = await storage.get(filename);
         if (!fileData) {
           console.error('File data missing:', filename);
           return res.status(404).json({ error: 'File data not found' });
         }
+
+        console.log('Retrieved file successfully:', {
+          filename,
+          metadata
+        });
 
         // Set appropriate headers
         res.setHeader('Content-Type', metadata['Content-Type'] || 'application/octet-stream');
