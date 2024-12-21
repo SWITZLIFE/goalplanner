@@ -13,7 +13,7 @@ import { getCoachingAdvice } from "./coaching";
 import { setupAuth } from "./auth";
 import express from 'express';
 
-// Initialize Replit Database for Storage
+// Initialize Replit Database
 const storage = new Database();
 
 // Configure multer with memory storage for handling file uploads
@@ -32,22 +32,35 @@ const upload = multer({
   }
 });
 
-// Helper function to upload file to Replit Database Storage
+// Helper function to upload file to Replit Database
 async function uploadToReplitStorage(file: Express.Multer.File): Promise<string> {
-  const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-  const fileName = uniqueSuffix + path.extname(file.originalname);
-  const key = `uploads/${fileName}`;
-  
-  // Convert buffer to base64 for storage
-  const base64Data = file.buffer.toString('base64');
-  await storage.set(key, {
-    data: base64Data,
-    contentType: file.mimetype,
-    originalName: file.originalname
-  });
-  
-  // Return the storage key
-  return key;
+  try {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const fileName = uniqueSuffix + path.extname(file.originalname);
+    const key = `files:${fileName}`;
+    
+    // Convert buffer to base64 for storage
+    const fileData = {
+      content: file.buffer.toString('base64'),
+      contentType: file.mimetype,
+      originalName: file.originalname,
+      size: file.size,
+      uploadedAt: new Date().toISOString()
+    };
+
+    // Store in Replit Database
+    await storage.set(key, fileData);
+    console.log('File uploaded successfully:', {
+      key,
+      contentType: file.mimetype,
+      size: file.size
+    });
+    
+    return fileName;
+  } catch (error) {
+    console.error('Error uploading to storage:', error);
+    throw error;
+  }
 }
 
 // Authentication middleware
@@ -62,28 +75,34 @@ export function registerRoutes(app: Express): Server {
   // Setup authentication middleware and routes
   setupAuth(app);
 
-  // Serve files from Replit Database Storage
-  app.get('/api/files/:key(*)', requireAuth, async (req, res) => {
+  // Serve files from Replit Database
+  app.get('/api/files/:filename', requireAuth, async (req, res) => {
     try {
-      const key = req.params.key;
-      console.log('Retrieving file with key:', key);
+      const filename = req.params.filename;
+      const key = `files:${filename}`;
+      console.log('Retrieving file:', key);
+      
+      // Get file data from database
       const fileData = await storage.get(key);
       
       if (!fileData) {
         console.error('File not found:', key);
-        return res.status(404).send('File not found');
+        return res.status(404).json({ error: 'File not found' });
       }
 
-      console.log('Retrieved file data:', { 
+      console.log('File metadata:', {
         contentType: fileData.contentType,
-        hasData: !!fileData.data
+        originalName: fileData.originalName,
+        size: fileData.size
       });
 
-      // Convert stored data back to buffer
-      const buffer = Buffer.from(fileData.data, 'base64');
+      // Convert base64 content back to buffer
+      const buffer = Buffer.from(fileData.content, 'base64');
       
-      // Set content type from stored metadata
+      // Set content type from metadata
       res.setHeader('Content-Type', fileData.contentType);
+      
+      // Send the file content
       res.send(buffer);
     } catch (error) {
       console.error('Error serving file:', error);
