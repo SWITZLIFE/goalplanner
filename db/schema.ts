@@ -142,6 +142,13 @@ export const visionBoardImages = pgTable("vision_board_images", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const dailyMotivations = pgTable("daily_motivations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  message: text("message").notNull(),
+  generatedAt: timestamp("generated_at").defaultNow().notNull(),
+});
+
 // Relations for remaining tables
 export const rewardItemsRelations = relations(rewardItems, ({ many }) => ({
   purchases: many(purchasedRewards),
@@ -201,3 +208,13 @@ export type TimeTracking = typeof timeTracking.$inferSelect;
 export type NewTimeTracking = typeof timeTracking.$inferInsert;
 export type VisionBoardImage = typeof visionBoardImages.$inferSelect;
 export type NewVisionBoardImage = typeof visionBoardImages.$inferInsert;
+
+export const dailyMotivationsRelations = relations(dailyMotivations, ({ one }) => ({
+  user: one(users, {
+    fields: [dailyMotivations.userId],
+    references: [users.id],
+  }),
+}));
+
+export type DailyMotivation = typeof dailyMotivations.$inferSelect;
+export type NewDailyMotivation = typeof dailyMotivations.$inferInsert;
