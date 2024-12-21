@@ -35,7 +35,14 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+import { setupWebSocketServer } from "./chat";
+
 export function registerRoutes(app: Express): Server {
+  const httpServer = createServer(app);
+  
+  // Setup WebSocket server for chat
+  setupWebSocketServer(httpServer);
+  
   // Setup authentication middleware and routes first
   setupAuth(app);
 
@@ -1196,6 +1203,5 @@ Remember to:
     }
   });
 
-  const httpServer = createServer(app);
   return httpServer;
 }
