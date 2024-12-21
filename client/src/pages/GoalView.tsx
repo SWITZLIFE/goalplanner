@@ -113,7 +113,10 @@ export default function GoalView() {
           </div>
 
           <div className="space-y-2">
-            <GoalProgress progress={goal.progress} />
+            <GoalProgress 
+              progress={goal.progress} 
+              previousProgress={goals.find(g => g.id === goal.id)?.previousProgress ?? 0}
+            />
             <p className="text-sm text-muted-foreground">{goal.progress}% completed</p>
           </div>
 
