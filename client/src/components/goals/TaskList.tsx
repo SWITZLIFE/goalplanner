@@ -494,8 +494,8 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         </Dialog>
       </div>
 
-      {/* Task Editor Dialog */}
-      {editingTaskId && tasks.find(t => t.id === editingTaskId) && (
+      {/* Task Editor Dialog - only for main tasks */}
+      {editingTaskId && tasks.find(t => t.id === editingTaskId && !t.isSubtask) && (
         <TaskEditor
           task={tasks.find(t => t.id === editingTaskId)!}
           open={!!editingTaskId}
