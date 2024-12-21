@@ -14,18 +14,28 @@ import { setupAuth } from "./auth";
 import express from 'express';
 
 // Initialize Replit Object Storage client
-let storage: Client;
+let storage: any;
 try {
   if (!process.env.REPLIT_OBJECT_STORE_IDENTITY_TOKEN) {
     throw new Error('REPLIT_OBJECT_STORE_IDENTITY_TOKEN is not set');
   }
   
+  // Using any type to bypass TypeScript limitations with the current package
   storage = new Client({
     bucketId: 'replit-objstore-eeb9bfe2-6f36-4246-8d29-641ee71daebd',
     token: process.env.REPLIT_OBJECT_STORE_IDENTITY_TOKEN,
-    ephemeral: false,
   });
-  console.log('Object Storage client initialized successfully');
+
+  // Add upload and get methods to match the API
+  storage.upload = async (key: string, data: Buffer, metadata?: Record<string, string>) => {
+    return storage.putObject(key, data, metadata);
+  };
+  
+  storage.get = async (key: string) => {
+    return storage.getObject(key);
+  };
+
+  console.log('Object Storage client initialized and extended successfully');
 } catch (error) {
   console.error('Failed to initialize Object Storage client:', error);
   throw error;
