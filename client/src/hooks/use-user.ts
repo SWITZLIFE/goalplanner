@@ -1,39 +1,29 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { InsertUser, SelectUser } from "@db/schema";
 
-type RequestResult = {
-  ok: true;
-} | {
-  ok: false;
+interface AuthResponse {
   message: string;
-};
+  user: SelectUser;
+}
 
-async function handleRequest(
+async function handleAuthRequest(
   url: string,
   method: string,
   body?: InsertUser
-): Promise<RequestResult> {
-  try {
-    const response = await fetch(url, {
-      method,
-      headers: body ? { "Content-Type": "application/json" } : undefined,
-      body: body ? JSON.stringify(body) : undefined,
-      credentials: "include",
-    });
+): Promise<AuthResponse> {
+  const response = await fetch(url, {
+    method,
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+    credentials: "include",
+  });
 
-    if (!response.ok) {
-      if (response.status >= 500) {
-        return { ok: false, message: response.statusText };
-      }
-
-      const message = await response.text();
-      return { ok: false, message };
-    }
-
-    return { ok: true };
-  } catch (e: any) {
-    return { ok: false, message: e.toString() };
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(message);
   }
+
+  return response.json();
 }
 
 async function fetchUser(): Promise<SelectUser | null> {
@@ -45,12 +35,7 @@ async function fetchUser(): Promise<SelectUser | null> {
     if (response.status === 401) {
       return null;
     }
-
-    if (response.status >= 500) {
-      throw new Error(`${response.status}: ${response.statusText}`);
-    }
-
-    throw new Error(`${response.status}: ${await response.text()}`);
+    throw new Error(await response.text());
   }
 
   return response.json();
@@ -63,34 +48,31 @@ export function useUser() {
     queryKey: ['user'],
     queryFn: fetchUser,
     staleTime: Infinity,
-    retry: false
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false
   });
 
-  const loginMutation = useMutation<RequestResult, Error, InsertUser>({
-    mutationFn: (userData) => handleRequest('/api/login', 'POST', userData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user'] });
+  const loginMutation = useMutation<AuthResponse, Error, InsertUser>({
+    mutationFn: (userData) => handleAuthRequest('/api/login', 'POST', userData),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['user'], data.user);
     },
   });
 
-  const logoutMutation = useMutation<RequestResult, Error>({
-    mutationFn: () => handleRequest('/api/logout', 'POST'),
-    onSuccess: () => {
-      // Clear all queries from cache to ensure complete data isolation
+  const logoutMutation = useMutation<void, Error>({
+    mutationFn: async () => {
+      await handleAuthRequest('/api/logout', 'POST');
+      // Clear all queries and reset state
       queryClient.clear();
-      // Force refetch of user query to update authentication state
-      queryClient.invalidateQueries({ queryKey: ['user'] });
-      // Reset queryClient state
-      queryClient.setQueryData(['user'], null);
-      // Force a page reload to clear all React state
       window.location.href = '/';
-    },
+    }
   });
 
-  const registerMutation = useMutation<RequestResult, Error, InsertUser>({
-    mutationFn: (userData) => handleRequest('/api/register', 'POST', userData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user'] });
+  const registerMutation = useMutation<AuthResponse, Error, InsertUser>({
+    mutationFn: (userData) => handleAuthRequest('/api/register', 'POST', userData),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['user'], data.user);
     },
   });
 
