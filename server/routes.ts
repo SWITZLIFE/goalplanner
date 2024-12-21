@@ -14,10 +14,19 @@ import { setupAuth } from "./auth";
 import express from 'express';
 
 // Configure multer for handling file uploads
-import { Client } from '@replit/object-storage';
-const objectStorage = new Client();
-
-const storage = multer.memoryStorage();
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = path.join(process.cwd(), "uploads");
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
 
 const upload = multer({
   storage: storage,
@@ -878,13 +887,6 @@ Remember to:
   });
 
   app.post("/api/vision-board/upload", requireAuth, upload.single('image'), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "No file uploaded" });
-  }
-  
-  const key = `${Date.now()}-${Math.round(Math.random() * 1E9)}${path.extname(req.file.originalname)}`;
-  await objectStorage.put(key, req.file.buffer);
-  const imageUrl = await objectStorage.getSignedUrl(key);
     try {
       console.log('Processing image upload request:', req.file);
       const userId = req.user!.id;
