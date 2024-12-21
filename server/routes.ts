@@ -386,6 +386,51 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Update goal endpoint
+  app.patch("/api/goals/:goalId", requireAuth, async (req, res) => {
+    try {
+      const { goalId } = req.params;
+      const { visionStatement } = req.body;
+      const userId = req.user!.id;
+
+      // Verify the goal belongs to the user
+      const [goal] = await db.select()
+        .from(goals)
+        .where(and(
+          eq(goals.id, parseInt(goalId)),
+          eq(goals.userId, userId)
+        ))
+        .limit(1);
+
+      if (!goal) {
+        return res.status(404).json({ error: "Goal not found or unauthorized" });
+      }
+
+      // Update the goal
+      const [updatedGoal] = await db.update(goals)
+        .set({ 
+          visionStatement: visionStatement
+        })
+        .where(and(
+          eq(goals.id, parseInt(goalId)),
+          eq(goals.userId, userId)
+        ))
+        .returning();
+
+      if (!updatedGoal) {
+        return res.status(500).json({ error: "Failed to update goal" });
+      }
+
+      res.json(updatedGoal);
+    } catch (error) {
+      console.error("Failed to update goal:", error);
+      res.status(500).json({ 
+        error: "Failed to update goal",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Tasks API
   app.post("/api/goals/:goalId/tasks", requireAuth, async (req, res) => {
     try {
