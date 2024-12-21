@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import { openai } from "./openai";
 import { createServer, type Server } from "http";
 import { db } from "@db";
 import { eq } from "drizzle-orm";
