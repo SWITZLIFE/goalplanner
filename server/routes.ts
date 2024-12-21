@@ -152,19 +152,27 @@ export function registerRoutes(app: Express): Server {
   // Delete goal endpoint
   app.delete("/api/goals/:goalId", async (req, res) => {
     try {
+      // Check if user is authenticated
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
       const { goalId } = req.params;
       const goalIdInt = parseInt(goalId);
 
-      // First verify the goal exists
+      // First verify the goal exists and belongs to the user
       const goalToDelete = await db.query.goals.findFirst({
-        where: eq(goals.id, goalIdInt),
+        where: and(
+          eq(goals.id, goalIdInt),
+          eq(goals.userId, req.user.id)
+        ),
         with: {
           tasks: true
         }
       });
 
       if (!goalToDelete) {
-        return res.status(404).json({ error: "Goal not found" });
+        return res.status(404).json({ error: "Goal not found or unauthorized" });
       }
 
       // Delete in correct order to handle foreign key constraints
@@ -197,8 +205,25 @@ export function registerRoutes(app: Express): Server {
   // Tasks API
   app.post("/api/goals/:goalId/tasks", async (req, res) => {
     try {
+      // Check if user is authenticated
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
       const { goalId } = req.params;
       const { title, isSubtask, parentTaskId, plannedDate } = req.body;
+      
+      // Verify the goal belongs to the user
+      const goal = await db.query.goals.findFirst({
+        where: and(
+          eq(goals.id, parseInt(goalId)),
+          eq(goals.userId, req.user.id)
+        ),
+      });
+
+      if (!goal) {
+        return res.status(404).json({ error: "Goal not found or unauthorized" });
+      }
       
       const [newTask] = await db.insert(tasks)
         .values({
@@ -220,9 +245,25 @@ export function registerRoutes(app: Express): Server {
 
   app.patch("/api/tasks/:taskId", async (req, res) => {
     try {
+      // Check if user is authenticated
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
       const { taskId } = req.params;
-      // Destructure only the fields we want to update, ignoring order
-  const { completed, title, estimatedMinutes, plannedDate, notes } = req.body;
+      const { completed, title, estimatedMinutes, plannedDate, notes } = req.body;
+
+      // First get the task and verify it belongs to a goal owned by the user
+      const task = await db.query.tasks.findFirst({
+        where: eq(tasks.id, parseInt(taskId)),
+        with: {
+          goal: true
+        }
+      });
+
+      if (!task || task.goal.userId !== req.user.id) {
+        return res.status(404).json({ error: "Task not found or unauthorized" });
+      }
       
       const updateData: Partial<typeof tasks.$inferInsert> = {};
       if (typeof completed !== 'undefined') updateData.completed = completed;
