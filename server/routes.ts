@@ -136,13 +136,12 @@ export function registerRoutes(app: Express): Server {
       const goalIds = userGoals.map(g => g.id);
       const allTasks = goalIds.length > 0 ? await db.select()
         .from(tasks)
-        .where(
-          and(
-            eq(tasks.userId, userId),
-            inArray(tasks.goalId, goalIds)
-          )
-        )
-        .orderBy(tasks.createdAt) : [];
+        .where(and(
+          eq(tasks.userId, userId),
+          inArray(tasks.goalId, goalIds)
+        ))
+        .orderBy(tasks.createdAt)
+        .execute() : [];
 
       // Verify task ownership
       if (allTasks.some(task => task.userId !== userId)) {
