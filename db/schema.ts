@@ -41,6 +41,8 @@ export const goals = pgTable("goals", {
   progress: integer("progress").default(0).notNull(),
   totalTasks: integer("total_tasks").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  visionStatement: text("vision_statement"),
+  visionResponses: text("vision_responses"),
 });
 
 export const tasks = pgTable("tasks", {

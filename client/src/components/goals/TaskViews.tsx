@@ -8,7 +8,8 @@ import { useGoals } from "@/hooks/use-goals";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Clock, Calendar as CalendarIcon, CheckCircle2, Circle } from "lucide-react";
+import { Clock, Calendar as CalendarIcon, CheckCircle2, Circle, Quote } from "lucide-react";
+import { VisionGenerator } from "./VisionGenerator";
 
 interface TaskViewsProps {
   tasks: Task[];
@@ -18,7 +19,7 @@ interface TaskViewsProps {
 export function TaskViews({ tasks, goalId }: TaskViewsProps) {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const { updateTask, createTask } = useGoals();
+  const { updateTask, createTask, updateGoal } = useGoals();
   const { toast } = useToast();
 
   // Split tasks into active and completed
@@ -76,10 +77,11 @@ export function TaskViews({ tasks, goalId }: TaskViewsProps) {
   return (
     <>
       <Tabs defaultValue="tasks" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="tasks">Tasks</TabsTrigger>
           <TabsTrigger value="completed">Completed</TabsTrigger>
           <TabsTrigger value="calendar">Calendar</TabsTrigger>
+          <TabsTrigger value="vision">Your Why</TabsTrigger>
         </TabsList>
 
         <TabsContent value="tasks">
@@ -176,6 +178,49 @@ export function TaskViews({ tasks, goalId }: TaskViewsProps) {
                 })}
               </div>
             </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="vision" className="space-y-6">
+          <div className="space-y-4">
+            <h2 className="text-lg font-medium">Your Vision Statement</h2>
+            {goal.visionStatement ? (
+              <div className="bg-primary/5 p-6 rounded-lg space-y-4">
+                <div className="flex gap-2">
+                  <Quote className="h-5 w-5 text-primary shrink-0 mt-1" />
+                  <p className="text-lg italic">{goal.visionStatement}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center space-y-4 py-8">
+                <p className="text-muted-foreground">
+                  You haven't created a vision statement for this goal yet.
+                  Let's craft one to keep you motivated!
+                </p>
+              </div>
+            )}
+            <VisionGenerator 
+              goalId={goalId} 
+              onVisionGenerated={async (vision) => {
+                try {
+                  await updateGoal({ 
+                    goalId,
+                    visionStatement: vision
+                  });
+                  toast({
+                    title: "Vision Updated",
+                    description: "Your vision statement has been saved.",
+                  });
+                } catch (error) {
+                  console.error("Failed to update vision:", error);
+                  toast({
+                    title: "Error",
+                    description: "Failed to save vision statement",
+                    variant: "destructive",
+                  });
+                }
+              }} 
+            />
           </div>
         </TabsContent>
       </Tabs>

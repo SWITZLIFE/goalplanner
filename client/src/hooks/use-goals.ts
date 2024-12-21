@@ -8,6 +8,33 @@ export function useGoals() {
     queryKey: ["/api/goals"],
   });
 
+  const updateGoalMutation = useMutation({
+    mutationFn: async ({ 
+      goalId, 
+      title,
+      description,
+      targetDate,
+      visionStatement
+    }: { 
+      goalId: number;
+      title?: string;
+      description?: string;
+      targetDate?: string;
+      visionStatement?: string;
+    }) => {
+      const res = await fetch(`/api/goals/${goalId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, description, targetDate, visionStatement }),
+      });
+      if (!res.ok) throw new Error("Failed to update goal");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+    },
+  });
+
   const createGoalMutation = useMutation({
     mutationFn: async (goal: NewGoal) => {
       const res = await fetch("/api/goals", {
@@ -108,6 +135,7 @@ export function useGoals() {
     goals,
     isLoading,
     createGoal: createGoalMutation.mutateAsync,
+    updateGoal: updateGoalMutation.mutateAsync,
     createTask: createTaskMutation.mutateAsync,
     updateTask: updateTaskMutation.mutateAsync,
     deleteTask: deleteTaskMutation.mutateAsync,
