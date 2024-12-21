@@ -18,9 +18,7 @@ const VISION_QUESTIONS = [
   "What inspired you to set this goal? What's the deeper reason behind it?",
   "How will achieving this goal change your life or impact others around you?",
   "What does success look like for you with this goal? Be specific.",
-  "What strengths and experiences do you have that will help you achieve this?",
-  "What challenges do you anticipate, and how will you overcome them?",
-  "When you achieve this goal, what's the first thing you'll celebrate?"
+  "What strengths and personal experiences will help you achieve this goal?"
 ];
 
 interface VisionGeneratorProps {

@@ -319,6 +319,63 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+// Vision Statement Generation API
+app.post("/api/goals/:goalId/vision", async (req, res) => {
+  try {
+    const { goalId } = req.params;
+    const { answers } = req.body;
+
+    // Get the goal details first
+    const goal = await db.query.goals.findFirst({
+      where: eq(goals.id, parseInt(goalId)),
+    });
+
+    if (!goal) {
+      return res.status(404).json({ error: "Goal not found" });
+    }
+
+    // Generate vision statement using OpenAI
+    const prompt = `Based on the following responses about the goal "${goal.title}", craft an inspiring and motivational vision statement that captures the essence of their ambition and motivation. Keep it concise (2-3 sentences) but powerful.
+
+Responses to vision questions:
+${answers.map((answer: string, index: number) => `${index + 1}. ${answer}`).join('\n')}
+
+Generate a vision statement that:
+1. Emphasizes their deeper motivation
+2. Highlights the positive impact
+3. Paints a vivid picture of success
+4. Incorporates their personal strengths
+`;
+
+    const openaiResponse = await openai.chat.completions.create({
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      messages: [
+        {
+          role: "system",
+          content: "You are a motivational coach who crafts inspiring vision statements. Be concise but impactful."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.7,
+    });
+
+    const visionStatement = openaiResponse.choices[0].message.content?.trim();
+
+    // Update the goal with the new vision statement
+    await db.update(goals)
+      .set({ visionStatement })
+      .where(eq(goals.id, parseInt(goalId)));
+
+    res.json({ visionStatement });
+  } catch (error) {
+    console.error("Failed to generate vision statement:", error);
+    res.status(500).json({ error: "Failed to generate vision statement" });
+  }
+});
+
   // AI Coaching API
   app.get("/api/goals/:goalId/coaching", async (req, res) => {
     res.json({
