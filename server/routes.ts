@@ -336,17 +336,20 @@ app.post("/api/goals/:goalId/vision", async (req, res) => {
     }
 
     // Generate vision statement using OpenAI
-    const prompt = `Based on the following responses about the goal "${goal.title}", craft an inspiring and motivational vision statement that captures the essence of their ambition and motivation. Keep it concise (2-3 sentences) but powerful.
+    const prompt = `Based on the following responses about the goal "${goal.title}", craft a deeply personal and emotionally resonant vision statement. This should be a motivational narrative (100-200 words) that reminds them why they started this journey and inspires them to keep going.
 
 Responses to vision questions:
 ${answers.map((answer: string, index: number) => `${index + 1}. ${answer}`).join('\n')}
 
-Generate a vision statement that:
-1. Emphasizes their deeper motivation
-2. Highlights the positive impact
-3. Paints a vivid picture of success
-4. Incorporates their personal strengths
-`;
+Create a personal vision statement that:
+1. Speaks directly to their heart and inner motivation
+2. Connects their goal to their personal values and dreams
+3. Paints a vivid picture of how achieving this goal will transform their life
+4. Acknowledges their strengths and past experiences
+5. Uses emotive language that resonates on a personal level
+6. Maintains an intimate, first-person perspective
+
+Remember: This is not a corporate vision statement, but a personal reflection that should move and inspire them when they read it. Make it feel like a letter to themselves about their deeper purpose.`;
 
     const openaiResponse = await openai.chat.completions.create({
       model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
