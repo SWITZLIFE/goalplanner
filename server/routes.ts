@@ -986,6 +986,85 @@ Remember to:
     }
   });
 
+  // Daily Motivation API
+  app.get("/api/motivation/daily", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Check if we already generated a message today
+      const existingMessage = await db.select()
+        .from(dailyMotivations)
+        .where(and(
+          eq(dailyMotivations.userId, userId),
+          sql`DATE(${dailyMotivations.generatedAt}) = DATE(NOW())`
+        ))
+        .limit(1);
+
+      if (existingMessage.length > 0) {
+        return res.json({ message: existingMessage[0].message });
+      }
+
+      // Get user's goals and their progress
+      const userGoals = await db.select({
+        title: goals.title,
+        progress: goals.progress,
+        targetDate: goals.targetDate
+      })
+      .from(goals)
+      .where(eq(goals.userId, userId));
+
+      // Generate motivation message using OpenAI
+      const response = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: "You are writing a short, motivational message (max 30 words) from the user's future self. Use an encouraging, friendly tone. Focus on progress and growth."
+          },
+          {
+            role: "user",
+            content: `Generate a motivational message for someone working on these goals:
+              ${userGoals.map(g => `- ${g.title} (${g.progress}% complete)`).join('\n')}
+              
+              Requirements:
+              - Write as if from their future self who has achieved these goals
+              - Maximum 30 words
+              - Be specific to their goals
+              - Focus on progress and growth
+              - Use a warm, encouraging tone`
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 60,
+      });
+
+      const message = response.choices[0].message.content?.trim();
+
+      if (!message) {
+        throw new Error("Failed to generate motivation message");
+      }
+
+      // Delete previous messages for this user (we only keep the latest)
+      await db.delete(dailyMotivations)
+        .where(eq(dailyMotivations.userId, userId));
+
+      // Store new message
+      const [newMotivation] = await db.insert(dailyMotivations)
+        .values({
+          userId,
+          message,
+          generatedAt: new Date()
+        })
+        .returning();
+
+      res.json({ message: newMotivation.message });
+    } catch (error) {
+      console.error("Failed to generate daily motivation:", error);
+      res.status(500).json({ error: "Failed to generate daily motivation" });
+    }
+  });
   app.post("/api/vision-board/upload", requireAuth, upload.single('image'), async (req, res) => {
     try {
       console.log('Processing image upload request');
