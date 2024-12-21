@@ -1,5 +1,4 @@
 import { CreateGoalDialog } from "@/components/goals/CreateGoalDialog";
-import { DailyMotivation } from "@/components/goals/DailyMotivation";
 import { VisionBoard } from "@/components/vision-board/VisionBoard";
 import { GoalCard } from "@/components/goals/GoalCard";
 import { CoinBalance } from "@/components/rewards/CoinBalance";
@@ -62,7 +61,6 @@ export default function Dashboard() {
       {/* Main Content Area */}
       <div className="flex-1 p-8 bg-white">
         <div className="max-w-4xl mx-auto space-y-8">
-          <DailyMotivation />
           <VisionBoard />
           
         </div>
