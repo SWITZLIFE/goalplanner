@@ -43,8 +43,13 @@ import express from 'express';
 export function registerRoutes(app: Express): Server {
   // Setup authentication middleware and routes
   setupAuth(app);
-  // Serve uploaded files
-  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+  
+  // Ensure uploads directory exists and serve uploaded files
+  const uploadsDir = path.join(process.cwd(), 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+  app.use('/uploads', express.static(uploadsDir));
 
   // put application routes here
   // prefix all routes with /api
@@ -494,12 +499,15 @@ export function registerRoutes(app: Express): Server {
 
   app.post("/api/vision-board/upload", upload.single('image'), async (req, res) => {
     try {
+      console.log('Processing image upload request:', req.file);
       const userId = 1; // TODO: Replace with actual user ID from auth
 
       // Check if user already has 12 images
       const imageCount = await db.select({ count: sql<number>`count(*)` })
         .from(visionBoardImages)
         .where(eq(visionBoardImages.userId, userId));
+
+      console.log('Current image count:', imageCount[0].count);
 
       if (imageCount[0].count >= 12) {
         return res.status(400).json({ error: "Maximum number of images (12) reached" });
@@ -516,11 +524,15 @@ export function registerRoutes(app: Express): Server {
         nextPosition++;
       }
 
+      console.log('Using position:', nextPosition);
+
       if (!req.file) {
+        console.error('No file uploaded');
         return res.status(400).json({ error: "No image file provided" });
       }
 
       const imageUrl = `/uploads/${req.file.filename}`;
+      console.log('Image URL:', imageUrl);
 
       const [newImage] = await db.insert(visionBoardImages)
         .values({
