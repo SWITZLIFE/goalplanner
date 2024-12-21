@@ -109,48 +109,58 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ error: "User not found" });
       }
 
-      // Get all goals that belong to this user only
-      const userGoals = await db.select({
-        id: goals.id,
-        title: goals.title,
-        description: goals.description,
-        targetDate: goals.targetDate,
-        progress: goals.progress,
-        totalTasks: goals.totalTasks,
-        createdAt: goals.createdAt,
-        visionStatement: goals.visionStatement,
-        visionResponses: goals.visionResponses,
-        userId: goals.userId, // Explicitly select userId to verify ownership
-      })
-      .from(goals)
-      .where(eq(goals.userId, userId))
-      .orderBy(desc(goals.createdAt));
-
-      // Double check that all goals belong to the current user
-      if (userGoals.some(goal => goal.userId !== userId)) {
-        console.error('Data isolation breach detected');
-        return res.status(500).json({ error: "Data isolation error" });
-      }
-
-      // For each goal, get its tasks
-      const goalsWithTasks = await Promise.all(
-        userGoals.map(async (goal) => {
-          const goalTasks = await db.select()
-            .from(tasks)
-            .where(
-              and(
-                eq(tasks.goalId, goal.id),
-                eq(tasks.userId, userId)
-              )
-            )
-            .orderBy(tasks.createdAt);
-
-          return {
-            ...goal,
-            tasks: goalTasks
-          };
+      // Get all goals that belong to this user only, with tasks in a single query
+      const goalsWithTasks = await db.transaction(async (tx) => {
+        // Get user's goals first
+        const userGoals = await tx.select({
+          id: goals.id,
+          title: goals.title,
+          description: goals.description,
+          targetDate: goals.targetDate,
+          progress: goals.progress,
+          totalTasks: goals.totalTasks,
+          createdAt: goals.createdAt,
+          visionStatement: goals.visionStatement,
+          visionResponses: goals.visionResponses,
+          userId: goals.userId,
         })
-      );
+        .from(goals)
+        .where(eq(goals.userId, userId))
+        .orderBy(desc(goals.createdAt));
+
+        // Verify data isolation
+        if (userGoals.some(goal => goal.userId !== userId)) {
+          console.error('Data isolation breach detected');
+          throw new Error("Data isolation error");
+        }
+
+        // Get all tasks for these goals in a single query
+        const goalIds = userGoals.map(g => g.id);
+        const allTasks = goalIds.length > 0 ? await tx.select()
+          .from(tasks)
+          .where(
+            and(
+              eq(tasks.userId, userId),
+              sql`${tasks.goalId} = ANY(${goalIds})`
+            )
+          )
+          .orderBy(tasks.createdAt) : [];
+
+        // Group tasks by goalId
+        const tasksByGoalId = allTasks.reduce((acc, task) => {
+          if (!acc[task.goalId]) {
+            acc[task.goalId] = [];
+          }
+          acc[task.goalId].push(task);
+          return acc;
+        }, {} as Record<number, typeof tasks.$inferSelect[]>);
+
+        // Combine goals with their tasks
+        return userGoals.map(goal => ({
+          ...goal,
+          tasks: tasksByGoalId[goal.id] || []
+        }));
+      });
 
       console.log('Found goals:', goalsWithTasks.length);
       res.json(goalsWithTasks);
