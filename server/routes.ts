@@ -336,23 +336,31 @@ app.post("/api/goals/:goalId/vision", async (req, res) => {
     }
 
     // Generate vision statement using OpenAI
-    const prompt = `Based on the following responses about the goal "${goal.title}", craft a deeply personal and emotionally resonant vision statement. This should be a motivational narrative (100-200 words) that reminds them why they started this journey and inspires them to keep going.
+    const prompt = `Write a deeply personal and heartfelt letter to yourself about your goal: "${goal.title}". Use these responses to understand your inner motivation and dreams:
 
-Responses to vision questions:
+Responses to reflection questions:
 ${answers.map((answer: string, index: number) => `${index + 1}. ${answer}`).join('\n')}
 
-Create a personal vision statement that:
-1. Speaks directly to their heart and inner motivation
-2. Connects their goal to their personal values and dreams
-3. Paints a vivid picture of how achieving this goal will transform their life
-4. Acknowledges their strengths and past experiences
-5. Uses emotive language that resonates on a personal level
-6. Maintains an intimate, first-person perspective
+Format your response as an intimate letter that:
+- Starts with "Dear [You/Your Name]," or a similar personal greeting
+- Speaks in first person ("I", "my", "we") to maintain personal connection
+- References specific details from your answers to make it uniquely yours
+- Acknowledges your fears and dreams with empathy and understanding
+- Reminds you of your inner strength and past achievements
+- Paints a vivid picture of how achieving this goal will transform your life
+- Ends with an encouraging closing that makes you feel empowered
 
-Remember: This is not a corporate vision statement, but a personal reflection that should move and inspire them when they read it. Make it feel like a letter to themselves about their deeper purpose.`;
+Style:
+- Write 100-200 words
+- Use warm, emotional language that speaks to the heart
+- Make it feel like a letter you'd write to yourself in a moment of deep reflection
+- Focus on the emotional journey and personal transformation
+- Include specific details from the responses to make it deeply personal
+
+Remember: This is a private letter to yourself about your deepest motivations and dreams. Make every word count and truly resonate with your heart.`;
 
     const openaiResponse = await openai.chat.completions.create({
-      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+      model: "gpt-4", // Using GPT-4 for high-quality personalized responses
       messages: [
         {
           role: "system",
