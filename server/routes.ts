@@ -60,17 +60,28 @@ export function registerRoutes(app: Express): Server {
   app.get("/api/goals", async (req, res) => {
     // Check if user is authenticated
     if (!req.isAuthenticated()) {
+      console.log("User not authenticated");
       return res.status(401).json({ error: "Not authenticated" });
     }
 
     try {
-      const userGoals = await db.query.goals.findMany({
-        where: eq(goals.userId, req.user.id),
-        with: {
-          tasks: true,
-        },
-        orderBy: (goals, { desc }) => [desc(goals.createdAt)],
-      });
+      console.log("Fetching goals for user:", req.user.id);
+      
+      // Debug query parameters
+      // Debug authentication state
+      console.log("Current user:", req.user);
+      
+      // Use explicit type casting for the user ID
+      const userId = req.user.id;
+      console.log("Using user ID for query:", userId);
+      
+      const userGoals = await db.select()
+        .from(goals)
+        .where(eq(goals.userId, userId));
+      
+      console.log("Found goals:", userGoals.length);
+      console.log("Goals user IDs:", userGoals.map(g => g.userId));
+      
       res.json(userGoals);
     } catch (error) {
       console.error("Failed to fetch goals:", error);
