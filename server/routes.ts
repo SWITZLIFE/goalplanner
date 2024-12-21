@@ -61,12 +61,34 @@ export function registerRoutes(app: Express): Server {
   }
   app.use('/uploads', express.static(uploadsDir));
 
-  // Protect all /api routes except auth routes
+  // Protect all /api routes except auth routes and enforce user data isolation
   app.use('/api', (req, res, next) => {
+    // Skip auth for login/register/logout routes
     if (req.path.startsWith('/login') || req.path.startsWith('/register') || req.path.startsWith('/logout') || req.path.startsWith('/user')) {
       return next();
     }
-    requireAuth(req, res, next);
+
+    // Check authentication
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "You must be logged in to access this resource" });
+    }
+
+    // Add user check middleware for data isolation
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: "Invalid user session" });
+    }
+
+    // Store userId in res.locals for use in routes
+    res.locals.userId = userId;
+
+    // Additional security check - if URL contains a different userId, block the request
+    const urlUserId = req.params.userId;
+    if (urlUserId && parseInt(urlUserId) !== userId) {
+      return res.status(403).json({ error: "Unauthorized access to other user's data" });
+    }
+
+    next();
   });
 
   // Goals API
