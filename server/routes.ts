@@ -120,10 +120,17 @@ export function registerRoutes(app: Express): Server {
         createdAt: goals.createdAt,
         visionStatement: goals.visionStatement,
         visionResponses: goals.visionResponses,
+        userId: goals.userId, // Explicitly select userId to verify ownership
       })
       .from(goals)
       .where(eq(goals.userId, userId))
       .orderBy(desc(goals.createdAt));
+
+      // Double check that all goals belong to the current user
+      if (userGoals.some(goal => goal.userId !== userId)) {
+        console.error('Data isolation breach detected');
+        return res.status(500).json({ error: "Data isolation error" });
+      }
 
       // For each goal, get its tasks
       const goalsWithTasks = await Promise.all(
@@ -184,28 +191,21 @@ export function registerRoutes(app: Express): Server {
       const shortTitle = await generateShortTitle(title);
       console.log('Generated short title:', shortTitle);
 
-      // Start a transaction to ensure data consistency
-      const [newGoal] = await db.transaction(async (tx) => {
-        // Create the goal
-        const [goal] = await tx.insert(goals)
-          .values({
-            userId,
-            title: shortTitle,
-            description: title, // Store original title as description
-            targetDate: new Date(targetDate),
-            totalTasks: totalTasks || 0,
-            progress: 0,
-          })
-          .returning();
-
-        return [goal];
-      });
+      // Create the goal
+      const [newGoal] = await db.insert(goals)
+        .values({
+          userId,
+          title: shortTitle,
+          description: title, // Store original title as description
+          targetDate: new Date(targetDate),
+          totalTasks: totalTasks || 0,
+          progress: 0,
+        })
+        .returning();
 
       if (!newGoal) {
         throw new Error('Failed to create goal');
       }
-
-      console.log('Created goal:', newGoal);
 
       console.log('Created goal:', newGoal);
 
