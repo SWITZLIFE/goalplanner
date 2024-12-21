@@ -28,11 +28,12 @@ try {
 
   // Add upload and get methods to match the API
   storage.upload = async (key: string, data: Buffer, metadata?: Record<string, string>) => {
-    return storage.putObject(key, data, metadata);
+    return storage.createObject(key, data, { metadata });
   };
   
   storage.get = async (key: string) => {
-    return storage.getObject(key);
+    const obj = await storage.getObject(key);
+    return obj.arrayBuffer().then(Buffer.from);
   };
 
   console.log('Object Storage client initialized and extended successfully');
