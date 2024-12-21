@@ -364,11 +364,27 @@ Generate a vision statement that:
     });
 
     const visionStatement = openaiResponse.choices[0].message.content?.trim();
+    
+    if (!visionStatement) {
+      throw new Error("Failed to generate vision statement from OpenAI");
+    }
+
+    console.log('Generated vision statement:', visionStatement);
 
     // Update the goal with the new vision statement
-    await db.update(goals)
-      .set({ visionStatement })
-      .where(eq(goals.id, parseInt(goalId)));
+    const [updatedGoal] = await db.update(goals)
+      .set({ 
+        visionStatement: visionStatement,
+        visionResponses: JSON.stringify(answers)
+      })
+      .where(eq(goals.id, parseInt(goalId)))
+      .returning();
+
+    console.log('Updated goal:', updatedGoal);
+
+    if (!updatedGoal) {
+      throw new Error("Failed to update goal with vision statement");
+    }
 
     res.json({ visionStatement });
   } catch (error) {
