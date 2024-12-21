@@ -192,7 +192,6 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         title: "New Task",
         isSubtask: false,
       });
-      setEditingTaskId(newTask.id);
       setExpandedTasks(new Set([...Array.from(expandedTasks), newTask.id]));
     } catch (error) {
       console.error("Failed to create task:", error);
