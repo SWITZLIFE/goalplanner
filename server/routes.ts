@@ -75,14 +75,40 @@ export function registerRoutes(app: Express): Server {
       const userId = req.user.id;
       console.log("Using user ID for query:", userId);
       
-      // Only fetch goals for the authenticated user
-      const userGoals = await db.select()
-        .from(goals)
-        .where(eq(goals.userId, req.user.id))
-        .orderBy(goals.createdAt);
+      // Only fetch goals for the authenticated user with additional validation
+      const userGoals = await db.select({
+        id: goals.id,
+        userId: goals.userId,
+        title: goals.title,
+        description: goals.description,
+        targetDate: goals.targetDate,
+        progress: goals.progress,
+        totalTasks: goals.totalTasks,
+        createdAt: goals.createdAt,
+        visionStatement: goals.visionStatement,
+      })
+      .from(goals)
+      .where(eq(goals.userId, req.user.id))
+      .orderBy(goals.createdAt);
       
+      // Add detailed logging
+      console.log("Current authenticated user:", {
+        id: req.user.id,
+        email: req.user.email
+      });
       console.log("Found goals:", userGoals.length);
-      console.log("Goals user IDs:", userGoals.map(g => g.userId));
+      console.log("Goals details:", userGoals.map(g => ({
+        id: g.id,
+        userId: g.userId,
+        title: g.title
+      })));
+
+      // Double check that all returned goals belong to the current user
+      const validGoals = userGoals.filter(g => g.userId === req.user.id);
+      if (validGoals.length !== userGoals.length) {
+        console.error("Data inconsistency detected: Some goals don't belong to the current user");
+        return res.status(500).json({ error: "Data consistency error" });
+      }
       
       res.json(userGoals);
     } catch (error) {
@@ -107,18 +133,39 @@ export function registerRoutes(app: Express): Server {
       const userId = req.user.id;
       console.log("Creating goal for user:", userId);
 
+      // Create the goal with explicit user ID check
+      const goalData = {
+        userId: req.user.id, // Always use req.user.id directly
+        title: shortTitle,
+        description: title, // Store original title as description
+        targetDate: new Date(targetDate),
+        totalTasks: totalTasks,
+        progress: 0,
+      };
+
+      console.log("Creating goal with data:", {
+        ...goalData,
+        userEmail: req.user.email
+      });
+
       const [newGoal] = await db.insert(goals)
-        .values({
-          userId: userId,
-          title: shortTitle,
-          description: title, // Store original title as description
-          targetDate: new Date(targetDate),
-          totalTasks: totalTasks,
-          progress: 0,
-        })
+        .values(goalData)
         .returning();
 
-      console.log("Created goal:", newGoal);
+      // Verify the created goal belongs to the current user
+      if (newGoal.userId !== req.user.id) {
+        console.error("Goal created with wrong user ID:", {
+          goalUserId: newGoal.userId,
+          currentUserId: req.user.id
+        });
+        return res.status(500).json({ error: "Failed to create goal with correct user association" });
+      }
+
+      console.log("Successfully created goal:", {
+        goalId: newGoal.id,
+        userId: newGoal.userId,
+        title: newGoal.title
+      });
 
       // Create tasks and subtasks
       if (totalTasks > 0) {
