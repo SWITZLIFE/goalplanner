@@ -35,7 +35,7 @@ export function TaskViews({ tasks, goalId, goal }: TaskViewsProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [taskFilter, setTaskFilter] = useState<'all' | 'active' | 'completed'>('all');
   const [goalFilter, setGoalFilter] = useState<number | 'all'>('all');
-  const { updateTask, createTask, updateGoal } = useGoals();
+  const { updateTask, createTask, updateGoal, goals } = useGoals();
   const { toast } = useToast();
 
   // Get all main tasks (non-subtasks)
@@ -180,7 +180,9 @@ export function TaskViews({ tasks, goalId, goal }: TaskViewsProps) {
                   onChange={(e) => setGoalFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
                 >
                   <option value="all">All Goals</option>
-                  <option value={goalId}>{goal.title}</option>
+                  {goals.map(g => (
+                    <option key={g.id} value={g.id}>{g.title}</option>
+                  ))}
                 </select>
               </div>
               <div className="flex gap-2">
