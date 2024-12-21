@@ -412,15 +412,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                           onCheckedChange={(checked) => handleTaskToggle(subtask.id, checked as boolean)}
                         />
                         <div className="flex flex-col flex-grow">
-                          <div 
-                            className="flex items-center gap-2"
-                            onClick={(e) => {
-                              // Only open task details if clicking the container, not the title or buttons
-                              if (e.target === e.currentTarget) {
-                                setEditingTaskId(subtask.id);
-                              }
-                            }}
-                          >
+                          <div className="flex items-center gap-2">
                             <EditableTaskTitle
                               task={subtask}
                               onSave={(title, createAnother) => handleTaskTitleChange(subtask.id, title, createAnother)}
