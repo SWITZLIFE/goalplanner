@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { triggerCelebration, getRewardAmount, getCelebrationMessage } from "@/lib/celebration";
@@ -12,7 +12,7 @@ interface GoalProgressProps {
 export function GoalProgress({ progress, previousProgress = 0 }: GoalProgressProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [lastCheckedProgress, setLastCheckedProgress] = useState(previousProgress);
+  const lastCheckedProgressRef = useRef(previousProgress);
   const isInitialMount = useRef(true);
 
   // Mutation for updating rewards
@@ -43,18 +43,18 @@ export function GoalProgress({ progress, previousProgress = 0 }: GoalProgressPro
     }
 
     // Only check for milestones if progress has changed
-    if (progress !== lastCheckedProgress) {
+    if (progress !== lastCheckedProgressRef.current) {
       const checkMilestones = async () => {
         try {
           console.log('Checking milestones:', { 
             progress, 
-            lastCheckedProgress, 
-            crossedHalf: lastCheckedProgress < 50 && progress >= 50,
-            crossedComplete: lastCheckedProgress < 100 && progress >= 100
+            lastCheckedProgress: lastCheckedProgressRef.current, 
+            crossedHalf: lastCheckedProgressRef.current < 50 && progress >= 50,
+            crossedComplete: lastCheckedProgressRef.current < 100 && progress >= 100
           });
 
           // Check if crossed 50% milestone
-          if (lastCheckedProgress < 50 && progress >= 50) {
+          if (lastCheckedProgressRef.current < 50 && progress >= 50) {
             const rewardAmount = getRewardAmount(false);
             triggerCelebration(false);
             toast({
@@ -66,7 +66,7 @@ export function GoalProgress({ progress, previousProgress = 0 }: GoalProgressPro
           }
           
           // Check if goal is completed
-          if (lastCheckedProgress < 100 && progress >= 100) {
+          if (lastCheckedProgressRef.current < 100 && progress >= 100) {
             const rewardAmount = getRewardAmount(true);
             triggerCelebration(true);
             toast({
@@ -77,7 +77,7 @@ export function GoalProgress({ progress, previousProgress = 0 }: GoalProgressPro
             await updateRewardsMutation.mutateAsync(rewardAmount);
           }
 
-          setLastCheckedProgress(progress);
+          lastCheckedProgressRef.current = progress;
         } catch (error) {
           console.error('Failed to process milestone:', error);
           toast({
@@ -90,7 +90,12 @@ export function GoalProgress({ progress, previousProgress = 0 }: GoalProgressPro
 
       checkMilestones();
     }
-  }, [progress, lastCheckedProgress, toast, updateRewardsMutation]);
+
+    // Cleanup function
+    return () => {
+      lastCheckedProgressRef.current = progress;
+    };
+  }, [progress, toast, updateRewardsMutation]);
 
   return (
     <div className="space-y-2">
