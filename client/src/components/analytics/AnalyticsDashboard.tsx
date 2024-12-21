@@ -1,100 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useGoals } from "@/hooks/use-goals";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { format, subDays } from "date-fns";
 import { Trophy, Target, Clock, TrendingUp, Award } from "lucide-react";
-import { useEffect, useRef } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { triggerCelebration, getRewardAmount, getCelebrationMessage } from "@/lib/celebration";
 
 export function AnalyticsDashboard() {
   const { goals } = useGoals();
   const { data: rewards } = useQuery<{ coins: number }>({
     queryKey: ["/api/rewards"],
   });
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const lastCheckedProgressRef = useRef<Record<number, number>>({});
-  const isInitialMount = useRef(true);
-
-  // Mutation for updating rewards
-  const updateRewardsMutation = useMutation({
-    mutationFn: async (amount: number) => {
-      const response = await fetch('/api/rewards', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount }),
-        credentials: 'include',
-      });
-      
-      const contentType = response.headers.get("content-type");
-      if (!response.ok || !contentType?.includes("application/json")) {
-        throw new Error("Failed to update rewards");
-      }
-      
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/rewards'] });
-    },
-  });
-
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-
-    goals.forEach(goal => {
-      const lastProgress = lastCheckedProgressRef.current[goal.id] ?? 0;
-      const currentProgress = goal.progress;
-
-      if (currentProgress !== lastProgress && !goal.milestonesRewarded) {
-        const checkMilestones = async () => {
-          try {
-            // Check if crossed 50% milestone
-            if (lastProgress < 50 && currentProgress >= 50) {
-              const rewardAmount = getRewardAmount(false);
-              triggerCelebration(false);
-              toast({
-                title: getCelebrationMessage(false),
-                description: `You've earned ${rewardAmount} coins for ${goal.title}!`,
-                duration: 5000,
-              });
-              await updateRewardsMutation.mutateAsync(rewardAmount);
-            }
-            
-            // Check if goal is completed
-            if (lastProgress < 100 && currentProgress >= 100) {
-              const rewardAmount = getRewardAmount(true);
-              triggerCelebration(true);
-              toast({
-                title: getCelebrationMessage(true),
-                description: `You've earned ${rewardAmount} coins for completing ${goal.title}!`,
-                duration: 5000,
-              });
-              await updateRewardsMutation.mutateAsync(rewardAmount);
-
-              // Update goal to mark milestones as rewarded
-              await fetch(`/api/goals/${goal.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ milestonesRewarded: true })
-              });
-            }
-
-            lastCheckedProgressRef.current[goal.id] = currentProgress;
-          } catch (error) {
-            console.error('Failed to process milestone:', error);
-          }
-        };
-
-        checkMilestones();
-      }
-    });
-  }, [goals, toast, updateRewardsMutation]);
 
   // Calculate stats
   const totalGoals = goals.length;
