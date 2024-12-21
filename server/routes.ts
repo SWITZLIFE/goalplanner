@@ -619,9 +619,11 @@ export function registerRoutes(app: Express): Server {
         orderBy: (purchasedRewards, { desc }) => [desc(purchasedRewards.purchasedAt)],
       });
 
+      console.log('Fetched purchased items:', JSON.stringify(purchasedItems, null, 2));
       res.json(purchasedItems);
     } catch (error) {
       console.error('Error fetching purchased rewards:', error);
+      console.error('Error details:', error instanceof Error ? error.message : error);
       res.status(500).json({ error: "Failed to fetch purchased rewards" });
     }
   });
