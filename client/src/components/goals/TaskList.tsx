@@ -225,11 +225,12 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
   const mainTasks = tasks
     .filter(task => !task.isSubtask)
     .sort((a, b) => {
-      // Manual tasks on top, then sort by ID - manual descending, AI ascending
+      // Manual tasks on top, preserve AI task order
       if (a.isAiGenerated !== b.isAiGenerated) {
         return a.isAiGenerated ? 1 : -1;
       }
-      return a.isAiGenerated ? a.id - b.id : b.id - a.id;
+      // For manual tasks only, sort by ID descending
+      return !a.isAiGenerated ? b.id - a.id : 0;
     });
 
   const getOrderedSubtasks = (parentId: number) => {
