@@ -24,7 +24,7 @@ export async function generateDailyMessage(userId: number) {
       },
     });
 
-    const goalsContext = goals.map(goal => ({
+    const goalsContext = userGoals.map(goal => ({
       title: goal.title,
       progress: goal.progress,
       totalTasks: goal.totalTasks,

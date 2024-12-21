@@ -1,5 +1,5 @@
 import type { Express, Request, Response, NextFunction } from "express";
-import { getTodayMessage, markMessageAsRead } from "./future-message";
+import { getTodayMessage, markMessageAsRead, generateDailyMessage } from "./future-message";
 import { createServer, type Server } from "http";
 import { db } from "@db";
 import { eq, desc, and, isNull, sql } from "drizzle-orm";
