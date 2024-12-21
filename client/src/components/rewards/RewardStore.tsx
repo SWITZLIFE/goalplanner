@@ -85,7 +85,8 @@ export function RewardStore() {
       // Invalidate queries to refresh data
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["/api/rewards"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/rewards/items"] })
+        queryClient.invalidateQueries({ queryKey: ["/api/rewards/items"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/rewards/purchased"] })
       ]);
       
       // Close the dialog
