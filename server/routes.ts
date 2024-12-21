@@ -191,7 +191,7 @@ export function registerRoutes(app: Express): Server {
       const shortTitle = await generateShortTitle(title);
       console.log('Generated short title:', shortTitle);
 
-      // Create the goal
+      // Create the goal with strict user association
       const [newGoal] = await db.insert(goals)
         .values({
           userId,
@@ -207,7 +207,21 @@ export function registerRoutes(app: Express): Server {
         throw new Error('Failed to create goal');
       }
 
-      console.log('Created goal:', newGoal);
+      // Verify the created goal belongs to the current user
+      const [verifiedGoal] = await db.select()
+        .from(goals)
+        .where(and(
+          eq(goals.id, newGoal.id),
+          eq(goals.userId, userId)
+        ))
+        .limit(1);
+
+      if (!verifiedGoal || verifiedGoal.userId !== userId) {
+        await db.delete(goals).where(eq(goals.id, newGoal.id));
+        throw new Error('Data isolation breach detected during goal creation');
+      }
+
+      console.log('Created and verified goal:', verifiedGoal);
 
       // Create tasks and subtasks
       if (totalTasks > 0) {
