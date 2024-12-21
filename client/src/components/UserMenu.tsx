@@ -52,7 +52,11 @@ export function UserMenu() {
       <DropdownMenuTrigger className="hover:opacity-80">
         <Avatar>
           {user.profilePhotoUrl ? (
-            <AvatarImage src={user.profilePhotoUrl} alt="Profile photo" />
+            <AvatarImage 
+              src={user.profilePhotoUrl} 
+              alt="Profile photo"
+              className="object-cover"
+            />
           ) : (
             <AvatarFallback className="bg-primary text-primary-foreground">
               {initials}

@@ -96,7 +96,11 @@ export default function ProfilePage() {
             <div className="flex items-center gap-4">
               <Avatar className="h-20 w-20">
                 {user.profilePhotoUrl ? (
-                  <AvatarImage src={user.profilePhotoUrl} alt="Profile photo" />
+                  <AvatarImage 
+                    src={user.profilePhotoUrl} 
+                    alt="Profile photo"
+                    className="object-cover w-full h-full"
+                  />
                 ) : (
                   <AvatarFallback className="bg-primary text-primary-foreground text-xl">
                     {initials}
