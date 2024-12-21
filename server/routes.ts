@@ -75,10 +75,15 @@ export function registerRoutes(app: Express): Server {
       const userId = req.user!.id;
       console.log('Fetching goals for user:', userId);
 
+      // Ensure tasks only belong to the user as well
       const userGoals = await db.query.goals.findMany({
         where: eq(goals.userId, userId),
         with: {
-          tasks: true,
+          tasks: {
+            where: (tasks, { eq, and }) => and(
+              eq(tasks.userId, userId)
+            )
+          }
         },
         orderBy: (goals, { desc }) => [desc(goals.createdAt)],
       });
@@ -111,6 +116,11 @@ export function registerRoutes(app: Express): Server {
       // Validate input
       if (!title || !targetDate) {
         return res.status(400).json({ error: "Title and target date are required" });
+      }
+
+      // Double check user authentication
+      if (userId !== req.user!.id) {
+        return res.status(403).json({ error: "Unauthorized access" });
       }
 
       // Generate a shorter title using AI
@@ -265,10 +275,24 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ error: "Goal not found or unauthorized" });
       }
 
+      // If this is a subtask, verify the parent task belongs to the user
+      if (parentTaskId) {
+        const parentTask = await db.query.tasks.findFirst({
+          where: and(
+            eq(tasks.id, parentTaskId),
+            eq(tasks.userId, userId)
+          )
+        });
+
+        if (!parentTask) {
+          return res.status(404).json({ error: "Parent task not found or unauthorized" });
+        }
+      }
+
       const [newTask] = await db.insert(tasks)
         .values({
           goalId: parseInt(goalId),
-          userId,
+          userId, // Ensure task is associated with the correct user
           title,
           completed: false,
           isSubtask: isSubtask || false,
