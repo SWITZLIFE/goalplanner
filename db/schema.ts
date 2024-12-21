@@ -76,29 +76,6 @@ export const rewardItems = pgTable("reward_items", {
   type: text("type").notNull(), // 'digital', 'perk', 'discount'
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
-export const purchasedRewards = pgTable("purchased_rewards", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
-  rewardItemId: integer("reward_item_id").notNull().references(() => rewardItems.id),
-  purchaseDate: timestamp("purchase_date").defaultNow().notNull(),
-  isActive: boolean("is_active").default(true).notNull(),
-});
-
-export const purchasedRewardsRelations = relations(purchasedRewards, ({ one }) => ({
-  user: one(users, {
-    fields: [purchasedRewards.userId],
-    references: [users.id],
-  }),
-  rewardItem: one(rewardItems, {
-    fields: [purchasedRewards.rewardItemId],
-    references: [rewardItems.id],
-  }),
-}));
-
-export const insertPurchasedRewardSchema = createInsertSchema(purchasedRewards);
-export const selectPurchasedRewardSchema = createSelectSchema(purchasedRewards);
-export type PurchasedReward = typeof purchasedRewards.$inferSelect;
-export type NewPurchasedReward = typeof purchasedRewards.$inferInsert;
 
 export const timeTracking = pgTable("time_tracking", {
   id: serial("id").primaryKey(),
