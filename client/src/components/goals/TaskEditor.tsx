@@ -29,8 +29,8 @@ interface TaskEditorProps {
 }
 
 export function TaskEditor({ task, open, onOpenChange }: TaskEditorProps) {
-  const [title, setTitle] = useState(task.title);
-  const [notes, setNotes] = useState(task.notes || "");
+  const [title, setTitle] = useState(task?.title ?? "");
+  const [notes, setNotes] = useState(task?.notes ?? "");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const { updateTask, deleteTask } = useGoals();

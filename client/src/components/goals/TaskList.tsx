@@ -503,7 +503,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
       </div>
 
       {/* Task Editor Dialog */}
-      {editingTaskId && (
+      {editingTaskId && tasks.find(t => t.id === editingTaskId) && (
         <TaskEditor
           task={tasks.find(t => t.id === editingTaskId)!}
           open={!!editingTaskId}
