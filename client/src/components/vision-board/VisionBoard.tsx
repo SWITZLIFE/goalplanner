@@ -149,7 +149,7 @@ export function VisionBoard() {
             {image ? (
               <>
                 <img
-                  src={image.imageUrl}
+                  src={`/api/vision-board/images/${image.imageKey}`}
                   alt={`Vision board image ${index + 1}`}
                   className="w-full h-full object-cover"
                 />

@@ -13,23 +13,11 @@ import { getCoachingAdvice } from "./coaching";
 import { setupAuth } from "./auth";
 import express from 'express';
 
-// Configure multer for handling file uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadDir = path.join(process.cwd(), "uploads");
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
+import { storeFile, getFile, deleteFile } from './storage';
 
+// Configure multer for handling file uploads
 const upload = multer({
-  storage: storage,
+  storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
     if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
       return cb(new Error('Only image files are allowed!'));
@@ -53,12 +41,46 @@ export function registerRoutes(app: Express): Server {
   // Setup authentication middleware and routes
   setupAuth(app);
 
-  // Ensure uploads directory exists and serve uploaded files
-  const uploadsDir = path.join(process.cwd(), 'uploads');
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-  }
-  app.use('/uploads', express.static(uploadsDir));
+  // Create endpoint to serve vision board images securely
+  app.get('/api/vision-board/images/:key', requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const key = req.params.key;
+
+      // Verify this image belongs to the user
+      const [image] = await db.select()
+        .from(visionBoardImages)
+        .where(and(
+          eq(visionBoardImages.userId, userId),
+          eq(visionBoardImages.imageKey, key)
+        ))
+        .limit(1);
+
+      if (!image) {
+        return res.status(404).json({ error: "Image not found" });
+      }
+
+      const file = await getFile(key);
+      if (!file) {
+        return res.status(404).json({ error: "Image not found in storage" });
+      }
+
+      // Determine content type based on file extension
+      const ext = key.split('.').pop()?.toLowerCase();
+      const contentType = {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif'
+      }[ext || ''] || 'application/octet-stream';
+
+      res.setHeader('Content-Type', contentType);
+      res.send(file);
+    } catch (error) {
+      console.error("Error serving image:", error);
+      res.status(500).json({ error: "Failed to serve image" });
+    }
+  });
 
   // Protect all /api routes except auth routes with enhanced session verification
   app.use('/api', (req, res, next) => {
@@ -920,13 +942,14 @@ Remember to:
         return res.status(400).json({ error: "No image file provided" });
       }
 
-      const imageUrl = `/uploads/${req.file.filename}`;
-      console.log('Image URL:', imageUrl);
+      // Store file in Replit storage
+      const imageKey = await storeFile(userId, req.file);
+      console.log('Stored image with key:', imageKey);
 
       const [newImage] = await db.insert(visionBoardImages)
         .values({
           userId,
-          imageUrl,
+          imageKey,
           position: nextPosition,
         })
         .returning();
@@ -943,18 +966,31 @@ Remember to:
       const userId = req.user!.id;
       const imageId = parseInt(req.params.id);
 
-      const [deletedImage] = await db.delete(visionBoardImages)
+      const [image] = await db.select()
+        .from(visionBoardImages)
         .where(
           and(
             eq(visionBoardImages.id, imageId),
             eq(visionBoardImages.userId, userId)
           )
         )
-        .returning();
+        .limit(1);
 
-      if (!deletedImage) {
+      if (!image) {
         return res.status(404).json({ error: "Image not found" });
       }
+
+      // Delete the file from storage first
+      await deleteFile(image.imageKey);
+
+      // Then delete the database record
+      await db.delete(visionBoardImages)
+        .where(
+          and(
+            eq(visionBoardImages.id, imageId),
+            eq(visionBoardImages.userId, userId)
+          )
+        );
 
       res.json({ success: true });
     } catch (error) {

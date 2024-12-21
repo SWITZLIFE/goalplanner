@@ -136,7 +136,7 @@ export const timeTracking = pgTable("time_tracking", {
 export const visionBoardImages = pgTable("vision_board_images", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  imageUrl: text("image_url").notNull(),
+  imageKey: text("image_key").notNull(),
   position: integer("position").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
