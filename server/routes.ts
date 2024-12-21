@@ -97,21 +97,55 @@ export function registerRoutes(app: Express): Server {
       const userId = req.user!.id;
       console.log('Fetching goals for user:', userId);
 
-      // Ensure tasks only belong to the user as well
-      const userGoals = await db.query.goals.findMany({
-        where: eq(goals.userId, userId),
-        with: {
-          tasks: {
-            where: (tasks, { eq, and }) => and(
-              eq(tasks.userId, userId)
-            )
-          }
-        },
-        orderBy: (goals, { desc }) => [desc(goals.createdAt)],
-      });
+      // First verify the user exists
+      const [user] = await db.select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
 
-      console.log('Found goals:', userGoals.length);
-      res.json(userGoals);
+      if (!user) {
+        console.error('User not found:', userId);
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Get all goals that belong to this user only
+      const userGoals = await db.select({
+        id: goals.id,
+        title: goals.title,
+        description: goals.description,
+        targetDate: goals.targetDate,
+        progress: goals.progress,
+        totalTasks: goals.totalTasks,
+        createdAt: goals.createdAt,
+        visionStatement: goals.visionStatement,
+        visionResponses: goals.visionResponses,
+      })
+      .from(goals)
+      .where(eq(goals.userId, userId))
+      .orderBy(desc(goals.createdAt));
+
+      // For each goal, get its tasks
+      const goalsWithTasks = await Promise.all(
+        userGoals.map(async (goal) => {
+          const goalTasks = await db.select()
+            .from(tasks)
+            .where(
+              and(
+                eq(tasks.goalId, goal.id),
+                eq(tasks.userId, userId)
+              )
+            )
+            .orderBy(tasks.createdAt);
+
+          return {
+            ...goal,
+            tasks: goalTasks
+          };
+        })
+      );
+
+      console.log('Found goals:', goalsWithTasks.length);
+      res.json(goalsWithTasks);
     } catch (error) {
       console.error("Failed to fetch goals:", error);
       res.status(500).json({ error: "Failed to fetch goals" });
@@ -140,7 +174,7 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ error: "Title and target date are required" });
       }
 
-      // Double check user authentication
+      // Double check user authentication and authorization
       if (userId !== req.user!.id) {
         return res.status(403).json({ error: "Unauthorized access" });
       }
@@ -149,16 +183,28 @@ export function registerRoutes(app: Express): Server {
       const shortTitle = await generateShortTitle(title);
       console.log('Generated short title:', shortTitle);
 
-      const [newGoal] = await db.insert(goals)
-        .values({
-          userId,
-          title: shortTitle,
-          description: title, // Store original title as description
-          targetDate: new Date(targetDate),
-          totalTasks: totalTasks || 0,
-          progress: 0,
-        })
-        .returning();
+      // Start a transaction to ensure data consistency
+      const [newGoal] = await db.transaction(async (tx) => {
+        // Create the goal
+        const [goal] = await tx.insert(goals)
+          .values({
+            userId,
+            title: shortTitle,
+            description: title, // Store original title as description
+            targetDate: new Date(targetDate),
+            totalTasks: totalTasks || 0,
+            progress: 0,
+          })
+          .returning();
+
+        return [goal];
+      });
+
+      if (!newGoal) {
+        throw new Error('Failed to create goal');
+      }
+
+      console.log('Created goal:', newGoal);
 
       console.log('Created goal:', newGoal);
 
