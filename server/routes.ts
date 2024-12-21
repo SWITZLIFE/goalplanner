@@ -388,25 +388,36 @@ This is your personal cheerleader letter - make it feel warm, real, and full of 
 
     console.log('Generated vision statement:', visionStatement);
 
-    // Update the goal with the new vision statement
-    const [updatedGoal] = await db.update(goals)
-      .set({ 
-        visionStatement: visionStatement,
-        visionResponses: JSON.stringify(answers)
-      })
-      .where(eq(goals.id, parseInt(goalId)))
-      .returning();
+    try {
+      // Update the goal with the new vision statement
+      const [updatedGoal] = await db.update(goals)
+        .set({ 
+          visionStatement: visionStatement,
+          visionResponses: JSON.stringify(answers)
+        })
+        .where(eq(goals.id, parseInt(goalId)))
+        .returning();
 
-    console.log('Updated goal:', updatedGoal);
+      console.log('Updated goal:', updatedGoal);
 
-    if (!updatedGoal) {
-      throw new Error("Failed to update goal with vision statement");
+      if (!updatedGoal) {
+        throw new Error("Failed to update goal with vision statement");
+      }
+
+      res.json({ visionStatement });
+    } catch (dbError) {
+      console.error("Failed to update goal in database:", dbError);
+      res.status(500).json({ 
+        error: "Failed to save vision statement",
+        details: dbError instanceof Error ? dbError.message : "Unknown database error"
+      });
     }
-
-    res.json({ visionStatement });
   } catch (error) {
     console.error("Failed to generate vision statement:", error);
-    res.status(500).json({ error: "Failed to generate vision statement" });
+    res.status(500).json({ 
+      error: "Failed to generate vision statement",
+      details: error instanceof Error ? error.message : "Unknown error" 
+    });
   }
 });
 
