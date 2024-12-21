@@ -4,18 +4,20 @@ import { db } from '@db';
 import { chatMessages, users } from '@db/schema';
 import { eq } from 'drizzle-orm';
 
-interface ChatMessage {
+interface BaseMessage {
   userId: number;
-  username: string;
+}
+
+interface ChatMessage extends BaseMessage {
+  username?: string;
   message: string;
   timestamp: string;
 }
 
-interface ReactionMessage {
+interface ReactionMessage extends BaseMessage {
   type: 'reaction';
   messageId: string;
   emoji: string;
-  userId: number;
 }
 
 type WebSocketMessage = ChatMessage | ReactionMessage;
@@ -142,12 +144,22 @@ export function setupWebSocketServer(server: Server) {
           // Get user info
           const user = await db.query.users.findFirst({
             where: eq(users.id, message.userId),
+            columns: {
+              id: true,
+              username: true,
+              email: true
+            }
           });
+
+          let username = 'Anonymous';
+          if (user) {
+            username = user.username || (user.email ? user.email.split('@')[0] : 'Anonymous');
+          }
 
           const broadcastMessage = {
             id: savedMessage.id.toString(),
             userId: savedMessage.userId,
-            username: user?.username || user?.email.split('@')[0],
+            username: username,
             message: savedMessage.message,
             timestamp: savedMessage.timestamp.toISOString(),
             reactions: {}
