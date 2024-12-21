@@ -3,13 +3,51 @@ import { createServer, type Server } from "http";
 import { db } from "@db";
 import { goals, tasks, rewards, timeTracking } from "@db/schema";
 import { eq, and, isNull, sql } from "drizzle-orm";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+// Configure multer for handling file uploads
+const uploadDir = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  fileFilter: (req, file, cb) => {
+    if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
+      return cb(new Error('Only image files are allowed!'));
+    }
+    cb(null, true);
+  },
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  }
+});
 import { generateTaskBreakdown, generateShortTitle } from "./openai";
 import { getCoachingAdvice } from "./coaching";
 import { setupAuth } from "./auth";
+import express from 'express';
 
 export function registerRoutes(app: Express): Server {
   // Setup authentication middleware and routes
   setupAuth(app);
+  // Serve uploaded files
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+  // put application routes here
+  // prefix all routes with /api
   // Goals API
   app.get("/api/goals", async (req, res) => {
     try {
@@ -436,6 +474,91 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Failed to fetch current timer:", error);
       res.status(500).json({ error: "Failed to fetch current timer" });
+    }
+  });
+
+  // Vision Board API
+  app.get("/api/vision-board", async (req, res) => {
+    try {
+      const userId = 1; // TODO: Replace with actual user ID from auth
+      const images = await db.select()
+        .from(visionBoardImages)
+        .where(eq(visionBoardImages.userId, userId))
+        .orderBy(visionBoardImages.position);
+      res.json(images);
+    } catch (error) {
+      console.error("Failed to fetch vision board images:", error);
+      res.status(500).json({ error: "Failed to fetch vision board images" });
+    }
+  });
+
+  app.post("/api/vision-board/upload", upload.single('image'), async (req, res) => {
+    try {
+      const userId = 1; // TODO: Replace with actual user ID from auth
+
+      // Check if user already has 12 images
+      const imageCount = await db.select({ count: sql<number>`count(*)` })
+        .from(visionBoardImages)
+        .where(eq(visionBoardImages.userId, userId));
+
+      if (imageCount[0].count >= 12) {
+        return res.status(400).json({ error: "Maximum number of images (12) reached" });
+      }
+
+      // Find the next available position
+      const existingPositions = await db.select({ position: visionBoardImages.position })
+        .from(visionBoardImages)
+        .where(eq(visionBoardImages.userId, userId));
+      
+      const usedPositions = existingPositions.map(img => img.position);
+      let nextPosition = 0;
+      while (usedPositions.includes(nextPosition)) {
+        nextPosition++;
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: "No image file provided" });
+      }
+
+      const imageUrl = `/uploads/${req.file.filename}`;
+
+      const [newImage] = await db.insert(visionBoardImages)
+        .values({
+          userId,
+          imageUrl,
+          position: nextPosition,
+        })
+        .returning();
+
+      res.json(newImage);
+    } catch (error) {
+      console.error("Failed to upload image:", error);
+      res.status(500).json({ error: "Failed to upload image" });
+    }
+  });
+
+  app.delete("/api/vision-board/:id", async (req, res) => {
+    try {
+      const userId = 1; // TODO: Replace with actual user ID from auth
+      const imageId = parseInt(req.params.id);
+
+      const [deletedImage] = await db.delete(visionBoardImages)
+        .where(
+          and(
+            eq(visionBoardImages.id, imageId),
+            eq(visionBoardImages.userId, userId)
+          )
+        )
+        .returning();
+
+      if (!deletedImage) {
+        return res.status(404).json({ error: "Image not found" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete image:", error);
+      res.status(500).json({ error: "Failed to delete image" });
     }
   });
 
