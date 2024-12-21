@@ -15,7 +15,7 @@ export function FutureMessage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: message, isLoading } = useQuery({
+  const { data: message, isLoading } = useQuery<{ message: string; isRead: boolean }>({
     queryKey: ["/api/future-message/today"],
   });
 

@@ -13,27 +13,6 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Create schema with custom validation
-const baseSchema = createInsertSchema(users);
-
-export const insertUserSchema = baseSchema.extend({
-  email: z.string().email("Invalid email format"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-});
-
-export const resetPasswordSchema = z.object({
-  token: z.string(),
-  newPassword: z.string().min(8, "Password must be at least 8 characters"),
-});
-
-export const forgotPasswordSchema = z.object({
-  email: z.string().email("Invalid email format"),
-});
-
-export const selectUserSchema = createSelectSchema(users);
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type SelectUser = typeof users.$inferSelect;
-
 export const goals = pgTable("goals", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -64,16 +43,21 @@ export const tasks = pgTable("tasks", {
   order: integer("order"),
 });
 
-// Define relations
+export const futureMessages = pgTable("future_messages", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  message: text("message").notNull(),
+  isRead: boolean("is_read").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Relations
 export const goalsRelations = relations(goals, ({ one, many }) => ({
   user: one(users, {
     fields: [goals.userId],
     references: [users.id],
   }),
-  tasks: many(tasks, {
-    fields: [goals.id],
-    references: [tasks.goalId],
-  }),
+  tasks: many(tasks),
 }));
 
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
@@ -93,11 +77,57 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
     fields: [tasks.id],
     references: [tasks.parentTaskId],
   }),
-  timeTrackingSessions: many(timeTracking, {
-    fields: [tasks.id],
-    references: [timeTracking.taskId],
+  timeTrackingSessions: many(timeTracking),
+}));
+
+export const futureMessagesRelations = relations(futureMessages, ({ one }) => ({
+  user: one(users, {
+    fields: [futureMessages.userId],
+    references: [users.id],
   }),
 }));
+
+// Create schema with custom validation
+const baseSchema = createInsertSchema(users);
+
+export const insertUserSchema = baseSchema.extend({
+  email: z.string().email("Invalid email format"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string(),
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("Invalid email format"),
+});
+
+// Type definitions and schemas
+export const insertGoalSchema = createInsertSchema(goals);
+export const selectGoalSchema = createSelectSchema(goals);
+export const insertTaskSchema = createInsertSchema(tasks);
+export const selectTaskSchema = createSelectSchema(tasks);
+export const updateTaskSchema = selectTaskSchema.partial().extend({
+  completed: z.boolean().optional(),
+  title: z.string().optional(),
+  estimatedMinutes: z.number().optional().nullable(),
+  plannedDate: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+});
+
+export const selectUserSchema = createSelectSchema(users);
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type SelectUser = typeof users.$inferSelect;
+export type BaseGoal = typeof goals.$inferSelect;
+export type NewGoal = typeof goals.$inferInsert;
+export type Task = typeof tasks.$inferSelect;
+export type NewTask = typeof tasks.$inferInsert;
+export type UpdateTask = z.infer<typeof updateTaskSchema>;
+export type Goal = BaseGoal & { tasks?: Task[] };
+export type FutureMessage = typeof futureMessages.$inferSelect;
+export type NewFutureMessage = typeof futureMessages.$inferInsert;
 
 export const rewards = pgTable("rewards", {
   id: serial("id").primaryKey(),
@@ -142,13 +172,6 @@ export const visionBoardImages = pgTable("vision_board_images", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const futureMessages = pgTable("future_messages", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  message: text("message").notNull(),
-  isRead: boolean("is_read").default(false).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
 
 // Relations for remaining tables
 export const rewardItemsRelations = relations(rewardItems, ({ many }) => ({
@@ -180,41 +203,6 @@ export const timeTrackingRelations = relations(timeTracking, ({ one }) => ({
 export const visionBoardRelations = relations(visionBoardImages, ({ one }) => ({
   user: one(users, {
     fields: [visionBoardImages.userId],
-    references: [users.id],
-  }),
-}));
-
-// Type definitions and schemas
-export const insertGoalSchema = createInsertSchema(goals);
-export const selectGoalSchema = createSelectSchema(goals);
-export const insertTaskSchema = createInsertSchema(tasks);
-export const selectTaskSchema = createSelectSchema(tasks);
-export const updateTaskSchema = selectTaskSchema.partial().extend({
-  completed: z.boolean().optional(),
-  title: z.string().optional(),
-  estimatedMinutes: z.number().optional().nullable(),
-  plannedDate: z.string().optional().nullable(),
-  notes: z.string().optional().nullable(),
-});
-
-export type BaseGoal = typeof goals.$inferSelect;
-export type NewGoal = typeof goals.$inferInsert;
-export type Task = typeof tasks.$inferSelect;
-export type NewTask = typeof tasks.$inferInsert;
-export type UpdateTask = z.infer<typeof updateTaskSchema>;
-export type Goal = BaseGoal & { tasks?: Task[] };
-export type PurchasedReward = typeof purchasedRewards.$inferSelect;
-export type InsertPurchasedReward = typeof purchasedRewards.$inferInsert;
-export type TimeTracking = typeof timeTracking.$inferSelect;
-export type NewTimeTracking = typeof timeTracking.$inferInsert;
-export type VisionBoardImage = typeof visionBoardImages.$inferSelect;
-export type NewVisionBoardImage = typeof visionBoardImages.$inferInsert;
-export type FutureMessage = typeof futureMessages.$inferSelect;
-export type NewFutureMessage = typeof futureMessages.$inferInsert;
-
-export const futureMessagesRelations = relations(futureMessages, ({ one }) => ({
-  user: one(users, {
-    fields: [futureMessages.userId],
     references: [users.id],
   }),
 }));

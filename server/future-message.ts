@@ -1,5 +1,5 @@
 import { db } from "@db";
-import { futureMessages } from "@db/schema";
+import { futureMessages, goals, tasks } from "@db/schema";
 import { eq, and, gte, lte } from "drizzle-orm";
 import OpenAI from "openai";
 import { startOfDay, endOfDay } from "date-fns";

@@ -121,8 +121,9 @@ export function VisionBoard() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
       <FutureMessage />
+      <div className="h-px bg-border" />
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Vision Board</h2>
         <Button
