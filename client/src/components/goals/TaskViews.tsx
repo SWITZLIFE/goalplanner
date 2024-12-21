@@ -426,7 +426,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                 <div className="space-y-2">
                   <h3 className="font-medium">Subtasks</h3>
                   <div className="space-y-2">
-                    {tasks
+                    {(goalFilter === 'all' ? allTasks : initialTasks)
                       .filter(t => t.parentTaskId === selectedTask.id)
                       .map(subtask => (
                         <div 
