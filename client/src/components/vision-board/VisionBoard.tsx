@@ -144,7 +144,7 @@ export function VisionBoard() {
         {slots.map((image, index) => (
           <div
             key={index}
-            className="aspect-square relative bg-gray-100 rounded-lg overflow-hidden"
+            className="aspect-square relative bg-gray-100 rounded-lg overflow-hidden group"
           >
             {image ? (
               <>
@@ -154,12 +154,12 @@ export function VisionBoard() {
                   className="w-full h-full object-cover"
                 />
                 <Button
-                  variant="destructive"
+                  variant="secondary"
                   size="icon"
-                  className="absolute top-2 right-2 h-8 w-8"
+                  className="absolute top-2 right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground"
                   onClick={() => deleteMutation.mutate(image.id)}
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3 w-3" />
                 </Button>
               </>
             ) : (
