@@ -144,7 +144,7 @@ export default function ChatRoom() {
                 </Avatar>
                 <div className="group flex items-start gap-2">
                   <div
-                    className={`rounded-lg px-3 py-2 max-w-[85%] ${
+                    className={`rounded-lg px-3 py-2 w-full ${
                       msg.userId === user?.id
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted"
