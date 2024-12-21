@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { goals, tasks, rewards, timeTracking } from "@db/schema";
+import { goals, tasks, rewards, timeTracking, visionBoardImages } from "@db/schema";
 import { eq, and, isNull, sql } from "drizzle-orm";
 import multer from "multer";
 import path from "path";
