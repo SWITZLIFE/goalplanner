@@ -31,49 +31,73 @@ export default function ChatRoom() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const socket = new WebSocket(`${wsProtocol}//${window.location.host}/api/ws/chat`);
+    let reconnectTimeout: NodeJS.Timeout;
+    let socket: WebSocket | null = null;
 
-    socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('Received message:', data);
-        
-        if (data.type === 'initial') {
-          setMessages(data.messages || []);
-        } else if (data.type === 'error') {
-          console.error('Chat error:', data.message);
-        } else if (data.type === 'reaction_update') {
-          setMessages(prev => prev.map(msg => 
-            msg.id === data.messageId 
-              ? { ...msg, reactions: data.reactions }
-              : msg
-          ));
-        } else {
-          setMessages((prev) => [...prev, data]);
-        }
-        
-        // Scroll to bottom after messages update
-        setTimeout(() => {
-          scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-        }, 100);
-      } catch (error) {
-        console.error('Error parsing message:', error);
+    const connect = () => {
+      if (socket?.readyState === WebSocket.OPEN) {
+        return;
       }
+
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      socket = new WebSocket(`${wsProtocol}//${window.location.host}/api/ws/chat`);
+
+      socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('Received message:', data);
+          
+          if (data.type === 'initial') {
+            setMessages(data.messages || []);
+          } else if (data.type === 'error') {
+            console.error('Chat error:', data.message);
+          } else if (data.type === 'reaction_update') {
+            setMessages(prev => prev.map(msg => 
+              msg.id === data.messageId 
+                ? { ...msg, reactions: data.reactions }
+                : msg
+            ));
+          } else {
+            setMessages((prev) => [...prev, data]);
+          }
+          
+          // Scroll to bottom after messages update
+          setTimeout(() => {
+            scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+          }, 100);
+        } catch (error) {
+          console.error('Error parsing message:', error);
+        }
+      };
+
+      socket.onopen = () => {
+        console.log("Connected to chat");
+        setWs(socket);
+      };
+
+      socket.onclose = () => {
+        console.log("Disconnected from chat, attempting to reconnect...");
+        setWs(null);
+        // Attempt to reconnect after 2 seconds
+        reconnectTimeout = setTimeout(connect, 2000);
+      };
+
+      socket.onerror = (error: Event) => {
+        if (error instanceof ErrorEvent) {
+          console.error("WebSocket error:", error.message);
+        } else {
+          console.error("WebSocket error:", error);
+        }
+      };
     };
 
-    socket.onopen = () => {
-      console.log("Connected to chat");
-    };
-
-    socket.onerror = (error) => {
-      console.error("WebSocket error:", error);
-    };
-
-    setWs(socket);
+    connect();
 
     return () => {
-      socket.close();
+      clearTimeout(reconnectTimeout);
+      if (socket) {
+        socket.close();
+      }
     };
   }, []);
 
