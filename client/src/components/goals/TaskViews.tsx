@@ -32,12 +32,34 @@ interface TaskViewsProps {
 export function TaskViews({ tasks, goalId, goal }: TaskViewsProps) {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [taskFilter, setTaskFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [goalFilter, setGoalFilter] = useState<number | 'all'>('all');
   const { updateTask, createTask, updateGoal } = useGoals();
   const { toast } = useToast();
 
   // Split tasks into active and completed
   const activeTasks = tasks.filter(task => !task.completed);
   const completedTasks = tasks.filter(task => task.completed);
+
+  // Filter tasks based on selected filters
+  const getFilteredTasks = () => {
+    let filtered = tasks;
+    
+    // Apply task status filter
+    if (taskFilter === 'active') {
+      filtered = filtered.filter(task => !task.completed);
+    } else if (taskFilter === 'completed') {
+      filtered = filtered.filter(task => task.completed);
+    }
+    
+    // Apply goal filter if specific goal is selected
+    if (goalFilter !== 'all') {
+      filtered = filtered.filter(task => task.goalId === goalFilter);
+    }
+    
+    return filtered;
+  };
 
   // Get tasks for selected date
   const tasksForDate = (date: Date) => {
@@ -117,13 +139,22 @@ export function TaskViews({ tasks, goalId, goal }: TaskViewsProps) {
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <div className="flex gap-2">
-                <select className="border rounded-md p-2">
-                  <option>All Tasks</option>
-                  <option>Active Tasks</option>
-                  <option>Completed Tasks</option>
+                <select 
+                  className="border rounded-md p-2"
+                  value={taskFilter}
+                  onChange={(e) => setTaskFilter(e.target.value as 'all' | 'active' | 'completed')}
+                >
+                  <option value="all">All Tasks</option>
+                  <option value="active">Active Tasks</option>
+                  <option value="completed">Completed Tasks</option>
                 </select>
-                <select className="border rounded-md p-2">
-                  <option>All Goals</option>
+                <select 
+                  className="border rounded-md p-2"
+                  value={goalFilter}
+                  onChange={(e) => setGoalFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                >
+                  <option value="all">All Goals</option>
+                  <option value={goalId}>{goal.title}</option>
                 </select>
               </div>
               <div className="flex gap-2">
@@ -140,9 +171,29 @@ export function TaskViews({ tasks, goalId, goal }: TaskViewsProps) {
               <div className="bg-primary/5 p-4">
                 <h2 className="text-xl font-semibold">Task Calendar</h2>
                 <div className="flex justify-between items-center mt-2">
-                  <button className="p-1 hover:bg-gray-200 rounded">←</button>
-                  <span className="font-medium">December 2024</span>
-                  <button className="p-1 hover:bg-gray-200 rounded">→</button>
+                  <button 
+                    className="p-1 hover:bg-gray-200 rounded"
+                    onClick={() => {
+                      const newDate = new Date(currentMonth);
+                      newDate.setMonth(newDate.getMonth() - 1);
+                      setCurrentMonth(newDate);
+                    }}
+                  >
+                    ←
+                  </button>
+                  <span className="font-medium">
+                    {format(currentMonth, 'MMMM yyyy')}
+                  </span>
+                  <button 
+                    className="p-1 hover:bg-gray-200 rounded"
+                    onClick={() => {
+                      const newDate = new Date(currentMonth);
+                      newDate.setMonth(newDate.getMonth() + 1);
+                      setCurrentMonth(newDate);
+                    }}
+                  >
+                    →
+                  </button>
                 </div>
               </div>
               
@@ -156,15 +207,22 @@ export function TaskViews({ tasks, goalId, goal }: TaskViewsProps) {
               
               <div className="grid grid-cols-7 divide-x divide-y">
                 {Array.from({ length: 35 }, (_, i) => {
-                  const date = new Date(2024, 11, i - 4); // December 2024
+                  const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+                  const startDay = startOfMonth.getDay(); // 0 = Sunday
+                  const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), i - startDay + 1);
                   const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
-                  const dayTasks = tasksForDate(date);
+                  const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
+                  const dayTasks = getFilteredTasks().filter(task => 
+                    task.plannedDate && 
+                    format(new Date(task.plannedDate), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
+                  );
                   
                   return (
                     <div 
                       key={i} 
                       className={cn(
                         "min-h-[100px] p-2",
+                        !isCurrentMonth && "bg-gray-50 text-gray-400",
                         isToday && "bg-primary/5"
                       )}
                     >
