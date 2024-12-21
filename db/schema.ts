@@ -141,6 +141,26 @@ export const timeTrackingRelations = relations(timeTracking, ({ one }) => ({
   }),
 }));
 
+export const visionBoardImages = pgTable("vision_board_images", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  imageUrl: text("image_url").notNull(),
+  position: integer("position").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const visionBoardRelations = relations(visionBoardImages, ({ one }) => ({
+  user: one(users, {
+    fields: [visionBoardImages.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertVisionBoardImageSchema = createInsertSchema(visionBoardImages);
+export const selectVisionBoardImageSchema = createSelectSchema(visionBoardImages);
+export type VisionBoardImage = typeof visionBoardImages.$inferSelect;
+export type NewVisionBoardImage = typeof visionBoardImages.$inferInsert;
+
 export const insertTimeTrackingSchema = createInsertSchema(timeTracking);
 export const selectTimeTrackingSchema = createSelectSchema(timeTracking);
 export type TimeTracking = typeof timeTracking.$inferSelect;
