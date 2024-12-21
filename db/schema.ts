@@ -79,11 +79,17 @@ export const rewardItems = pgTable("reward_items", {
 
 export const purchasedRewards = pgTable("purchased_rewards", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
-  rewardItemId: integer("reward_item_id").notNull().references(() => rewardItems.id),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  rewardItemId: integer("reward_item_id").notNull().references(() => rewardItems.id, { onDelete: "cascade" }),
   purchasedAt: timestamp("purchased_at").defaultNow().notNull(),
 });
 
+// Add relations for rewardItems
+export const rewardItemsRelations = relations(rewardItems, ({ many }) => ({
+  purchases: many(purchasedRewards),
+}));
+
+// Add relations for purchasedRewards
 export const purchasedRewardsRelations = relations(purchasedRewards, ({ one }) => ({
   user: one(users, {
     fields: [purchasedRewards.userId],
@@ -94,6 +100,9 @@ export const purchasedRewardsRelations = relations(purchasedRewards, ({ one }) =
     references: [rewardItems.id],
   }),
 }));
+
+export type PurchasedReward = typeof purchasedRewards.$inferSelect;
+export type InsertPurchasedReward = typeof purchasedRewards.$inferInsert;
 
 export const timeTracking = pgTable("time_tracking", {
   id: serial("id").primaryKey(),

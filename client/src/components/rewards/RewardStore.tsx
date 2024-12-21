@@ -24,6 +24,14 @@ interface UserRewards {
   lastUpdated: string;
 }
 
+interface PurchasedReward {
+  id: number;
+  userId: number;
+  rewardItemId: number;
+  purchasedAt: string;
+  rewardItem: RewardItem;
+}
+
 export function RewardStore() {
   const [selectedReward, setSelectedReward] = useState<RewardItem | null>(null);
   const { toast } = useToast();
@@ -32,7 +40,7 @@ export function RewardStore() {
     queryKey: ["/api/rewards/items"],
   });
 
-  const { data: purchasedItems = [] } = useQuery({
+  const { data: purchasedItems = [] } = useQuery<PurchasedReward[]>({
     queryKey: ["/api/rewards/purchased"],
   });
 
