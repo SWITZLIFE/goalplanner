@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Award, Gift, Star, Tag } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,8 @@ export function RewardStore() {
     refetchOnMount: true,
   });
 
+  const queryClient = useQueryClient();
+  
   const handlePurchase = async () => {
     if (!selectedReward) return;
 
@@ -60,8 +62,8 @@ export function RewardStore() {
       });
       
       // Invalidate queries to refresh data
-      await queryClient.invalidateQuery({ queryKey: ["/api/rewards"] });
-      await queryClient.invalidateQuery({ queryKey: ["/api/rewards/items"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/rewards"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/rewards/items"] });
       
       // Close the dialog
       setSelectedReward(null);
