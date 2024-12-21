@@ -666,11 +666,21 @@ This is your personal cheerleader letter - make it feel warm, real, and full of 
   // Vision Board API
   app.get("/api/vision-board", async (req, res) => {
     try {
-      const userId = 1; // TODO: Replace with actual user ID from auth
+      // Check if user is authenticated
+      if (!req.isAuthenticated()) {
+        console.log("Unauthorized attempt to access vision board");
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const userId = req.user.id;
+      console.log("Fetching vision board for user:", userId);
+
       const images = await db.select()
         .from(visionBoardImages)
         .where(eq(visionBoardImages.userId, userId))
         .orderBy(visionBoardImages.position);
+      
+      console.log(`Found ${images.length} vision board images for user:`, userId);
       res.json(images);
     } catch (error) {
       console.error("Failed to fetch vision board images:", error);
@@ -758,12 +768,24 @@ This is your personal cheerleader letter - make it feel warm, real, and full of 
   // Rewards API
   app.get("/api/rewards", async (req, res) => {
     try {
+      // Check if user is authenticated
+      if (!req.isAuthenticated()) {
+        console.log("Unauthorized attempt to access rewards");
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const userId = req.user.id;
+      console.log("Fetching rewards for user:", userId);
+
       const [userRewards] = await db.select()
         .from(rewards)
-        .where(eq(rewards.userId, 1)) // TODO: Replace with actual user ID when auth is added
+        .where(eq(rewards.userId, userId))
         .limit(1);
+        
+      console.log("Found rewards for user:", userId, userRewards);
       res.json(userRewards || { coins: 0 });
     } catch (error) {
+      console.error("Failed to fetch rewards:", error);
       res.status(500).json({ error: "Failed to fetch rewards" });
     }
   });
