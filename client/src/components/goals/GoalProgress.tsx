@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { triggerCelebration, getRewardAmount, getCelebrationMessage } from "@/lib/celebration";
@@ -12,7 +12,8 @@ interface GoalProgressProps {
 export function GoalProgress({ progress, previousProgress = 0 }: GoalProgressProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const hasCheckedRef = useRef<boolean>(false);
+  const [lastCheckedProgress, setLastCheckedProgress] = useState(previousProgress);
+  const isInitialMount = useRef(true);
 
   // Mutation for updating rewards
   const updateRewardsMutation = useMutation({
@@ -21,8 +22,12 @@ export function GoalProgress({ progress, previousProgress = 0 }: GoalProgressPro
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount }),
+        credentials: 'include',
       });
-      if (!response.ok) throw new Error('Failed to update rewards');
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to update rewards: ${errorText}`);
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -31,38 +36,61 @@ export function GoalProgress({ progress, previousProgress = 0 }: GoalProgressPro
   });
 
   useEffect(() => {
-    // Only check for milestones if we haven't checked this progress value before
-    if (!hasCheckedRef.current && progress !== previousProgress) {
+    // Skip the first render to avoid duplicate celebrations
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    // Only check for milestones if progress has changed
+    if (progress !== lastCheckedProgress) {
       const checkMilestones = async () => {
-        // Check if crossed 50% milestone
-        if (previousProgress < 50 && progress >= 50) {
-          const rewardAmount = getRewardAmount(false);
-          triggerCelebration(false);
-          toast({
-            title: getCelebrationMessage(false),
-            description: `You've earned ${rewardAmount} coins!`,
-            duration: 5000,
+        try {
+          console.log('Checking milestones:', { 
+            progress, 
+            lastCheckedProgress, 
+            crossedHalf: lastCheckedProgress < 50 && progress >= 50,
+            crossedComplete: lastCheckedProgress < 100 && progress >= 100
           });
-          await updateRewardsMutation.mutateAsync(rewardAmount);
-        }
-        
-        // Check if goal is completed
-        if (previousProgress < 100 && progress >= 100) {
-          const rewardAmount = getRewardAmount(true);
-          triggerCelebration(true);
+
+          // Check if crossed 50% milestone
+          if (lastCheckedProgress < 50 && progress >= 50) {
+            const rewardAmount = getRewardAmount(false);
+            triggerCelebration(false);
+            toast({
+              title: getCelebrationMessage(false),
+              description: `You've earned ${rewardAmount} coins!`,
+              duration: 5000,
+            });
+            await updateRewardsMutation.mutateAsync(rewardAmount);
+          }
+          
+          // Check if goal is completed
+          if (lastCheckedProgress < 100 && progress >= 100) {
+            const rewardAmount = getRewardAmount(true);
+            triggerCelebration(true);
+            toast({
+              title: getCelebrationMessage(true),
+              description: `You've earned ${rewardAmount} coins!`,
+              duration: 5000,
+            });
+            await updateRewardsMutation.mutateAsync(rewardAmount);
+          }
+
+          setLastCheckedProgress(progress);
+        } catch (error) {
+          console.error('Failed to process milestone:', error);
           toast({
-            title: getCelebrationMessage(true),
-            description: `You've earned ${rewardAmount} coins!`,
-            duration: 5000,
+            title: "Error",
+            description: "Failed to process milestone rewards",
+            variant: "destructive",
           });
-          await updateRewardsMutation.mutateAsync(rewardAmount);
         }
       };
 
       checkMilestones();
-      hasCheckedRef.current = true;
     }
-  }, [progress, previousProgress, toast, updateRewardsMutation]);
+  }, [progress, lastCheckedProgress, toast, updateRewardsMutation]);
 
   return (
     <div className="space-y-2">
