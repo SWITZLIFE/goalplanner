@@ -88,7 +88,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
   // Get filtered tasks based on selected filters
   const getFilteredTasks = () => {
     // Start with all available tasks
-    let filtered = tasks;
+    let filtered = allTasks;
     
     // First apply goal filter
     if (goalFilter !== 'all') {
@@ -103,17 +103,15 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
     }
 
     // Filter out tasks without planned dates for calendar view
-    if (filtered) {
-      filtered = filtered.filter(task => task.plannedDate !== null);
-    }
+    filtered = filtered.filter(task => task.plannedDate !== null);
     
     return filtered;
   };
 
   // Get tasks for selected date
   const tasksForDate = (date: Date) => {
-    // First get filtered tasks based on current filters
-    const filtered = getFilteredTasks();
+    // Get filtered tasks based on current filters
+    const filtered = getCalendarTasks();
     // Then filter by date
     return filtered.filter(task => 
       task.plannedDate && 
