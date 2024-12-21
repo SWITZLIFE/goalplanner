@@ -6,39 +6,40 @@ interface AuthResponse {
   user: SelectUser;
 }
 
-// Only do the fetch, no state management here
-async function fetchUser(): Promise<SelectUser | null> {
-  try {
-    const response = await fetch('/api/user', {
-      credentials: 'include'
-    });
-
-    if (response.status === 401) {
-      return null;
-    }
-
-    if (!response.ok) {
-      throw new Error(await response.text());
-    }
-
-    return response.json();
-  } catch (error) {
-    console.error('Error fetching user:', error);
-    return null;
-  }
-}
+// Cache key for user data
+const USER_QUERY_KEY = ['user'] as const;
 
 export function useUser() {
   const queryClient = useQueryClient();
 
-  // Main user query - only fetch on mount
+  // Main user query - with proper caching
   const { data: user, isLoading } = useQuery({
-    queryKey: ['user'],
-    queryFn: fetchUser,
-    gcTime: 0, // Don't cache between mounts
-    staleTime: Infinity, // Never mark as stale
+    queryKey: USER_QUERY_KEY,
+    queryFn: async () => {
+      try {
+        const response = await fetch('/api/user', {
+          credentials: 'include'
+        });
+
+        if (response.status === 401) {
+          return null;
+        }
+
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        return response.json() as Promise<SelectUser>;
+      } catch (error) {
+        console.error('Error fetching user:', error);
+        return null;
+      }
+    },
+    // Prevent unnecessary refetching
+    staleTime: Infinity,
+    cacheTime: Infinity,
     retry: false,
-    refetchOnMount: true,
+    refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
   });
@@ -62,8 +63,8 @@ export function useUser() {
       return response.json() as Promise<AuthResponse>;
     },
     onSuccess: (data) => {
-      // Directly set the user data without invalidating
-      queryClient.setQueryData(['user'], data.user);
+      // Set the user data in cache without triggering a refetch
+      queryClient.setQueryData(USER_QUERY_KEY, data.user);
     },
   });
 
@@ -80,8 +81,10 @@ export function useUser() {
       }
     },
     onSuccess: () => {
-      // Clear everything and redirect
+      // Clear user data and reset cache
+      queryClient.setQueryData(USER_QUERY_KEY, null);
       queryClient.clear();
+      // Redirect to home page
       window.location.href = '/';
     },
   });
@@ -105,8 +108,8 @@ export function useUser() {
       return response.json() as Promise<AuthResponse>;
     },
     onSuccess: (data) => {
-      // Directly set the user data without invalidating
-      queryClient.setQueryData(['user'], data.user);
+      // Set the user data in cache without triggering a refetch
+      queryClient.setQueryData(USER_QUERY_KEY, data.user);
     },
   });
 

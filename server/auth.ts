@@ -49,9 +49,13 @@ export function setupAuth(app: Express) {
     secret: process.env.REPL_ID || "porygon-supremacy",
     resave: false,
     saveUninitialized: false,
+    rolling: true,
+    name: 'goalNavigator.sid',
     cookie: {
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
       httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
       secure: app.get("env") === "production",
     },
     store: new MemoryStore({
@@ -62,9 +66,7 @@ export function setupAuth(app: Express) {
 
   if (app.get("env") === "production") {
     app.set("trust proxy", 1);
-    sessionSettings.cookie = {
-      secure: true,
-    };
+    sessionSettings.cookie!.secure = true;
   }
 
   app.use(session(sessionSettings));
