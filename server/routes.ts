@@ -67,29 +67,34 @@ export function registerRoutes(app: Express): Server {
     try {
       console.log("Fetching goals for user:", req.user.id);
       
-      // Debug query parameters
       // Debug authentication state
       console.log("Current user:", req.user);
       
-      // Use explicit type casting for the user ID
-      const userId = req.user.id;
-      console.log("Using user ID for query:", userId);
+      // Verify user ID is valid
+      if (!req.user?.id) {
+        console.error("Invalid user ID");
+        return res.status(401).json({ error: "Invalid user session" });
+      }
       
-      // Only fetch goals for the authenticated user with additional validation
-      const userGoals = await db.select({
-        id: goals.id,
-        userId: goals.userId,
-        title: goals.title,
-        description: goals.description,
-        targetDate: goals.targetDate,
-        progress: goals.progress,
-        totalTasks: goals.totalTasks,
-        createdAt: goals.createdAt,
-        visionStatement: goals.visionStatement,
-      })
-      .from(goals)
-      .where(eq(goals.userId, req.user.id))
-      .orderBy(goals.createdAt);
+      // Only fetch goals for the authenticated user with strict validation
+      const userGoals = await db
+        .select({
+          id: goals.id,
+          userId: goals.userId,
+          title: goals.title,
+          description: goals.description,
+          targetDate: goals.targetDate,
+          progress: goals.progress,
+          totalTasks: goals.totalTasks,
+          createdAt: goals.createdAt,
+          visionStatement: goals.visionStatement,
+        })
+        .from(goals)
+        .where(and(
+          eq(goals.userId, req.user.id),
+          sql`goals.user_id = ${req.user.id}::integer` // Additional type-safe check
+        ))
+        .orderBy(goals.createdAt);
       
       // Add detailed logging
       console.log("Current authenticated user:", {
@@ -176,10 +181,17 @@ export function registerRoutes(app: Express): Server {
         // Create tasks in the order they come from OpenAI
         // OpenAI has been instructed to return them in chronological order
         for (const task of breakdown) {
+          // Validate task structure
+          if (!task || typeof task !== 'object' || !task.title || !Array.isArray(task.subtasks)) {
+            console.error('Invalid task structure:', task);
+            continue;
+          }
+
+          // Create main task
           const [mainTask] = await db.insert(tasks)
             .values({
               goalId: newGoal.id,
-              title: task.title,
+              title: task.title as string,
               completed: false,
               isSubtask: false,
               isAiGenerated: true,
@@ -188,14 +200,20 @@ export function registerRoutes(app: Express): Server {
 
           // Create subtasks
           for (const subtask of task.subtasks) {
+            if (!subtask || typeof subtask !== 'object' || !subtask.title) {
+              console.error('Invalid subtask structure:', subtask);
+              continue;
+            }
+
             await db.insert(tasks)
               .values({
                 goalId: newGoal.id,
-                title: subtask.title,
+                title: subtask.title as string,
                 completed: false,
-                estimatedMinutes: subtask.estimatedMinutes,
+                estimatedMinutes: typeof subtask.estimatedMinutes === 'number' ? subtask.estimatedMinutes : null,
                 isSubtask: true,
                 parentTaskId: mainTask.id,
+                isAiGenerated: true,
               });
           }
         }
