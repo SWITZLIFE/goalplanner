@@ -1,8 +1,10 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { goals, tasks, rewards, timeTracking, visionBoardImages, rewardItems } from "@db/schema";
-import { eq, and, isNull, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
+import { rewards, rewardItems, purchasedRewards } from "@db/schema";
+import { goals, tasks,  timeTracking, visionBoardImages } from "@db/schema";
+import { and, isNull, sql } from "drizzle-orm";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -614,7 +616,7 @@ export function registerRoutes(app: Express): Server {
         with: {
           rewardItem: true,
         },
-        orderBy: (rewards, { desc }) => [desc(rewards.purchasedAt)],
+        orderBy: (purchasedRewards, { desc }) => [desc(purchasedRewards.purchasedAt)],
       });
 
       res.json(purchasedItems);
@@ -683,6 +685,7 @@ export function registerRoutes(app: Express): Server {
         .values({
           userId,
           rewardItemId: itemId,
+          purchasedAt: new Date()
         })
         .returning();
 
