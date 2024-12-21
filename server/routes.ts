@@ -993,7 +993,7 @@ Remember to:
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      // Check if we already generated a message today
+      // Get today's message if it exists
       const existingMessage = await db.select()
         .from(dailyMotivations)
         .where(and(
@@ -1006,6 +1006,17 @@ Remember to:
         return res.json({ message: existingMessage[0].message });
       }
 
+      return res.json({ message: null });
+    } catch (error) {
+      console.error("Failed to fetch daily motivation:", error);
+      res.status(500).json({ error: "Failed to fetch daily motivation" });
+    }
+  });
+
+  app.post("/api/motivation/daily/generate", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      
       // Get user's goals and their progress
       const userGoals = await db.select({
         title: goals.title,
