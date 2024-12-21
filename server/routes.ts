@@ -139,16 +139,8 @@ export function registerRoutes(app: Express): Server {
         userId: goals.userId, // Explicitly select userId to verify ownership
       })
       .from(goals)
-      .where(and(
-        eq(goals.userId, userId)
-      ))
+      .where(eq(goals.userId, userId))
       .orderBy(desc(goals.createdAt));
-
-      // Double check that all goals belong to the current user
-      if (userGoals.some(goal => goal.userId !== userId)) {
-        console.error('Data isolation breach detected');
-        return res.status(500).json({ error: "Data isolation error" });
-      }
 
       // Double check that all goals belong to the current user
       if (userGoals.some(goal => goal.userId !== userId)) {

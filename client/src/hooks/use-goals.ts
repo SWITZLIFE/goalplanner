@@ -14,11 +14,10 @@ export function useGoals() {
     queryFn: async () => {
       if (!user?.id) return [];
       const res = await fetch("/api/goals", {
-        credentials: 'include'
+        credentials: 'include' // Include credentials for auth
       });
       if (!res.ok) {
         if (res.status === 401) {
-          queryClient.clear(); // Clear cache on auth error
           throw new Error("Please login to view your goals");
         }
         throw new Error("Failed to fetch goals");
@@ -27,8 +26,7 @@ export function useGoals() {
       return data;
     },
     enabled: !!user?.id,
-    refetchOnWindowFocus: false,
-    staleTime: 0 // Disable stale time to always fetch fresh data
+    staleTime: 30000 // Cache for 30 seconds
   });
 
   const updateGoalMutation = useMutation({

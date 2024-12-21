@@ -26,29 +26,22 @@ function App() {
     return <ResetPasswordPage />;
   }
 
-  // If not logged in and not on reset password page, show auth page
-  if (!user && (!window.location.pathname.startsWith('/reset-password') || !resetToken)) {
+  if (!user) {
     return <AuthPage />;
   }
 
-  // If logged in, show main app
-  if (user) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <main className="container py-6">
-          <Switch>
-            <Route path="/" component={Dashboard} />
-            <Route path="/goals/:id" component={GoalView} />
-            <Route path="/rewards" component={RewardPage} />
-          </Switch>
-        </main>
-      </div>
-    );
-  }
-
-  // Handle password reset page or other special cases
-  return <ResetPasswordPage />;
+  return (
+    <div className="min-h-screen bg-background">
+      <Header />
+      <main className="container py-6">
+        <Switch>
+          <Route path="/" component={Dashboard} />
+          <Route path="/goals/:id" component={GoalView} />
+          <Route path="/rewards" component={RewardPage} />
+        </Switch>
+      </main>
+    </div>
+  );
 }
 
 export default App;
