@@ -24,6 +24,11 @@ export function VisionBoard() {
       const formData = new FormData();
       formData.append("image", file);
       
+      // Generate unique filename
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const filename = `vision-board/${uniqueSuffix}-${file.name}`;
+      formData.append("filename", filename);
+      
       const response = await fetch("/api/vision-board/upload", {
         method: "POST",
         body: formData,
