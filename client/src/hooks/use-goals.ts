@@ -23,8 +23,7 @@ export function useGoals() {
         throw new Error("Failed to fetch goals");
       }
       const data = await res.json();
-      // Additional client-side validation
-      return data.filter((goal: Goal) => goal.userId === user.id);
+      return data;
     },
     enabled: !!user?.id,
     staleTime: 30000 // Cache for 30 seconds
