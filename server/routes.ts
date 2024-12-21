@@ -4,20 +4,23 @@ import { createServer, type Server } from "http";
 import { db } from "@db";
 import { eq } from "drizzle-orm";
 import { rewards, rewardItems, purchasedRewards } from "@db/schema";
-import { goals, tasks,  timeTracking, visionBoardImages } from "@db/schema";
+import { goals, tasks, timeTracking, visionBoardImages } from "@db/schema";
 import { and, isNull, sql } from "drizzle-orm";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { generateTaskBreakdown, generateShortTitle } from "./openai";
+import { getCoachingAdvice } from "./coaching";
+import { setupAuth } from "./auth";
+import express from 'express';
 
 // Configure multer for handling file uploads
-const uploadDir = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
+    const uploadDir = path.join(process.cwd(), "uploads");
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
     cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
@@ -38,10 +41,6 @@ const upload = multer({
     fileSize: 5 * 1024 * 1024 // 5MB limit
   }
 });
-import { generateTaskBreakdown, generateShortTitle } from "./openai";
-import { getCoachingAdvice } from "./coaching";
-import { setupAuth } from "./auth";
-import express from 'express';
 
 // Authentication middleware
 function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
@@ -54,7 +53,7 @@ function requireAuth(req: express.Request, res: express.Response, next: express.
 export function registerRoutes(app: Express): Server {
   // Setup authentication middleware and routes
   setupAuth(app);
-  
+
   // Ensure uploads directory exists and serve uploaded files
   const uploadsDir = path.join(process.cwd(), 'uploads');
   if (!fs.existsSync(uploadsDir)) {
@@ -70,12 +69,12 @@ export function registerRoutes(app: Express): Server {
     requireAuth(req, res, next);
   });
 
-  // put application routes here
-  // prefix all routes with /api
   // Goals API
-  app.get("/api/goals", async (req, res) => {
+  app.get("/api/goals", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
+      console.log('Fetching goals for user:', userId);
+
       const userGoals = await db.query.goals.findMany({
         where: eq(goals.userId, userId),
         with: {
@@ -83,6 +82,8 @@ export function registerRoutes(app: Express): Server {
         },
         orderBy: (goals, { desc }) => [desc(goals.createdAt)],
       });
+
+      console.log('Found goals:', userGoals.length);
       res.json(userGoals);
     } catch (error) {
       console.error("Failed to fetch goals:", error);
@@ -90,14 +91,15 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.post("/api/goals", async (req, res) => {
+  app.post("/api/goals", requireAuth, async (req, res) => {
     try {
       const { title, description, targetDate, totalTasks } = req.body;
       const userId = req.user!.id;
-      
+      console.log('Creating goal for user:', userId);
+
       // Generate a shorter title using AI
       const shortTitle = await generateShortTitle(title);
-      
+
       const [newGoal] = await db.insert(goals)
         .values({
           userId,
@@ -109,23 +111,24 @@ export function registerRoutes(app: Express): Server {
         })
         .returning();
 
+      console.log('Created goal:', newGoal);
+
       // Create tasks and subtasks
       if (totalTasks > 0) {
         const breakdown = await generateTaskBreakdown(title, parseInt(totalTasks));
-        
+
         console.log('Task breakdown from OpenAI:', JSON.stringify(breakdown, null, 2));
-        
+
         // Create tasks in the order they come from OpenAI
-        // OpenAI has been instructed to return them in chronological order
         for (const task of breakdown) {
           const [mainTask] = await db.insert(tasks)
             .values({
               goalId: newGoal.id,
+              userId,
               title: task.title,
               completed: false,
               isSubtask: false,
               isAiGenerated: true,
-              userId, // Assign userId to tasks
             })
             .returning();
 
@@ -134,12 +137,12 @@ export function registerRoutes(app: Express): Server {
             await db.insert(tasks)
               .values({
                 goalId: newGoal.id,
+                userId,
                 title: subtask.title,
                 completed: false,
                 estimatedMinutes: subtask.estimatedMinutes,
                 isSubtask: true,
                 parentTaskId: mainTask.id,
-                userId, // Assign userId to subtasks
               });
           }
         }
@@ -147,7 +150,10 @@ export function registerRoutes(app: Express): Server {
 
       // Fetch the complete goal with tasks
       const goalWithTasks = await db.query.goals.findFirst({
-        where: eq(goals.id, newGoal.id),
+        where: and(
+          eq(goals.id, newGoal.id),
+          eq(goals.userId, userId)
+        ),
         with: {
           tasks: true,
         },
@@ -159,8 +165,9 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ error: "Failed to create goal" });
     }
   });
+
   // Delete goal endpoint
-  app.delete("/api/goals/:goalId", async (req, res) => {
+  app.delete("/api/goals/:goalId", requireAuth, async (req, res) => {
     try {
       const { goalId } = req.params;
       const goalIdInt = parseInt(goalId);
@@ -178,11 +185,11 @@ export function registerRoutes(app: Express): Server {
       });
 
       if (!goalToDelete) {
-        return res.status(404).json({ error: "Goal not found" });
+        return res.status(404).json({ error: "Goal not found or unauthorized" });
       }
 
       // Delete in correct order to handle foreign key constraints
-      
+
       // 1. Delete all time tracking records for tasks in this goal
       for (const task of goalToDelete.tasks) {
         await db.delete(timeTracking)
@@ -195,7 +202,10 @@ export function registerRoutes(app: Express): Server {
 
       // 3. Finally delete the goal
       await db.delete(goals)
-        .where(eq(goals.id, goalIdInt));
+        .where(and(
+          eq(goals.id, goalIdInt),
+          eq(goals.userId, userId)
+        ));
 
       res.json({ success: true });
     } catch (error) {
@@ -207,14 +217,13 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-
   // Tasks API
-  app.post("/api/goals/:goalId/tasks", async (req, res) => {
+  app.post("/api/goals/:goalId/tasks", requireAuth, async (req, res) => {
     try {
       const { goalId } = req.params;
       const { title, isSubtask, parentTaskId, plannedDate } = req.body;
       const userId = req.user!.id;
-      
+
       // Verify the goal belongs to the user
       const goal = await db.query.goals.findFirst({
         where: and(
@@ -226,7 +235,7 @@ export function registerRoutes(app: Express): Server {
       if (!goal) {
         return res.status(404).json({ error: "Goal not found or unauthorized" });
       }
-      
+
       const [newTask] = await db.insert(tasks)
         .values({
           goalId: parseInt(goalId),
@@ -238,7 +247,7 @@ export function registerRoutes(app: Express): Server {
           plannedDate: plannedDate ? new Date(plannedDate) : null,
         })
         .returning();
-      
+
       res.json(newTask);
     } catch (error) {
       console.error("Failed to create task:", error);
@@ -246,13 +255,12 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.patch("/api/tasks/:taskId", async (req, res) => {
+  app.patch("/api/tasks/:taskId", requireAuth, async (req, res) => {
     try {
       const { taskId } = req.params;
       const userId = req.user!.id;
-      // Destructure only the fields we want to update, ignoring order
       const { completed, title, estimatedMinutes, plannedDate, notes } = req.body;
-      
+
       // First verify the task belongs to the user
       const task = await db.query.tasks.findFirst({
         where: and(
@@ -264,7 +272,7 @@ export function registerRoutes(app: Express): Server {
       if (!task) {
         return res.status(404).json({ error: "Task not found or unauthorized" });
       }
-      
+
       const updateData: Partial<typeof tasks.$inferInsert> = {};
       if (typeof completed !== 'undefined') updateData.completed = completed;
       if (title) updateData.title = title;
@@ -276,7 +284,7 @@ export function registerRoutes(app: Express): Server {
         updateData.notes = notes;
       }
 
-      console.log('Updating task with data:', { taskId, updateData, notes: req.body.notes });
+      console.log('Updating task with data:', { taskId, updateData });
 
       const [updatedTask] = await db.update(tasks)
         .set(updateData)
@@ -294,30 +302,38 @@ export function registerRoutes(app: Express): Server {
       if (updatedTask && typeof completed !== 'undefined') {
         const goalTasks = await db.select()
           .from(tasks)
-          .where(eq(tasks.goalId, updatedTask.goalId));
-        
+          .where(
+            and(
+              eq(tasks.goalId, updatedTask.goalId),
+              eq(tasks.userId, userId)
+            )
+          );
+
         const completedTasks = goalTasks.filter(t => t.completed).length;
         const progress = Math.round((completedTasks / goalTasks.length) * 100);
-        
+
         await db.update(goals)
           .set({ progress })
-          .where(eq(goals.id, updatedTask.goalId));
+          .where(and(
+            eq(goals.id, updatedTask.goalId),
+            eq(goals.userId, userId)
+          ));
       }
 
       res.json(updatedTask);
     } catch (error) {
+      console.error("Failed to update task:", error);
       res.status(500).json({ error: "Failed to update task" });
     }
   });
 
-  // Delete task endpoint
-  app.delete("/api/tasks/:taskId", async (req, res) => {
+  app.delete("/api/tasks/:taskId", requireAuth, async (req, res) => {
     try {
       const { taskId } = req.params;
       const taskIdInt = parseInt(taskId);
       const userId = req.user!.id;
 
-      // First, verify the task exists and belongs to the user
+      // First verify the task exists and belongs to the user
       const taskToDelete = await db.query.tasks.findFirst({
         where: and(
           eq(tasks.id, taskIdInt),
@@ -333,41 +349,44 @@ export function registerRoutes(app: Express): Server {
       await db.delete(timeTracking)
         .where(eq(timeTracking.taskId, taskIdInt));
 
-      // Then delete all subtasks and their time tracking records
-      const subtasks = await db.select()
-        .from(tasks)
-        .where(eq(tasks.parentTaskId, taskIdInt));
-        
-      for (const subtask of subtasks) {
-        await db.delete(timeTracking)
-          .where(eq(timeTracking.taskId, subtask.id));
-      }
-      
+      // Then delete all subtasks
       await db.delete(tasks)
         .where(eq(tasks.parentTaskId, taskIdInt));
 
       // Finally delete the main task
       const [deletedTask] = await db.delete(tasks)
-        .where(eq(tasks.id, taskIdInt))
+        .where(and(
+          eq(tasks.id, taskIdInt),
+          eq(tasks.userId, userId)
+        ))
         .returning();
 
       // Update goal progress
       const remainingTasks = await db.select()
         .from(tasks)
-        .where(eq(tasks.goalId, taskToDelete.goalId));
-      
+        .where(and(
+          eq(tasks.goalId, taskToDelete.goalId),
+          eq(tasks.userId, userId)
+        ));
+
       if (remainingTasks.length > 0) {
         const completedTasks = remainingTasks.filter(t => t.completed).length;
         const progress = Math.round((completedTasks / remainingTasks.length) * 100);
-        
+
         await db.update(goals)
           .set({ progress })
-          .where(eq(goals.id, taskToDelete.goalId));
+          .where(and(
+            eq(goals.id, taskToDelete.goalId),
+            eq(goals.userId, userId)
+          ));
       } else {
         // If no tasks remain, set progress to 0
         await db.update(goals)
           .set({ progress: 0 })
-          .where(eq(goals.id, taskToDelete.goalId));
+          .where(and(
+            eq(goals.id, taskToDelete.goalId),
+            eq(goals.userId, userId)
+          ));
       }
 
       res.json({ success: true });
@@ -380,23 +399,27 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-// Vision Statement Generation API
-app.post("/api/goals/:goalId/vision", async (req, res) => {
-  try {
-    const { goalId } = req.params;
-    const { answers } = req.body;
+  // Vision Statement Generation API
+  app.post("/api/goals/:goalId/vision", requireAuth, async (req, res) => {
+    try {
+      const { goalId } = req.params;
+      const { answers } = req.body;
+      const userId = req.user!.id;
 
-    // Get the goal details first
-    const goal = await db.query.goals.findFirst({
-      where: eq(goals.id, parseInt(goalId)),
-    });
+      // Get the goal details first and verify ownership
+      const goal = await db.query.goals.findFirst({
+        where: and(
+          eq(goals.id, parseInt(goalId)),
+          eq(goals.userId, userId)
+        ),
+      });
 
-    if (!goal) {
-      return res.status(404).json({ error: "Goal not found" });
-    }
+      if (!goal) {
+        return res.status(404).json({ error: "Goal not found or unauthorized" });
+      }
 
-    // Generate vision statement using OpenAI
-    const prompt = `Write a warm, caring letter to yourself about your goal: "${goal.title}". This should feel like a gentle pep talk from your best friend who really gets you. Use these thoughts you shared to connect with your inner dreams:
+      // Generate vision statement using OpenAI
+      const prompt = `Write a warm, caring letter to yourself about your goal: "${goal.title}". This should feel like a gentle pep talk from your best friend who really gets you. Use these thoughts you shared to connect with your inner dreams:
 
 Your reflections:
 ${answers.map((answer: string, index: number) => `${index + 1}. ${answer}`).join('\n')}
@@ -421,92 +444,95 @@ Remember to:
 - Add line breaks between paragraphs (this is important!)
 - Keep the tone super friendly and caring
 - Share specific little details from your reflections
-- Make it feel like a cozy conversation, not a formal letter
+- Make it feel like a cozy conversation, not a formal letter`;
 
-This is your personal cheerleader letter - make it feel warm, real, and full of heart! 💝`;
+      const openaiResponse = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: "You are a motivational coach who crafts inspiring vision statements. Be concise but impactful."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+      });
 
-    const openaiResponse = await openai.chat.completions.create({
-      model: "gpt-4", // Using GPT-4 for high-quality personalized responses
-      messages: [
-        {
-          role: "system",
-          content: "You are a motivational coach who crafts inspiring vision statements. Be concise but impactful."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      temperature: 0.7,
-    });
+      const visionStatement = openaiResponse.choices[0].message.content?.trim();
 
-    const visionStatement = openaiResponse.choices[0].message.content?.trim();
-    
-    if (!visionStatement) {
-      throw new Error("Failed to generate vision statement from OpenAI");
-    }
-
-    console.log('Generated vision statement:', visionStatement);
-
-    try {
-      // Update the goal with the new vision statement
-      const [updatedGoal] = await db.update(goals)
-        .set({ 
-          visionStatement: visionStatement,
-          visionResponses: JSON.stringify(answers)
-        })
-        .where(eq(goals.id, parseInt(goalId)))
-        .returning();
-
-      console.log('Updated goal:', updatedGoal);
-
-      if (!updatedGoal) {
-        throw new Error("Failed to update goal with vision statement");
+      if (!visionStatement) {
+        throw new Error("Failed to generate vision statement from OpenAI");
       }
 
-      res.json({ visionStatement });
-    } catch (dbError) {
-      console.error("Failed to update goal in database:", dbError);
+      console.log('Generated vision statement:', visionStatement);
+
+      try {
+        // Update the goal with the new vision statement
+        const [updatedGoal] = await db.update(goals)
+          .set({ 
+            visionStatement: visionStatement,
+            visionResponses: JSON.stringify(answers)
+          })
+          .where(and(
+            eq(goals.id, parseInt(goalId)),
+            eq(goals.userId, userId)
+          ))
+          .returning();
+
+        if (!updatedGoal) {
+          throw new Error("Failed to update goal with vision statement");
+        }
+
+        res.json({ visionStatement });
+      } catch (dbError) {
+        console.error("Failed to update goal in database:", dbError);
+        res.status(500).json({ 
+          error: "Failed to save vision statement",
+          details: dbError instanceof Error ? dbError.message : "Unknown database error"
+        });
+      }
+    } catch (error) {
+      console.error("Failed to generate vision statement:", error);
       res.status(500).json({ 
-        error: "Failed to save vision statement",
-        details: dbError instanceof Error ? dbError.message : "Unknown database error"
+        error: "Failed to generate vision statement",
+        details: error instanceof Error ? error.message : "Unknown error" 
       });
     }
-  } catch (error) {
-    console.error("Failed to generate vision statement:", error);
-    res.status(500).json({ 
-      error: "Failed to generate vision statement",
-      details: error instanceof Error ? error.message : "Unknown error" 
-    });
-  }
-});
+  });
 
   // AI Coaching API
-  app.get("/api/goals/:goalId/coaching", async (req, res) => {
+  app.get("/api/goals/:goalId/coaching", requireAuth, async (req, res) => {
     res.json({
       message: "Hey! I'm your AI coach. Let me know if you need help with anything!",
       type: "welcome"
     });
   });
 
-  app.post("/api/goals/:goalId/coaching/chat", async (req, res) => {
+  app.post("/api/goals/:goalId/coaching/chat", requireAuth, async (req, res) => {
     try {
       const { goalId } = req.params;
       const { message } = req.body;
-      
+      const userId = req.user!.id;
+
       const goal = await db.query.goals.findFirst({
-        where: eq(goals.id, parseInt(goalId)),
+        where: and(
+          eq(goals.id, parseInt(goalId)),
+          eq(goals.userId, userId)
+        ),
         with: {
           tasks: true,
         },
       });
 
       if (!goal) {
-        return res.status(404).json({ error: "Goal not found" });
+        return res.status(404).json({ error: "Goal not found or unauthorized" });
       }
 
       const response = await getCoachingAdvice(goal, goal.tasks || [], message);
-      
+
       // Ensure we always return an array of messages
       const messages = Array.isArray(response.messages) ? response.messages : [response.messages];
       res.json({
@@ -520,10 +546,10 @@ This is your personal cheerleader letter - make it feel warm, real, and full of 
   });
 
   // Time Tracking API
-  app.post("/api/tasks/:taskId/timer/start", async (req, res) => {
+  app.post("/api/tasks/:taskId/timer/start", requireAuth, async (req, res) => {
     try {
       const { taskId } = req.params;
-      const userId = 1; // TODO: Replace with actual user ID from auth
+      const userId = req.user!.id;
 
       // Check if there's already an active timer
       const activeTimer = await db.query.timeTracking.findFirst({
@@ -554,10 +580,10 @@ This is your personal cheerleader letter - make it feel warm, real, and full of 
     }
   });
 
-  app.post("/api/tasks/:taskId/timer/stop", async (req, res) => {
+  app.post("/api/tasks/:taskId/timer/stop", requireAuth, async (req, res) => {
     try {
       const { taskId } = req.params;
-      const userId = 1; // TODO: Replace with actual user ID from auth
+      const userId = req.user!.id;
 
       // Find active timer
       const activeTimer = await db.query.timeTracking.findFirst({
@@ -630,9 +656,9 @@ This is your personal cheerleader letter - make it feel warm, real, and full of 
     }
   });
 
-  app.get("/api/timer/current", async (req, res) => {
+  app.get("/api/timer/current", requireAuth, async (req, res) => {
     try {
-      const userId = 1; // TODO: Replace with actual user ID from auth
+      const userId = req.user!.id;
 
       const activeTimer = await db.query.timeTracking.findFirst({
         where: and(
@@ -652,9 +678,9 @@ This is your personal cheerleader letter - make it feel warm, real, and full of 
   });
 
   // Vision Board API
-  app.get("/api/vision-board", async (req, res) => {
+  app.get("/api/vision-board", requireAuth, async (req, res) => {
     try {
-      const userId = 1; // TODO: Replace with actual user ID from auth
+      const userId = req.user!.id;
       const images = await db.select()
         .from(visionBoardImages)
         .where(eq(visionBoardImages.userId, userId))
@@ -666,10 +692,10 @@ This is your personal cheerleader letter - make it feel warm, real, and full of 
     }
   });
 
-  app.post("/api/vision-board/upload", upload.single('image'), async (req, res) => {
+  app.post("/api/vision-board/upload", requireAuth, upload.single('image'), async (req, res) => {
     try {
       console.log('Processing image upload request:', req.file);
-      const userId = 1; // TODO: Replace with actual user ID from auth
+      const userId = req.user!.id;
 
       // Check if user already has 12 images
       const imageCount = await db.select({ count: sql<number>`count(*)` })
@@ -686,7 +712,7 @@ This is your personal cheerleader letter - make it feel warm, real, and full of 
       const existingPositions = await db.select({ position: visionBoardImages.position })
         .from(visionBoardImages)
         .where(eq(visionBoardImages.userId, userId));
-      
+
       const usedPositions = existingPositions.map(img => img.position);
       let nextPosition = 0;
       while (usedPositions.includes(nextPosition)) {
@@ -718,9 +744,9 @@ This is your personal cheerleader letter - make it feel warm, real, and full of 
     }
   });
 
-  app.delete("/api/vision-board/:id", async (req, res) => {
+  app.delete("/api/vision-board/:id", requireAuth, async (req, res) => {
     try {
-      const userId = 1; // TODO: Replace with actual user ID from auth
+      const userId = req.user!.id;
       const imageId = parseInt(req.params.id);
 
       const [deletedImage] = await db.delete(visionBoardImages)
@@ -744,11 +770,12 @@ This is your personal cheerleader letter - make it feel warm, real, and full of 
   });
 
   // Rewards API
-  app.get("/api/rewards", async (req, res) => {
+  app.get("/api/rewards", requireAuth, async (req, res) => {
     try {
+      const userId = req.user!.id;
       const [userRewards] = await db.select()
         .from(rewards)
-        .where(eq(rewards.userId, 1)) // TODO: Replace with actual user ID when auth is added
+        .where(eq(rewards.userId, userId))
         .limit(1);
       res.json(userRewards || { coins: 0 });
     } catch (error) {
@@ -769,10 +796,10 @@ This is your personal cheerleader letter - make it feel warm, real, and full of 
     }
   });
   // Get purchased rewards
-  app.get("/api/rewards/purchased", async (req, res) => {
+  app.get("/api/rewards/purchased", requireAuth, async (req, res) => {
     try {
-      const userId = 1; // TODO: Replace with actual user ID when auth is added
-      
+      const userId = req.user!.id;
+
       const purchasedItems = await db.query.purchasedRewards.findMany({
         where: eq(purchasedRewards.userId, userId),
         with: {
@@ -791,10 +818,10 @@ This is your personal cheerleader letter - make it feel warm, real, and full of 
   });
 
 
-  app.post("/api/rewards/purchase/:itemId", async (req, res) => {
+  app.post("/api/rewards/purchase/:itemId", requireAuth, async (req, res) => {
     try {
       const itemId = parseInt(req.params.itemId);
-      const userId = 1; // TODO: Replace with actual user ID when auth is added
+      const userId = req.user!.id;
 
       // Get the reward item with error handling
       const items = await db.select()
