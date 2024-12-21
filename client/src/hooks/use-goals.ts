@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Goal, NewGoal, Task, NewTask } from "@db/schema";
 
@@ -11,6 +12,7 @@ export function useGoals() {
   const { data: goals = [], isLoading } = useQuery<Goal[]>({
     queryKey: ["/api/goals", user?.id],
     queryFn: async () => {
+      if (!user?.id) return [];
       const res = await fetch("/api/goals");
       if (!res.ok) throw new Error("Failed to fetch goals");
       return res.json();
