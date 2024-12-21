@@ -77,6 +77,24 @@ export const rewardItems = pgTable("reward_items", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const purchasedRewards = pgTable("purchased_rewards", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  rewardItemId: integer("reward_item_id").notNull().references(() => rewardItems.id),
+  purchasedAt: timestamp("purchased_at").defaultNow().notNull(),
+});
+
+export const purchasedRewardsRelations = relations(purchasedRewards, ({ one }) => ({
+  user: one(users, {
+    fields: [purchasedRewards.userId],
+    references: [users.id],
+  }),
+  rewardItem: one(rewardItems, {
+    fields: [purchasedRewards.rewardItemId],
+    references: [rewardItems.id],
+  }),
+}));
+
 export const timeTracking = pgTable("time_tracking", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),

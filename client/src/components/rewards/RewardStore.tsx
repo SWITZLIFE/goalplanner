@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface RewardItem {
   id: number;
@@ -31,6 +32,10 @@ export function RewardStore() {
     queryKey: ["/api/rewards/items"],
   });
 
+  const { data: purchasedItems = [] } = useQuery({
+    queryKey: ["/api/rewards/purchased"],
+  });
+
   const { data: userRewards } = useQuery<UserRewards>({
     queryKey: ["/api/rewards"],
     staleTime: 0,
@@ -41,33 +46,44 @@ export function RewardStore() {
   const queryClient = useQueryClient();
   
   const handlePurchase = async () => {
-    if (!selectedReward) return;
+    if (!selectedReward) {
+      console.log("No reward selected");
+      return;
+    }
 
+    console.log("Processing purchase for reward:", selectedReward);
     try {
       const response = await fetch(`/api/rewards/purchase/${selectedReward.id}`, {
         method: "POST",
         credentials: "include",
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
+      console.log("Purchase response status:", response.status);
+      const data = await response.json();
+      console.log("Purchase response data:", data);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || errorData.error || "Failed to process purchase");
+        throw new Error(data.message || data.error || "Failed to process purchase");
       }
 
-      const result = await response.json();
-      
       toast({
         title: "Purchase successful!",
-        description: `You've unlocked ${selectedReward.name}. New balance: ${result.newBalance} coins`,
+        description: `You've unlocked ${selectedReward.name}. New balance: ${data.newBalance} coins`,
       });
       
       // Invalidate queries to refresh data
-      await queryClient.invalidateQueries({ queryKey: ["/api/rewards"] });
-      await queryClient.invalidateQueries({ queryKey: ["/api/rewards/items"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/rewards"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/rewards/items"] })
+      ]);
       
       // Close the dialog
       setSelectedReward(null);
     } catch (error) {
+      console.error("Purchase error details:", error);
       const errorMessage = error instanceof Error ? error.message : "Something went wrong with the purchase";
       
       toast({
@@ -75,8 +91,9 @@ export function RewardStore() {
         description: errorMessage,
         variant: "destructive",
       });
-      
-      console.error("Purchase error:", error);
+    } finally {
+      // Ensure dialog closes even if there's an error
+      setSelectedReward(null);
     }
   };
 
@@ -108,7 +125,14 @@ export function RewardStore() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <Tabs defaultValue="available" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="available">Available Rewards</TabsTrigger>
+          <TabsTrigger value="purchased">Purchased Rewards</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="available" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {rewardItems.map((reward) => (
           <Card key={reward.id} className="transition-shadow hover:shadow-md flex flex-col h-[220px]">
             <CardHeader className="flex-1 pb-2">
@@ -121,22 +145,21 @@ export function RewardStore() {
             <CardFooter className="mt-auto border-t pt-4 px-6">
               <div className="flex justify-between items-center w-full">
                 <div className="text-yellow-500 font-medium">{reward.cost} coins</div>
-                <Dialog>
-                <DialogTrigger asChild>
-                  <Button 
-                    variant="secondary"
-                    disabled={!userRewards || userRewards.coins < reward.cost}
-                    onClick={() => setSelectedReward(reward)}
-                  >
-                    Purchase
-                  </Button>
-                </DialogTrigger>
-                {selectedReward && (
+                <Dialog open={selectedReward?.id === reward.id} onOpenChange={(open) => !open && setSelectedReward(null)}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      variant="secondary"
+                      disabled={!userRewards || userRewards.coins < reward.cost}
+                      onClick={() => setSelectedReward(reward)}
+                    >
+                      Purchase
+                    </Button>
+                  </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Confirm Purchase</DialogTitle>
                       <DialogDescription>
-                        Are you sure you want to purchase {selectedReward.name} for {selectedReward.cost} coins?
+                        Are you sure you want to purchase {reward.name} for {reward.cost} coins?
                       </DialogDescription>
                     </DialogHeader>
                     <div className="flex justify-end gap-2">
@@ -148,13 +171,37 @@ export function RewardStore() {
                       </Button>
                     </div>
                   </DialogContent>
-                )}
-              </Dialog>
+                </Dialog>
               </div>
             </CardFooter>
           </Card>
         ))}
       </div>
+        </TabsContent>
+
+        <TabsContent value="purchased" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {purchasedItems.map((purchase) => (
+              <Card key={purchase.id} className="flex flex-col h-[220px]">
+                <CardHeader className="flex-1 pb-2">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    {getIcon(purchase.rewardItem.icon)}
+                    {purchase.rewardItem.name}
+                  </CardTitle>
+                  <CardDescription className="line-clamp-2 mt-2">
+                    {purchase.rewardItem.description}
+                  </CardDescription>
+                </CardHeader>
+                <CardFooter className="mt-auto border-t pt-4 px-6">
+                  <div className="text-sm text-muted-foreground">
+                    Purchased on {new Date(purchase.purchasedAt).toLocaleDateString()}
+                  </div>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
