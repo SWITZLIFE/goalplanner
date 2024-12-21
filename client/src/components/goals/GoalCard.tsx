@@ -22,11 +22,7 @@ export function GoalCard({ goal }: GoalCardProps) {
           </p>
         </CardHeader>
         <CardContent>
-          <GoalProgress 
-            progress={goal.progress} 
-            targetDate={goal.targetDate}
-            createdAt={goal.createdAt}
-          />
+          <GoalProgress progress={goal.progress} />
           <div className="mt-2 text-sm text-muted-foreground">
             {goal.progress}% completed
           </div>
