@@ -7,6 +7,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import AuthPage from "./pages/AuthPage";
 import ProfilePage from "./pages/ProfilePage";
 import AnalyticsPage from "./pages/AnalyticsPage";
+import ChatRoom from "./pages/ChatRoom";
 import { Header } from "@/components/Header";
 import { useUser } from "@/hooks/use-user";
 
@@ -51,6 +52,7 @@ function App() {
           <Route path="/rewards" component={RewardPage} />
           <Route path="/analytics" component={AnalyticsPage} />
           <Route path="/profile" component={ProfilePage} />
+          <Route path="/chat" component={ChatRoom} />
         </Switch>
       </main>
     </div>

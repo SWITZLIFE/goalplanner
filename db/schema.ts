@@ -7,6 +7,7 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: text("email").unique().notNull(),
   password: text("password").notNull(),
+  username: text("username"), // Added username field
   profilePhotoUrl: text("profile_photo_url"),
   resetToken: text("reset_token"),
   resetTokenExpiry: timestamp("reset_token_expiry"),
@@ -201,3 +202,20 @@ export type TimeTracking = typeof timeTracking.$inferSelect;
 export type NewTimeTracking = typeof timeTracking.$inferInsert;
 export type VisionBoardImage = typeof visionBoardImages.$inferSelect;
 export type NewVisionBoardImage = typeof visionBoardImages.$inferInsert;
+export const chatMessages = pgTable("chat_messages", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  message: text("message").notNull(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+});
+
+export const chatMessagesRelations = relations(chatMessages, ({ one }) => ({
+  user: one(users, {
+    fields: [chatMessages.userId],
+    references: [users.id],
+  }),
+}));
+
+// Chat message types
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type NewChatMessage = typeof chatMessages.$inferInsert;
