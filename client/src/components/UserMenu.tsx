@@ -49,17 +49,17 @@ export function UserMenu() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex items-center gap-2 hover:opacity-80">
+      <DropdownMenuTrigger className="hover:opacity-80">
         <Avatar>
           <AvatarFallback className="bg-primary text-primary-foreground">
             {initials}
           </AvatarFallback>
         </Avatar>
-        <span className="text-sm font-medium hidden md:inline-block">
-          {user.email}
-        </span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuItem onClick={() => window.location.href = "/profile"} className="cursor-pointer">
+          Profile Settings
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer">
           Logout
         </DropdownMenuItem>
