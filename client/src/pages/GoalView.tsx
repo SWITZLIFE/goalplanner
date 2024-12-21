@@ -119,7 +119,7 @@ export default function GoalView() {
 
           <div className="space-y-4 w-full"> {/* Modified this line to make the div full width */}
             <h2 className="text-lg font-medium mb-4">Tasks</h2>
-            <TaskViews tasks={goal.tasks || []} goalId={goal.id} />
+            <TaskViews tasks={goal.tasks || []} goalId={goal.id} goal={goal} />
           </div>
           
           {/* Floating AI Coach */}

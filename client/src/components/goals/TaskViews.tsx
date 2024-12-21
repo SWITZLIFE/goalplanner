@@ -14,9 +14,10 @@ import { VisionGenerator } from "./VisionGenerator";
 interface TaskViewsProps {
   tasks: Task[];
   goalId: number;
+  goal: Goal;
 }
 
-export function TaskViews({ tasks, goalId }: TaskViewsProps) {
+export function TaskViews({ tasks, goalId, goal }: TaskViewsProps) {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const { updateTask, createTask, updateGoal } = useGoals();
