@@ -4,13 +4,18 @@ import type { Goal, NewGoal, Task, NewTask } from "@db/schema";
 export function useGoals() {
   const queryClient = useQueryClient();
 
+  const { data: user } = useQuery({
+    queryKey: ["/api/user"],
+  });
+
   const { data: goals = [], isLoading } = useQuery<Goal[]>({
-    queryKey: ["/api/goals"],
+    queryKey: ["/api/goals", user?.id],
     queryFn: async () => {
       const res = await fetch("/api/goals");
       if (!res.ok) throw new Error("Failed to fetch goals");
       return res.json();
-    }
+    },
+    enabled: !!user?.id
   });
 
   const updateGoalMutation = useMutation({
