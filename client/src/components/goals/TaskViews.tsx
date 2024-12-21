@@ -29,7 +29,7 @@ interface TaskViewsProps {
   goal: Goal;
 }
 
-export function TaskViews({ tasks, goalId, goal }: TaskViewsProps) {
+export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps) {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -37,6 +37,17 @@ export function TaskViews({ tasks, goalId, goal }: TaskViewsProps) {
   const [goalFilter, setGoalFilter] = useState<number | 'all'>('all');
   const { updateTask, createTask, updateGoal, goals } = useGoals();
   const { toast } = useToast();
+
+  // Get all tasks from all goals
+  const allTasks = goals.reduce<Task[]>((acc, g) => {
+    if (g.tasks) {
+      return [...acc, ...g.tasks];
+    }
+    return acc;
+  }, []);
+
+  // Use allTasks for calendar view, initialTasks for other views
+  const tasks = goalFilter === 'all' ? allTasks : initialTasks;
 
   // Get all main tasks (non-subtasks)
   const mainTasks = tasks.filter(task => !task.isSubtask);
@@ -60,13 +71,14 @@ export function TaskViews({ tasks, goalId, goal }: TaskViewsProps) {
     ...completedMainTasks.flatMap(task => getSubtasks(task.id))
   ];
 
-  // Filter tasks based on selected filters
+  // Get filtered tasks based on selected filters
   const getFilteredTasks = () => {
+    // Start with all available tasks
     let filtered = tasks;
     
     // First apply goal filter
     if (goalFilter !== 'all') {
-      filtered = filtered.filter(task => task.goalId === goalFilter);
+      filtered = filtered.filter(task => task.goalId === Number(goalFilter));
     }
     
     // Then apply task status filter
@@ -74,6 +86,11 @@ export function TaskViews({ tasks, goalId, goal }: TaskViewsProps) {
       filtered = filtered.filter(task => !task.completed);
     } else if (taskFilter === 'completed') {
       filtered = filtered.filter(task => task.completed);
+    }
+
+    // Filter out tasks without planned dates for calendar view
+    if (filtered) {
+      filtered = filtered.filter(task => task.plannedDate !== null);
     }
     
     return filtered;
