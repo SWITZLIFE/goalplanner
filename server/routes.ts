@@ -90,8 +90,10 @@ export function registerRoutes(app: Express): Server {
       if (totalTasks > 0) {
         const breakdown = await generateTaskBreakdown(title, parseInt(totalTasks));
         
-        // Iterate through tasks in reverse order so the first task gets the highest ID
-        // This ensures correct display order in the UI
+        console.log('Task breakdown from OpenAI:', JSON.stringify(breakdown, null, 2));
+        
+        // Create tasks in the order they come from OpenAI
+        // OpenAI has been instructed to return them in chronological order
         for (const task of breakdown) {
           const [mainTask] = await db.insert(tasks)
             .values({
