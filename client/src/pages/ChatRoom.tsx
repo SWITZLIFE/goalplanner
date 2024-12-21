@@ -134,48 +134,54 @@ export default function ChatRoom() {
                     </span>
                   </div>
                   <p className="mt-1 text-sm">{msg.message}</p>
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {msg.reactions && Object.entries(msg.reactions).map(([key, reaction]) => (
-                      <Button
-                        key={key}
-                        variant="outline"
-                        size="sm"
-                        className="px-2 py-0 h-6"
-                        onClick={() => {
-                          if (ws?.readyState === WebSocket.OPEN) {
-                            ws.send(JSON.stringify({
-                              type: 'reaction',
-                              messageId: msg.id,
-                              emoji: reaction.emoji,
-                              userId: user?.id
-                            }));
-                          }
-                        }}
-                      >
-                        {reaction.emoji} {reaction.users.length}
-                      </Button>
-                    ))}
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" size="sm" className="px-2 py-0 h-6">
-                          <Smile className="h-3 w-3" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-full p-0">
-                        <EmojiPicker
-                          onEmojiClick={(emoji) => {
+                  <div className="group">
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {msg.reactions && Object.entries(msg.reactions).map(([key, reaction]) => (
+                        <Button
+                          key={key}
+                          variant="outline"
+                          size="sm"
+                          className="px-2 py-0 h-6"
+                          onClick={() => {
                             if (ws?.readyState === WebSocket.OPEN) {
                               ws.send(JSON.stringify({
                                 type: 'reaction',
                                 messageId: msg.id,
-                                emoji: emoji.emoji,
+                                emoji: reaction.emoji,
                                 userId: user?.id
                               }));
                             }
                           }}
-                        />
-                      </PopoverContent>
-                    </Popover>
+                        >
+                          {reaction.emoji} {reaction.users.length}
+                        </Button>
+                      ))}
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="px-2 py-0 h-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Smile className="h-3 w-3" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0">
+                          <EmojiPicker
+                            onEmojiClick={(emoji) => {
+                              if (ws?.readyState === WebSocket.OPEN) {
+                                ws.send(JSON.stringify({
+                                  type: 'reaction',
+                                  messageId: msg.id,
+                                  emoji: emoji.emoji,
+                                  userId: user?.id
+                                }));
+                              }
+                            }}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                   </div>
                 </div>
               </div>
