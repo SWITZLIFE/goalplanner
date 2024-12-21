@@ -12,22 +12,25 @@ export function GoalProgress({ progress }: GoalProgressProps) {
     <div className="space-y-4">
       <div className="relative h-8">
         <Progress value={progress} className="h-1 absolute top-1/2 -translate-y-1/2" />
-        <div className="absolute top-1/2 -translate-y-1/2 left-0 w-full flex items-center justify-between">
-          {milestones.map((milestone) => (
-            <div key={milestone} className="relative flex flex-col items-center">
-              <div
-                className={cn(
-                  "w-2.5 h-2.5 rounded-full border transition-colors duration-200",
-                  progress >= milestone
-                    ? "bg-primary border-primary"
-                    : "bg-background border-muted"
-                )}
-              />
-              <span className="text-xs text-muted-foreground mt-4">
-                {milestone}
-              </span>
-            </div>
-          ))}
+        <div className="absolute top-1/2 -translate-y-1/2 left-0 w-full">
+          {/* Progress indicator dot */}
+          <div 
+            className="absolute top-1/2 -translate-y-1/2"
+            style={{ left: `${progress}%` }}
+          >
+            <div className="w-2.5 h-2.5 rounded-full bg-primary border border-primary -ml-[5px]" />
+          </div>
+          
+          {/* Milestone numbers */}
+          <div className="flex items-center justify-between w-full">
+            {milestones.map((milestone) => (
+              <div key={milestone} className="relative flex flex-col items-center">
+                <span className="text-xs text-muted-foreground mt-4">
+                  {milestone}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
