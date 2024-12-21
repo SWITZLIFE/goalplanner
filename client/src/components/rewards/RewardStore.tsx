@@ -48,22 +48,33 @@ export function RewardStore() {
       });
 
       if (!response.ok) {
-        throw new Error(await response.text());
+        const errorData = await response.json();
+        throw new Error(errorData.message || errorData.error || "Failed to process purchase");
       }
 
+      const result = await response.json();
+      
       toast({
         title: "Purchase successful!",
-        description: `You've unlocked ${selectedReward.name}`,
+        description: `You've unlocked ${selectedReward.name}. New balance: ${result.newBalance} coins`,
       });
+      
+      // Invalidate queries to refresh data
+      await queryClient.invalidateQuery({ queryKey: ["/api/rewards"] });
+      await queryClient.invalidateQuery({ queryKey: ["/api/rewards/items"] });
       
       // Close the dialog
       setSelectedReward(null);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Something went wrong with the purchase";
+      
       toast({
         title: "Purchase failed",
-        description: error instanceof Error ? error.message : "Something went wrong",
+        description: errorMessage,
         variant: "destructive",
       });
+      
+      console.error("Purchase error:", error);
     }
   };
 

@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { goals, tasks, rewards, timeTracking, visionBoardImages } from "@db/schema";
+import { goals, tasks, rewards, timeTracking, visionBoardImages, rewardItems } from "@db/schema";
 import { eq, and, isNull, sql } from "drizzle-orm";
 import multer from "multer";
 import path from "path";
@@ -610,37 +610,68 @@ export function registerRoutes(app: Express): Server {
       const itemId = parseInt(req.params.itemId);
       const userId = 1; // TODO: Replace with actual user ID when auth is added
 
-      // Get the reward item
-      const [item] = await db.select()
+      // Get the reward item with error handling
+      const items = await db.select()
         .from(rewardItems)
-        .where(eq(rewardItems.id, itemId))
-        .limit(1);
+        .where(eq(rewardItems.id, itemId));
 
+      const item = items[0];
       if (!item) {
-        return res.status(404).send("Reward item not found");
+        return res.status(404).json({ 
+          error: "Reward item not found",
+          message: "The requested reward item could not be found"
+        });
       }
 
-      // Get user's current coins
-      const [userRewards] = await db.select()
+      // Get user's current coins with error handling
+      const userRewardsResult = await db.select()
         .from(rewards)
-        .where(eq(rewards.userId, userId))
-        .limit(1);
+        .where(eq(rewards.userId, userId));
 
-      if (!userRewards || userRewards.coins < item.cost) {
-        return res.status(400).send("Insufficient coins");
+      const userRewards = userRewardsResult[0];
+      if (!userRewards) {
+        return res.status(404).json({ 
+          error: "User rewards not found",
+          message: "Could not find rewards record for user"
+        });
       }
 
-      // Update user's coins
-      await db.update(rewards)
+      if (userRewards.coins < item.cost) {
+        return res.status(400).json({
+          error: "Insufficient coins",
+          message: `You need ${item.cost} coins but only have ${userRewards.coins}`,
+          required: item.cost,
+          available: userRewards.coins
+        });
+      }
+
+      // Update user's coins with validation
+      const [updatedRewards] = await db.update(rewards)
         .set({ 
           coins: userRewards.coins - item.cost,
           lastUpdated: new Date()
         })
-        .where(eq(rewards.userId, userId));
+        .where(eq(rewards.userId, userId))
+        .returning();
 
-      res.json({ message: "Purchase successful" });
+      if (!updatedRewards) {
+        throw new Error("Failed to update user rewards");
+      }
+
+      res.json({ 
+        message: "Purchase successful",
+        item: {
+          name: item.name,
+          cost: item.cost
+        },
+        newBalance: updatedRewards.coins
+      });
     } catch (error) {
-      res.status(500).json({ error: "Failed to process purchase" });
+      console.error("Purchase error:", error);
+      res.status(500).json({ 
+        error: "Failed to process purchase",
+        message: error instanceof Error ? error.message : "An unexpected error occurred"
+      });
     }
   });
 
