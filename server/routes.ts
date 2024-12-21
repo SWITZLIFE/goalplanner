@@ -1,5 +1,4 @@
-import type { Express } from "express";
-import { openai } from "./openai";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { db } from "@db";
 import { eq, desc, and, isNull, sql } from "drizzle-orm";
@@ -11,8 +10,7 @@ import fs from "fs";
 import { generateTaskBreakdown, generateShortTitle } from "./openai";
 import { getCoachingAdvice } from "./coaching";
 import { setupAuth } from "./auth";
-import express from 'express';
-
+import { openai } from "./openai";
 import { uploadFileToSupabase } from './supabase';
 
 // Configure multer for handling file uploads
@@ -30,7 +28,7 @@ const upload = multer({
 });
 
 // Authentication middleware
-function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "You must be logged in to access this resource" });
   }
@@ -38,8 +36,11 @@ function requireAuth(req: express.Request, res: express.Response, next: express.
 }
 
 export function registerRoutes(app: Express): Server {
-// Profile photo upload route
-app.post("/api/user/profile-photo", requireAuth, upload.single('photo'), async (req, res) => {
+  // Setup authentication middleware and routes first
+  setupAuth(app);
+
+  // Profile photo upload route
+  app.post("/api/user/profile-photo", requireAuth, upload.single('photo'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
