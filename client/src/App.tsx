@@ -28,12 +28,13 @@ function App() {
 
   // If not authenticated (and not on reset password page), show auth page
   if (!user && !resetToken) {
-    // Remove any stale data from localStorage
+    // Remove any stale data
     localStorage.clear();
-    // Force reload if we somehow have stale DOM state
-    if (document.querySelector('.dashboard-content')) {
-      window.location.href = '/';
-      return null;
+    sessionStorage.clear();
+    // Clear any existing DOM state
+    const dashboard = document.querySelector('.dashboard-content');
+    if (dashboard) {
+      dashboard.remove();
     }
     return <AuthPage />;
   }

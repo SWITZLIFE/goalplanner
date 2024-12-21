@@ -82,6 +82,8 @@ export function useUser() {
       queryClient.invalidateQueries({ queryKey: ['user'] });
       // Reset queryClient state
       queryClient.setQueryData(['user'], null);
+      // Force a page reload to clear all React state
+      window.location.href = '/';
     },
   });
 
