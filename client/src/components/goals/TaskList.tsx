@@ -317,15 +317,15 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                       )}
                     />
                     <div className="flex items-center gap-1">
-                      {mainTask.notes && (
-                        <button
-                          onClick={() => setEditingTaskId(mainTask.id)}
-                          className="text-muted-foreground hover:text-foreground transition-colors"
-                          title="View notes"
-                        >
-                          <StickyNote className="h-4 w-4" />
-                        </button>
-                      )}
+                        {!mainTask.isSubtask && mainTask.notes && (
+                          <button
+                            onClick={() => setEditingTaskId(mainTask.id)}
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                            title="View notes"
+                          >
+                            <StickyNote className="h-4 w-4" />
+                          </button>
+                        )}
                       {!readOnly && (
                         <button
                           onClick={() => handleDelete(mainTask.id)}
@@ -431,7 +431,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                               continuousCreate={true}
                             />
                             <div className="flex items-center gap-1">
-                              {subtask.notes && (
+                              {!subtask.isSubtask && subtask.notes && (
                                 <button
                                   onClick={() => setEditingTaskId(subtask.id)}
                                   className="text-muted-foreground hover:text-foreground transition-colors"

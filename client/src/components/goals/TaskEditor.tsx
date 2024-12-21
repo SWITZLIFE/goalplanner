@@ -131,12 +131,13 @@ export function TaskEditor({ task, open, onOpenChange }: TaskEditorProps) {
             </div>
 
             {/* Notes Section - Takes remaining height */}
-            <div className="flex-1 flex flex-col min-h-0 p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <StickyNote className="h-4 w-4" />
-                  <Label htmlFor="notes">Notes</Label>
-                </div>
+            {!task.isSubtask && (
+              <div className="flex-1 flex flex-col min-h-0 p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <StickyNote className="h-4 w-4" />
+                    <Label htmlFor="notes">Notes</Label>
+                  </div>
                 <Select
                   onValueChange={(value) => {
                     if (notes && notes.trim()) {
@@ -167,7 +168,8 @@ export function TaskEditor({ task, open, onOpenChange }: TaskEditorProps) {
                 placeholder="Add notes about this task..."
                 className="flex-1 resize-none h-full min-h-[200px] font-mono"
               />
-            </div>
+              </div>
+            )}
           </div>
 
           <div className="p-4 border-t bg-muted/40">
