@@ -40,24 +40,24 @@ export function setupAuth(app: Express) {
   const MemoryStore = createMemoryStore(session);
   const sessionSettings: session.SessionOptions = {
     secret: process.env.REPL_ID || "porygon-supremacy",
-    resave: true,
+    resave: false,
     saveUninitialized: false,
-    name: 'session',
     cookie: {
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
       httpOnly: true,
-      secure: false, // Allow non-HTTPS in development
-      sameSite: 'lax',
-      path: '/'
+      secure: app.get("env") === "production",
     },
     store: new MemoryStore({
       checkPeriod: 86400000, // prune expired entries every 24h
+      stale: false, // Don't serve stale sessions
     }),
   };
 
   if (app.get("env") === "production") {
     app.set("trust proxy", 1);
-    sessionSettings.cookie!.secure = true;
+    sessionSettings.cookie = {
+      secure: true,
+    };
   }
 
   app.use(session(sessionSettings));
@@ -159,56 +159,41 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/login", async (req, res, next) => {
-    try {
-      // Use a simpler schema for login that only validates email format
-      const loginSchema = z.object({
-        email: z.string().email("Invalid email format"),
-        password: z.string()
-      });
-      
-      const result = loginSchema.safeParse(req.body);
-      if (!result.success) {
-        return res
-          .status(400)
-          .json({ error: "Invalid input", details: result.error.issues.map(i => i.message).join(", ") });
+  app.post("/api/login", (req, res, next) => {
+    // Use a simpler schema for login that only validates email format
+    const loginSchema = z.object({
+      email: z.string().email("Invalid email format"),
+      password: z.string()
+    });
+    
+    const result = loginSchema.safeParse(req.body);
+    if (!result.success) {
+      return res
+        .status(400)
+        .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
+    }
+
+    const cb = (err: any, user: Express.User, info: IVerifyOptions) => {
+      if (err) {
+        return next(err);
       }
 
-      passport.authenticate("local", (err: any, user: Express.User, info: IVerifyOptions) => {
+      if (!user) {
+        return res.status(400).send(info.message ?? "Login failed");
+      }
+
+      req.logIn(user, (err) => {
         if (err) {
-          console.error("Login error:", err);
-          return res.status(500).json({ error: "Internal server error during login" });
+          return next(err);
         }
 
-        if (!user) {
-          return res.status(401).json({ error: info.message ?? "Invalid credentials" });
-        }
-
-        req.logIn(user, (loginErr) => {
-          if (loginErr) {
-            console.error("Login session error:", loginErr);
-            return res.status(500).json({ error: "Failed to create login session" });
-          }
-
-          // Set a cookie header explicitly
-          res.cookie('connect.sid', req.sessionID, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            path: '/',
-            maxAge: 24 * 60 * 60 * 1000 // 24 hours
-          });
-
-          return res.json({
-            message: "Login successful",
-            user: { id: user.id, email: user.email },
-          });
+        return res.json({
+          message: "Login successful",
+          user: { id: user.id, email: user.email },
         });
-      })(req, res, next);
-    } catch (error) {
-      console.error("Unexpected login error:", error);
-      res.status(500).json({ error: "An unexpected error occurred during login" });
-    }
+      });
+    };
+    passport.authenticate("local", cb)(req, res, next);
   });
 
   app.post("/api/logout", (req, res) => {
