@@ -1,10 +1,10 @@
-import { CoinBalance } from "@/components/rewards/CoinBalance";
-import { RewardStore } from "@/components/rewards/RewardStore";
+import { CommunityBoard } from "@/components/community/CommunityBoard";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
+import { CoinBalance } from "@/components/rewards/CoinBalance";
 
-export default function RewardPage() {
+export default function CommunityPage() {
   return (
     <div className="min-h-screen p-8 bg-background">
       <div className="max-w-6xl mx-auto">
@@ -19,8 +19,8 @@ export default function RewardPage() {
         </div>
 
         <div>
-          <h2 className="text-2xl font-semibold mb-6">Reward Store</h2>
-          <RewardStore />
+          <h2 className="text-2xl font-semibold mb-6">Community Board</h2>
+          <CommunityBoard />
         </div>
       </div>
     </div>
