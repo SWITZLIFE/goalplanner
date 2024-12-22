@@ -435,134 +435,128 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
         open={selectedTask !== null} 
         onOpenChange={(open) => !open && setSelectedTask(null)}
       >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold">
-              {selectedTask?.title}
-            </DialogTitle>
-          </DialogHeader>
-          
-          {selectedTask && (
-            <div className="space-y-4">
-              {selectedTask.isTaskList ? (
-                // Show list of all tasks for the day
-                <div className="space-y-2">
-                  {[...selectedTask.dayTasks]
-                    .sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1))
-                    .map(task => (
-                    <div 
-                      key={task.id}
-                      className="flex items-center justify-between p-2 border rounded-lg hover:bg-accent/50 cursor-pointer"
-                    >
+        <DialogContent className="max-w-xl">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-semibold">
+                {selectedTask?.isTaskList ? selectedTask?.title : "Task Details"}
+              </DialogTitle>
+            </DialogHeader>
+            
+            {selectedTask && (
+              <div className="space-y-4">
+                {selectedTask.isTaskList ? (
+                  // Show list of all tasks for the day
+                  <div className="space-y-2">
+                    {[...selectedTask.dayTasks]
+                      .sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1))
+                      .map(task => (
                       <div 
-                        className="flex items-center gap-2 flex-1"
-                        onClick={() => handleToggleComplete(task)}
+                        key={task.id}
+                        className="flex items-center justify-between p-2 border rounded-lg hover:bg-accent/50 cursor-pointer"
                       >
-                        {task.completed ? (
-                          <CheckCircle2 className="h-4 w-4 text-green-500 hover:text-green-600" />
-                        ) : (
-                          <Circle className="h-4 w-4 text-blue-500 hover:text-blue-600" />
-                        )}
-                        <span className={cn(
-                          task.completed && "line-through text-muted-foreground"
-                        )}>{task.title}</span>
+                        <div 
+                          className="flex items-center gap-2 flex-1"
+                          onClick={() => handleToggleComplete(task)}
+                        >
+                          {task.completed ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500 hover:text-green-600" />
+                          ) : (
+                            <Circle className="h-4 w-4 text-blue-500 hover:text-blue-600" />
+                          )}
+                          <span className={cn(
+                            task.completed && "line-through text-muted-foreground"
+                          )}>{task.title}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                          {task.estimatedMinutes && (
+                            <>
+                              <Clock className="h-4 w-4" />
+                              <span>{task.estimatedMinutes}m</span>
+                            </>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                        {task.estimatedMinutes && (
-                          <>
-                            <Clock className="h-4 w-4" />
-                            <span>{task.estimatedMinutes}m</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                // Show single task details
-                <>
-                  {/* Show goal title */}
-                  <div className="text-sm text-muted-foreground mb-4">
-                    From goal: {goals.find(g => g.id === selectedTask.goalId)?.title}
+                    ))}
                   </div>
-
+                ) : (
+                  // Show single task details with subtasks
                   <div className="space-y-4">
-                    {/* Main task */}
+                    {/* Goal context */}
+                    <div className="text-sm text-muted-foreground">
+                      From goal: {goals.find(g => g.id === selectedTask.goalId)?.title}
+                    </div>
+
+                    {/* Main task with status toggle */}
                     <div 
-                      className="flex items-center gap-2 cursor-pointer hover:opacity-80 p-2 border rounded-lg"
+                      className="flex items-center gap-2 p-3 border rounded-lg hover:bg-accent/50 cursor-pointer"
                       onClick={() => handleToggleComplete(selectedTask)}
                     >
                       {selectedTask.completed ? (
-                        <>
-                          <CheckCircle2 className="h-5 w-5 text-green-500" />
-                          <span className={cn(
-                            "flex-1",
-                            selectedTask.completed && "line-through text-muted-foreground"
-                          )}>{selectedTask.title}</span>
-                        </>
+                        <CheckCircle2 className="h-5 w-5 text-green-500" />
                       ) : (
-                        <>
-                          <Circle className="h-5 w-5 text-blue-500" />
-                          <span className="flex-1">{selectedTask.title}</span>
-                        </>
+                        <Circle className="h-5 w-5 text-blue-500" />
                       )}
-                      
-                      {selectedTask.estimatedMinutes && (
-                        <div className="flex items-center gap-1 text-muted-foreground text-sm">
-                          <Clock className="h-4 w-4" />
-                          <span>{selectedTask.estimatedMinutes}m</span>
+                      <div className="flex-1">
+                        <div className={cn(
+                          "font-medium",
+                          selectedTask.completed && "line-through text-muted-foreground"
+                        )}>
+                          {selectedTask.title}
                         </div>
-                      )}
+                        {selectedTask.estimatedMinutes && (
+                          <div className="flex items-center gap-1 text-muted-foreground text-sm mt-1">
+                            <Clock className="h-4 w-4" />
+                            <span>{selectedTask.estimatedMinutes} minutes</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Subtasks */}
-                    {initialTasks
-                      .filter(task => task.parentTaskId === selectedTask.id)
-                      .sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1))
-                      .map(subtask => (
-                        <div 
-                          key={subtask.id}
-                          className="flex items-center gap-2 cursor-pointer hover:opacity-80 p-2 border rounded-lg ml-4"
-                          onClick={() => handleToggleComplete(subtask)}
-                        >
-                          {subtask.completed ? (
-                            <>
+                    <div className="space-y-2 pl-4">
+                      {initialTasks
+                        .filter(task => task.parentTaskId === selectedTask.id)
+                        .sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1))
+                        .map(subtask => (
+                          <div 
+                            key={subtask.id}
+                            className="flex items-center gap-2 p-2 border rounded-lg hover:bg-accent/50 cursor-pointer"
+                            onClick={() => handleToggleComplete(subtask)}
+                          >
+                            {subtask.completed ? (
                               <CheckCircle2 className="h-4 w-4 text-green-500" />
-                              <span className={cn(
-                                "flex-1",
-                                subtask.completed && "line-through text-muted-foreground"
-                              )}>{subtask.title}</span>
-                            </>
-                          ) : (
-                            <>
+                            ) : (
                               <Circle className="h-4 w-4 text-blue-500" />
-                              <span className="flex-1">{subtask.title}</span>
-                            </>
-                          )}
-                          
-                          {subtask.estimatedMinutes && (
-                            <div className="flex items-center gap-1 text-muted-foreground text-sm">
-                              <Clock className="h-4 w-4" />
-                              <span>{subtask.estimatedMinutes}m</span>
+                            )}
+                            <div className="flex-1">
+                              <div className={cn(
+                                subtask.completed && "line-through text-muted-foreground"
+                              )}>
+                                {subtask.title}
+                              </div>
+                              {subtask.estimatedMinutes && (
+                                <div className="flex items-center gap-1 text-muted-foreground text-sm mt-1">
+                                  <Clock className="h-3 w-3" />
+                                  <span>{subtask.estimatedMinutes} minutes</span>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                    ))}
+                          </div>
+                      ))}
+                    </div>
 
+                    {/* Task metadata */}
                     {selectedTask.plannedDate && (
-                      <div className="flex items-center gap-2 text-muted-foreground mt-4">
+                      <div className="flex items-center gap-2 text-muted-foreground text-sm">
                         <CalendarIcon className="h-4 w-4" />
-                        <span>
-                          Planned for: {format(new Date(selectedTask.plannedDate), 'MMMM d, yyyy')}
-                        </span>
+                        <span>Due: {format(new Date(selectedTask.plannedDate), 'MMMM d, yyyy')}</span>
                       </div>
                     )}
                   </div>
-                </>
-              )}
-            </div>
-          )}
-        </DialogContent>
+                )}
+              </div>
+            )}
+          </DialogContent>
       </Dialog>
     </>
   );
