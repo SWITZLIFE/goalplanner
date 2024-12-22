@@ -3,7 +3,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskList } from "./TaskList";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
-import { Task } from "@db/schema";
+import type { Task as BaseTask } from "@db/schema";
+
+// Extend the Task type to include properties needed for the task list dialog
+interface Task extends BaseTask {
+  isTaskList?: boolean;
+  dayTasks?: Task[];
+}
 import { useGoals } from "@/hooks/use-goals";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -470,6 +476,11 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
               ) : (
                 // Show single task details
                 <>
+                  {/* Show goal title */}
+                  <div className="text-sm text-muted-foreground mb-4">
+                    From goal: {goals.find(g => g.id === selectedTask.goalId)?.title}
+                  </div>
+
                   <div 
                     className="flex items-center gap-2 cursor-pointer hover:opacity-80"
                     onClick={() => handleToggleComplete(selectedTask)}
