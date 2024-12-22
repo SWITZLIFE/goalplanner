@@ -7,7 +7,6 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import AuthPage from "./pages/AuthPage";
 import ProfilePage from "./pages/ProfilePage";
 import AnalyticsPage from "./pages/AnalyticsPage";
-import CommunityPage from "./pages/CommunityPage";
 import { Header } from "@/components/Header";
 import { useUser } from "@/hooks/use-user";
 
@@ -50,7 +49,6 @@ function App() {
           <Route path="/" component={Dashboard} />
           <Route path="/goals/:id" component={GoalView} />
           <Route path="/rewards" component={RewardPage} />
-          <Route path="/community" component={CommunityPage} />
           <Route path="/analytics" component={AnalyticsPage} />
           <Route path="/profile" component={ProfilePage} />
         </Switch>

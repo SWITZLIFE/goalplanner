@@ -7,7 +7,7 @@ import { Link } from "wouter";
 export default function RewardPage() {
   return (
     <div className="min-h-screen p-8 bg-background">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <Link href="/">
             <Button variant="ghost" size="sm">
@@ -17,11 +17,7 @@ export default function RewardPage() {
           </Link>
           <CoinBalance />
         </div>
-
-        <div>
-          <h2 className="text-2xl font-semibold mb-6">Reward Store</h2>
-          <RewardStore />
-        </div>
+        <RewardStore />
       </div>
     </div>
   );
