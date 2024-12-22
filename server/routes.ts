@@ -6,6 +6,7 @@ import { eq, desc, and, isNull, sql } from "drizzle-orm";
 import { rewards, rewardItems, purchasedRewards, users } from "@db/schema";
 import { goals, tasks, timeTracking, visionBoardImages } from "@db/schema";
 import multer from "multer";
+import fetch from "node-fetch";
 import path from "path";
 import fs from "fs";
 import { generateTaskBreakdown, generateShortTitle } from "./openai";
