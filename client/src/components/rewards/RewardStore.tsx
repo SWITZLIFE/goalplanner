@@ -29,6 +29,9 @@ interface PurchasedReward {
   userId: number;
   rewardItemId: number;
   purchasedAt: string;
+  activated: boolean;
+  activatedAt: string | null;
+  webhookSent: boolean;
   rewardItem: RewardItem;
 }
 
@@ -202,8 +205,52 @@ export function RewardStore() {
                   </CardDescription>
                 </CardHeader>
                 <CardFooter className="mt-auto border-t pt-4 px-6">
-                  <div className="text-sm text-muted-foreground">
-                    Purchased on {new Date(purchase.purchasedAt).toLocaleDateString()}
+                  <div className="flex flex-col w-full gap-2">
+                    <div className="text-sm text-muted-foreground">
+                      Purchased on {new Date(purchase.purchasedAt).toLocaleDateString()}
+                    </div>
+                    <div className="flex justify-between items-center">
+                      {purchase.activated ? (
+                        <div className="text-sm text-muted-foreground">
+                          Activated on {new Date(purchase.activatedAt!).toLocaleDateString()}
+                        </div>
+                      ) : (
+                        <Button
+                          variant="secondary"
+                          className="w-full"
+                          onClick={async () => {
+                            try {
+                              const response = await fetch(`/api/rewards/activate/${purchase.id}`, {
+                                method: 'POST',
+                                credentials: 'include',
+                              });
+                              
+                              if (!response.ok) {
+                                const error = await response.json();
+                                throw new Error(error.message || error.error || 'Failed to activate reward');
+                              }
+                              
+                              toast({
+                                title: "Reward activated!",
+                                description: "The reward has been successfully activated.",
+                              });
+                              
+                              // Refresh the purchased rewards list
+                              queryClient.invalidateQueries({ queryKey: ["/api/rewards/purchased"] });
+                            } catch (error) {
+                              console.error('Activation error:', error);
+                              toast({
+                                title: "Activation failed",
+                                description: error instanceof Error ? error.message : "Failed to activate reward",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                        >
+                          Activate Reward
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </CardFooter>
               </Card>

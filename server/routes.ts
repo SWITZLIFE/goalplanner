@@ -998,6 +998,88 @@ Remember to:
     try {
       const userId = req.user!.id;
       await markMessageAsRead(userId);
+// Reward Activation API
+app.post("/api/rewards/activate/:purchaseId", requireAuth, async (req, res) => {
+  try {
+    const { purchaseId } = req.params;
+    const userId = req.user!.id;
+
+    // Get the purchase and verify ownership
+    const purchase = await db.query.purchasedRewards.findFirst({
+      where: and(
+        eq(purchasedRewards.id, parseInt(purchaseId)),
+        eq(purchasedRewards.userId, userId),
+      ),
+      with: {
+        rewardItem: true,
+      },
+    });
+
+    if (!purchase) {
+      return res.status(404).json({ error: "Reward purchase not found or unauthorized" });
+    }
+
+    if (purchase.activated) {
+      return res.status(400).json({ error: "Reward has already been activated" });
+    }
+
+    // Get user information for webhook
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: {
+        email: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Update the purchase record
+    const [updatedPurchase] = await db.update(purchasedRewards)
+      .set({
+        activated: true,
+        activatedAt: new Date(),
+        webhookSent: true,
+      })
+      .where(and(
+        eq(purchasedRewards.id, parseInt(purchaseId)),
+        eq(purchasedRewards.userId, userId),
+      ))
+      .returning();
+
+    // Send webhook
+    const webhookUrl = process.env.REWARD_WEBHOOK_URL;
+    if (webhookUrl) {
+      try {
+        const webhookData = {
+          purchaseId: purchase.id,
+          rewardName: purchase.rewardItem.name,
+          rewardType: purchase.rewardItem.type,
+          purchaseDate: purchase.purchasedAt,
+          activationDate: updatedPurchase.activatedAt,
+          userEmail: user.email,
+        };
+
+        await fetch(webhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(webhookData),
+        });
+      } catch (webhookError) {
+        console.error('Failed to send webhook:', webhookError);
+        // Don't fail the request if webhook fails
+      }
+    }
+
+    res.json(updatedPurchase);
+  } catch (error) {
+    console.error("Failed to activate reward:", error);
+    res.status(500).json({ error: "Failed to activate reward" });
+  }
+});
       res.json({ success: true });
     } catch (error) {
       console.error("Failed to mark message as read:", error);
