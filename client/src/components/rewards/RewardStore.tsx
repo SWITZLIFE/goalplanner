@@ -209,10 +209,33 @@ export function RewardStore() {
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => toast({
-                        title: "Reward Activated",
-                        description: `${purchase.rewardItem.name} has been activated!`
-                      })}
+                      onClick={async () => {
+                        try {
+                          const response = await fetch('/api/rewards/activate', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                              rewardId: purchase.id,
+                              rewardName: purchase.rewardItem.name
+                            })
+                          });
+
+                          if (!response.ok) throw new Error('Failed to activate reward');
+
+                          toast({
+                            title: "Reward Activated",
+                            description: `${purchase.rewardItem.name} has been activated!`
+                          });
+                        } catch (error) {
+                          toast({
+                            title: "Activation Failed",
+                            description: "Could not activate the reward",
+                            variant: "destructive"
+                          });
+                        }
+                      }}
                     >
                       Activate Reward
                     </Button>

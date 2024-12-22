@@ -1151,6 +1151,50 @@ Remember to:
   });
 
 
+  app.post("/api/rewards/activate", requireAuth, async (req, res) => {
+    try {
+      const { rewardId, rewardName } = req.body;
+      const userId = req.user!.id;
+
+      // Verify user owns the reward
+      const purchase = await db.query.purchasedRewards.findFirst({
+        where: and(
+          eq(purchasedRewards.id, rewardId),
+          eq(purchasedRewards.userId, userId)
+        )
+      });
+
+      if (!purchase) {
+        return res.status(404).json({ error: "Reward not found or unauthorized" });
+      }
+
+      // Send webhook notification
+      const webhookUrl = process.env.WEBHOOK_URL;
+      if (webhookUrl) {
+        try {
+          await fetch(webhookUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              email: req.user!.email,
+              rewardName: rewardName,
+              activatedAt: new Date().toISOString()
+            })
+          });
+        } catch (webhookError) {
+          console.error('Webhook notification failed:', webhookError);
+        }
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to activate reward:", error);
+      res.status(500).json({ error: "Failed to activate reward" });
+    }
+  });
+
   app.post("/api/rewards/purchase/:itemId", requireAuth, async (req, res) => {
     try {
       const itemId = parseInt(req.params.itemId);
