@@ -1,10 +1,10 @@
 import type { Express, Request, Response, NextFunction } from "express";
-import { getTodayMessage, markMessageAsRead, generateDailyMessage } from "./future-message";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { eq, desc, and, isNull, sql } from "drizzle-orm";
-import { rewards, rewardItems, purchasedRewards, users } from "@db/schema";
-import { goals, tasks, timeTracking, visionBoardImages, posts, comments } from "@db/schema";
+import { posts, comments, rewards, users, goals, tasks, timeTracking, visionBoardImages, rewardItems, purchasedRewards } from "@db/schema";
+import { eq, desc, and, sql } from "drizzle-orm";
+import { requireAuth } from "./auth";
+import { getTodayMessage, markMessageAsRead, generateDailyMessage } from "./future-message";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -13,6 +13,20 @@ import { getCoachingAdvice } from "./coaching";
 import { setupAuth } from "./auth";
 import { openai } from "./openai";
 import { uploadFileToSupabase } from './supabase';
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (req, file, cb) => {
+    if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
+      return cb(new Error('Only image files are allowed!'));
+    }
+    cb(null, true);
+  },
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  }
+});
 
 // Configure multer for handling file uploads
 const upload = multer({
