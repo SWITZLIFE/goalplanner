@@ -220,14 +220,20 @@ export function RewardStore() {
                           className="w-full"
                           onClick={async () => {
                             try {
+                              console.log('Activating reward:', purchase.id);
                               const response = await fetch(`/api/rewards/activate/${purchase.id}`, {
                                 method: 'POST',
                                 credentials: 'include',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                },
                               });
                               
+                              const data = await response.json();
+                              console.log('Activation response:', data);
+                              
                               if (!response.ok) {
-                                const error = await response.json();
-                                throw new Error(error.message || error.error || 'Failed to activate reward');
+                                throw new Error(data.message || data.error || 'Failed to activate reward');
                               }
                               
                               toast({

@@ -36,6 +36,14 @@ declare global {
   }
 }
 
+// Export the requireAuth middleware
+export function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "You must be logged in to access this resource" });
+  }
+  next();
+}
+
 export function setupAuth(app: Express) {
   const MemoryStore = createMemoryStore(session);
   const sessionSettings: session.SessionOptions = {
