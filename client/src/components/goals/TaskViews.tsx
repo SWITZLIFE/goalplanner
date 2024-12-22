@@ -441,15 +441,20 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                   {selectedTask.dayTasks.map(task => (
                     <div 
                       key={task.id}
-                      className="flex items-center justify-between p-2 border rounded-lg"
+                      className="flex items-center justify-between p-2 border rounded-lg hover:bg-accent/50 cursor-pointer"
                     >
-                      <div className="flex items-center gap-2">
+                      <div 
+                        className="flex items-center gap-2 flex-1"
+                        onClick={() => handleToggleComplete(task)}
+                      >
                         {task.completed ? (
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <CheckCircle2 className="h-4 w-4 text-green-500 hover:text-green-600" />
                         ) : (
-                          <Circle className="h-4 w-4 text-blue-500" />
+                          <Circle className="h-4 w-4 text-blue-500 hover:text-blue-600" />
                         )}
-                        <span>{task.title}</span>
+                        <span className={cn(
+                          task.completed && "line-through text-muted-foreground"
+                        )}>{task.title}</span>
                       </div>
                       <div className="flex items-center gap-2 text-muted-foreground text-sm">
                         {task.estimatedMinutes && (
