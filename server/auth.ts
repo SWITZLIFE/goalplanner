@@ -45,19 +45,17 @@ export function setupAuth(app: Express) {
     cookie: {
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
       httpOnly: true,
-      secure: app.get("env") === "production",
+      secure: false, // Allow non-HTTPS in development
+      sameSite: 'lax'
     },
     store: new MemoryStore({
       checkPeriod: 86400000, // prune expired entries every 24h
-      stale: false, // Don't serve stale sessions
     }),
   };
 
   if (app.get("env") === "production") {
     app.set("trust proxy", 1);
-    sessionSettings.cookie = {
-      secure: true,
-    };
+    sessionSettings.cookie!.secure = true;
   }
 
   app.use(session(sessionSettings));

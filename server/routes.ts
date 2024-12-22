@@ -234,6 +234,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const { purchaseId } = req.params;
       const userId = req.user!.id;
+      console.log(`Activating reward ${purchaseId} for user ${userId}`);
 
       // Get the purchase and verify ownership
       const purchase = await db.query.purchasedRewards.findFirst({
@@ -247,10 +248,12 @@ export function registerRoutes(app: Express): Server {
       });
 
       if (!purchase) {
+        console.log(`Purchase ${purchaseId} not found for user ${userId}`);
         return res.status(404).json({ error: "Reward purchase not found or unauthorized" });
       }
 
       if (purchase.activated) {
+        console.log(`Purchase ${purchaseId} already activated`);
         return res.status(400).json({ error: "Reward has already been activated" });
       }
 
@@ -263,6 +266,7 @@ export function registerRoutes(app: Express): Server {
       });
 
       if (!user) {
+        console.log(`User ${userId} not found`);
         return res.status(404).json({ error: "User not found" });
       }
 
@@ -271,7 +275,7 @@ export function registerRoutes(app: Express): Server {
         .set({
           activated: true,
           activatedAt: new Date(),
-          webhookSent: true,
+          webhookSent: false, // Set to false initially
         })
         .where(and(
           eq(purchasedRewards.id, parseInt(purchaseId)),
@@ -283,6 +287,7 @@ export function registerRoutes(app: Express): Server {
       const webhookUrl = process.env.REWARD_WEBHOOK_URL;
       if (webhookUrl) {
         try {
+          console.log('Sending webhook to:', webhookUrl);
           const rewardItem = purchase.rewardItem as { name: string; type: string; } | undefined;
           const webhookData = {
             purchaseId: purchase.id,
@@ -293,23 +298,40 @@ export function registerRoutes(app: Express): Server {
             userEmail: user.email,
           };
 
-          await fetch(webhookUrl, {
+          const webhookResponse = await fetch(webhookUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify(webhookData),
           });
+
+          if (!webhookResponse.ok) {
+            throw new Error(`Webhook failed with status ${webhookResponse.status}`);
+          }
+
+          // Mark webhook as sent only if successful
+          await db.update(purchasedRewards)
+            .set({ webhookSent: true })
+            .where(eq(purchasedRewards.id, parseInt(purchaseId)));
+
+          console.log('Webhook sent successfully');
         } catch (webhookError) {
           console.error('Failed to send webhook:', webhookError);
-          // Don't fail the request if webhook fails
+          // Don't fail the request if webhook fails, but log it
         }
       }
 
-      res.json(updatedPurchase);
+      res.json({
+        ...updatedPurchase,
+        message: "Reward activated successfully",
+      });
     } catch (error) {
       console.error("Failed to activate reward:", error);
-      res.status(500).json({ error: "Failed to activate reward" });
+      res.status(500).json({ 
+        error: "Failed to activate reward",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
