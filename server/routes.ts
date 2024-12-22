@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { db } from "@db";
 import { users, rewards, rewardItems, purchasedRewards, visionBoardImages } from "@db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
-import { requireAuth } from "./auth.js";
+import { requireAuth } from "./middleware";
 import { uploadFileToSupabase } from "./supabase";
 import multer from "multer";
 
