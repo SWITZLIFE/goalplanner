@@ -486,38 +486,78 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                     From goal: {goals.find(g => g.id === selectedTask.goalId)?.title}
                   </div>
 
-                  <div 
-                    className="flex items-center gap-2 cursor-pointer hover:opacity-80"
-                    onClick={() => handleToggleComplete(selectedTask)}
-                  >
-                    {selectedTask.completed ? (
-                      <>
-                        <CheckCircle2 className="h-5 w-5 text-green-500" />
-                        <span className="text-green-600">Completed</span>
-                      </>
-                    ) : (
-                      <>
-                        <Circle className="h-5 w-5 text-blue-500" />
-                        <span className="text-blue-600">In Progress</span>
-                      </>
+                  <div className="space-y-4">
+                    {/* Main task */}
+                    <div 
+                      className="flex items-center gap-2 cursor-pointer hover:opacity-80 p-2 border rounded-lg"
+                      onClick={() => handleToggleComplete(selectedTask)}
+                    >
+                      {selectedTask.completed ? (
+                        <>
+                          <CheckCircle2 className="h-5 w-5 text-green-500" />
+                          <span className={cn(
+                            "flex-1",
+                            selectedTask.completed && "line-through text-muted-foreground"
+                          )}>{selectedTask.title}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Circle className="h-5 w-5 text-blue-500" />
+                          <span className="flex-1">{selectedTask.title}</span>
+                        </>
+                      )}
+                      
+                      {selectedTask.estimatedMinutes && (
+                        <div className="flex items-center gap-1 text-muted-foreground text-sm">
+                          <Clock className="h-4 w-4" />
+                          <span>{selectedTask.estimatedMinutes}m</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Subtasks */}
+                    {initialTasks
+                      .filter(task => task.parentTaskId === selectedTask.id)
+                      .sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1))
+                      .map(subtask => (
+                        <div 
+                          key={subtask.id}
+                          className="flex items-center gap-2 cursor-pointer hover:opacity-80 p-2 border rounded-lg ml-4"
+                          onClick={() => handleToggleComplete(subtask)}
+                        >
+                          {subtask.completed ? (
+                            <>
+                              <CheckCircle2 className="h-4 w-4 text-green-500" />
+                              <span className={cn(
+                                "flex-1",
+                                subtask.completed && "line-through text-muted-foreground"
+                              )}>{subtask.title}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Circle className="h-4 w-4 text-blue-500" />
+                              <span className="flex-1">{subtask.title}</span>
+                            </>
+                          )}
+                          
+                          {subtask.estimatedMinutes && (
+                            <div className="flex items-center gap-1 text-muted-foreground text-sm">
+                              <Clock className="h-4 w-4" />
+                              <span>{subtask.estimatedMinutes}m</span>
+                            </div>
+                          )}
+                        </div>
+                    ))}
+
+                    {selectedTask.plannedDate && (
+                      <div className="flex items-center gap-2 text-muted-foreground mt-4">
+                        <CalendarIcon className="h-4 w-4" />
+                        <span>
+                          Planned for: {format(new Date(selectedTask.plannedDate), 'MMMM d, yyyy')}
+                        </span>
+                      </div>
                     )}
                   </div>
-
-                  {selectedTask.estimatedMinutes && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Clock className="h-4 w-4" />
-                      <span>Estimated: {selectedTask.estimatedMinutes} minutes</span>
-                    </div>
-                  )}
-
-                  {selectedTask.plannedDate && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <CalendarIcon className="h-4 w-4" />
-                      <span>
-                        Planned for: {format(new Date(selectedTask.plannedDate), 'MMMM d, yyyy')}
-                      </span>
-                    </div>
-                  )}
                 </>
               )}
             </div>
