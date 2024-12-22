@@ -247,11 +247,26 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
   const mainTasks = tasks
     .filter(task => !task.isSubtask)
     .sort((a, b) => {
-      // Put manual tasks on top
+      // First, prioritize tasks with dates
+      const aHasDate = !!a.plannedDate;
+      const bHasDate = !!b.plannedDate;
+      
+      if (aHasDate !== bHasDate) {
+        return aHasDate ? -1 : 1;
+      }
+      
+      // If both tasks have dates, sort by date ascending
+      if (aHasDate && bHasDate) {
+        const aDate = new Date(a.plannedDate!);
+        const bDate = new Date(b.plannedDate!);
+        return aDate.getTime() - bDate.getTime();
+      }
+      
+      // For tasks without dates, maintain the existing sort logic
       const aAiGenerated = a.isAiGenerated ?? false;
       const bAiGenerated = b.isAiGenerated ?? false;
       
-      // First, group manual vs AI-generated tasks
+      // Group manual vs AI-generated tasks
       if (aAiGenerated !== bAiGenerated) {
         return aAiGenerated ? 1 : -1;
       }
@@ -262,7 +277,6 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
       }
       
       // For AI tasks, sort by ID ascending to maintain chronological order
-      // First task (lowest ID) should appear at the top
       return a.id - b.id;
     });
 
