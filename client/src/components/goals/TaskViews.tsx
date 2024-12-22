@@ -311,7 +311,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                         {format(date, 'd')}
                       </div>
                       <div className="space-y-1">
-                        {dayTasks.map(task => (
+                        {dayTasks.slice(0, 3).map(task => (
                           <div 
                             key={task.id}
                             className={cn(
@@ -324,6 +324,18 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                             {task.title}
                           </div>
                         ))}
+                        {dayTasks.length > 3 && (
+                          <button
+                            className="text-xs text-primary hover:text-primary/80 font-medium"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedDate(date);
+                              setSelectedTask({ ...dayTasks[0], title: `${dayTasks.length - 3} more tasks` });
+                            }}
+                          >
+                            + {dayTasks.length - 3} more
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
