@@ -317,7 +317,10 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                         {format(date, 'd')}
                       </div>
                       <div className="space-y-1">
-                        {dayTasks.slice(0, 3).map(task => (
+                        {[...dayTasks]
+                          .sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1))
+                          .slice(0, 3)
+                          .map(task => (
                           <div 
                             key={task.id}
                             className={cn(
@@ -444,7 +447,9 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
               {selectedTask.isTaskList ? (
                 // Show list of all tasks for the day
                 <div className="space-y-2">
-                  {selectedTask.dayTasks.map(task => (
+                  {[...selectedTask.dayTasks]
+                    .sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1))
+                    .map(task => (
                     <div 
                       key={task.id}
                       className="flex items-center justify-between p-2 border rounded-lg hover:bg-accent/50 cursor-pointer"
