@@ -4,7 +4,7 @@ import { createServer, type Server } from "http";
 import { db } from "@db";
 import { eq, desc, and, isNull, sql } from "drizzle-orm";
 import { rewards, rewardItems, purchasedRewards, users } from "@db/schema";
-import { goals, tasks, timeTracking, visionBoardImages } from "@db/schema";
+import { goals, tasks, timeTracking, visionBoardImages, posts, comments } from "@db/schema";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -971,6 +971,326 @@ Remember to:
       res.status(500).json({ error: "Failed to fetch current timer" });
     }
   });
+  // Community Board API
+  app.get("/api/posts", requireAuth, async (req, res) => {
+    try {
+      const posts = await db.query.posts.findMany({
+        with: {
+          user: {
+            columns: {
+              id: true,
+              email: true,
+              profilePhotoUrl: true,
+            }
+          },
+          comments: {
+            with: {
+              user: {
+                columns: {
+                  id: true,
+                  email: true,
+                  profilePhotoUrl: true,
+                }
+              }
+            }
+          }
+        },
+        orderBy: [desc(posts.createdAt)],
+      });
+
+      res.json(posts);
+    } catch (error) {
+      console.error("Failed to fetch posts:", error);
+      res.status(500).json({ error: "Failed to fetch posts" });
+    }
+  });
+
+  app.post("/api/posts", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const { title, content } = req.body;
+
+      if (!title || !content) {
+        return res.status(400).json({ error: "Title and content are required" });
+      }
+
+      // Create the post
+      const [newPost] = await db.insert(posts)
+        .values({
+          userId,
+          title,
+          content,
+        })
+        .returning();
+
+      // Award coins to the user (5 coins for creating a post)
+      const [userRewards] = await db.select()
+        .from(rewards)
+        .where(eq(rewards.userId, userId))
+        .limit(1);
+
+      if (userRewards) {
+        await db.update(rewards)
+          .set({
+            coins: sql`${rewards.coins} + 5`,
+            lastUpdated: new Date(),
+          })
+          .where(eq(rewards.userId, userId));
+      } else {
+        await db.insert(rewards)
+          .values({
+            userId,
+            coins: 5,
+            lastUpdated: new Date(),
+          });
+      }
+
+      // Fetch the complete post with relations
+      const completePost = await db.query.posts.findFirst({
+        where: eq(posts.id, newPost.id),
+        with: {
+          user: {
+            columns: {
+              id: true,
+              email: true,
+              profilePhotoUrl: true,
+            }
+          },
+          comments: {
+            with: {
+              user: {
+                columns: {
+                  id: true,
+                  email: true,
+                  profilePhotoUrl: true,
+                }
+              }
+            }
+          }
+        }
+      });
+
+      res.json(completePost);
+    } catch (error) {
+      console.error("Failed to create post:", error);
+      res.status(500).json({ error: "Failed to create post" });
+    }
+  });
+
+  app.post("/api/posts/:postId/comments", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const { postId } = req.params;
+      const { content } = req.body;
+
+      if (!content) {
+        return res.status(400).json({ error: "Comment content is required" });
+      }
+
+      // Verify the post exists
+      const post = await db.query.posts.findFirst({
+        where: eq(posts.id, parseInt(postId)),
+      });
+
+      if (!post) {
+        return res.status(404).json({ error: "Post not found" });
+      }
+
+      // Create the comment
+      const [newComment] = await db.insert(comments)
+        .values({
+          userId,
+          postId: parseInt(postId),
+          content,
+        })
+        .returning();
+
+      // Award coins to the user (3 coins for commenting)
+      const [userRewards] = await db.select()
+        .from(rewards)
+        .where(eq(rewards.userId, userId))
+        .limit(1);
+
+      if (userRewards) {
+        await db.update(rewards)
+          .set({
+            coins: sql`${rewards.coins} + 3`,
+            lastUpdated: new Date(),
+          })
+          .where(eq(rewards.userId, userId));
+      } else {
+        await db.insert(rewards)
+          .values({
+            userId,
+            coins: 3,
+            lastUpdated: new Date(),
+          });
+      }
+
+      // Fetch the complete comment with relations
+      const completeComment = await db.query.comments.findFirst({
+        where: eq(comments.id, newComment.id),
+        with: {
+          user: {
+            columns: {
+              id: true,
+              email: true,
+              profilePhotoUrl: true,
+            }
+          }
+        }
+      });
+
+      res.json(completeComment);
+    } catch (error) {
+      console.error("Failed to create comment:", error);
+      res.status(500).json({ error: "Failed to create comment" });
+    }
+  });
+
+  app.post("/api/posts", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const { title, content } = req.body;
+
+      if (!title || !content) {
+        return res.status(400).json({ error: "Title and content are required" });
+      }
+
+      // Create the post
+      const [newPost] = await db.insert(posts)
+        .values({
+          userId,
+          title,
+          content,
+        })
+        .returning();
+
+      // Award coins to the user (5 coins for creating a post)
+      const [userRewards] = await db.select()
+        .from(rewards)
+        .where(eq(rewards.userId, userId))
+        .limit(1);
+
+      if (userRewards) {
+        await db.update(rewards)
+          .set({
+            coins: sql`${rewards.coins} + 5`,
+            lastUpdated: new Date(),
+          })
+          .where(eq(rewards.userId, userId));
+      } else {
+        await db.insert(rewards)
+          .values({
+            userId,
+            coins: 5,
+            lastUpdated: new Date(),
+          });
+      }
+
+      // Fetch the complete post with relations
+      const completePost = await db.query.posts.findFirst({
+        where: eq(posts.id, newPost.id),
+        with: {
+          user: {
+            columns: {
+              id: true,
+              email: true,
+              profilePhotoUrl: true,
+            }
+          },
+          comments: {
+            with: {
+              user: {
+                columns: {
+                  id: true,
+                  email: true,
+                  profilePhotoUrl: true,
+                }
+              }
+            }
+          }
+        }
+      });
+
+      res.json(completePost);
+    } catch (error) {
+      console.error("Failed to create post:", error);
+      res.status(500).json({ error: "Failed to create post" });
+    }
+  });
+
+  app.post("/api/posts/:postId/comments", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const { postId } = req.params;
+      const { content } = req.body;
+
+      if (!content) {
+        return res.status(400).json({ error: "Comment content is required" });
+      }
+
+      // Verify the post exists
+      const post = await db.query.posts.findFirst({
+        where: eq(posts.id, parseInt(postId)),
+      });
+
+      if (!post) {
+        return res.status(404).json({ error: "Post not found" });
+      }
+
+      // Create the comment
+      const [newComment] = await db.insert(comments)
+        .values({
+          userId,
+          postId: parseInt(postId),
+          content,
+        })
+        .returning();
+
+      // Award coins to the user (3 coins for commenting)
+      const [userRewards] = await db.select()
+        .from(rewards)
+        .where(eq(rewards.userId, userId))
+        .limit(1);
+
+      if (userRewards) {
+        await db.update(rewards)
+          .set({
+            coins: sql`${rewards.coins} + 3`,
+            lastUpdated: new Date(),
+          })
+          .where(eq(rewards.userId, userId));
+      } else {
+        await db.insert(rewards)
+          .values({
+            userId,
+            coins: 3,
+            lastUpdated: new Date(),
+          });
+      }
+
+      // Fetch the complete comment with relations
+      const completeComment = await db.query.comments.findFirst({
+        where: eq(comments.id, newComment.id),
+        with: {
+          user: {
+            columns: {
+              id: true,
+              email: true,
+              profilePhotoUrl: true,
+            }
+          }
+        }
+      });
+
+      res.json(completeComment);
+    } catch (error) {
+      console.error("Failed to create comment:", error);
+      res.status(500).json({ error: "Failed to create comment" });
+    }
+  });
+
   // Future Message API
   app.get("/api/future-message/today", requireAuth, async (req, res) => {
     try {
