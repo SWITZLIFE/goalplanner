@@ -202,20 +202,8 @@ export function RewardStore() {
                   </CardDescription>
                 </CardHeader>
                 <CardFooter className="mt-auto border-t pt-4 px-6">
-                  <div className="flex justify-between items-center w-full">
-                    <div className="text-sm text-muted-foreground">
-                      Purchased on {new Date(purchase.purchasedAt).toLocaleDateString()}
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => toast({
-                        title: "Reward Activated",
-                        description: `${purchase.rewardItem.name} has been activated!`
-                      })}
-                    >
-                      Activate Reward
-                    </Button>
+                  <div className="text-sm text-muted-foreground">
+                    Purchased on {new Date(purchase.purchasedAt).toLocaleDateString()}
                   </div>
                 </CardFooter>
               </Card>
