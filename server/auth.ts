@@ -40,13 +40,15 @@ export function setupAuth(app: Express) {
   const MemoryStore = createMemoryStore(session);
   const sessionSettings: session.SessionOptions = {
     secret: process.env.REPL_ID || "porygon-supremacy",
-    resave: false,
+    resave: true,
     saveUninitialized: false,
+    name: 'session',
     cookie: {
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
       httpOnly: true,
       secure: false, // Allow non-HTTPS in development
-      sameSite: 'lax'
+      sameSite: 'lax',
+      path: '/'
     },
     store: new MemoryStore({
       checkPeriod: 86400000, // prune expired entries every 24h
@@ -157,41 +159,56 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/login", (req, res, next) => {
-    // Use a simpler schema for login that only validates email format
-    const loginSchema = z.object({
-      email: z.string().email("Invalid email format"),
-      password: z.string()
-    });
-    
-    const result = loginSchema.safeParse(req.body);
-    if (!result.success) {
-      return res
-        .status(400)
-        .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
-    }
-
-    const cb = (err: any, user: Express.User, info: IVerifyOptions) => {
-      if (err) {
-        return next(err);
+  app.post("/api/login", async (req, res, next) => {
+    try {
+      // Use a simpler schema for login that only validates email format
+      const loginSchema = z.object({
+        email: z.string().email("Invalid email format"),
+        password: z.string()
+      });
+      
+      const result = loginSchema.safeParse(req.body);
+      if (!result.success) {
+        return res
+          .status(400)
+          .json({ error: "Invalid input", details: result.error.issues.map(i => i.message).join(", ") });
       }
 
-      if (!user) {
-        return res.status(400).send(info.message ?? "Login failed");
-      }
-
-      req.logIn(user, (err) => {
+      passport.authenticate("local", (err: any, user: Express.User, info: IVerifyOptions) => {
         if (err) {
-          return next(err);
+          console.error("Login error:", err);
+          return res.status(500).json({ error: "Internal server error during login" });
         }
 
-        return res.json({
-          message: "Login successful",
-          user: { id: user.id, email: user.email },
+        if (!user) {
+          return res.status(401).json({ error: info.message ?? "Invalid credentials" });
+        }
+
+        req.logIn(user, (loginErr) => {
+          if (loginErr) {
+            console.error("Login session error:", loginErr);
+            return res.status(500).json({ error: "Failed to create login session" });
+          }
+
+          // Set a cookie header explicitly
+          res.cookie('connect.sid', req.sessionID, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            path: '/',
+            maxAge: 24 * 60 * 60 * 1000 // 24 hours
+          });
+
+          return res.json({
+            message: "Login successful",
+            user: { id: user.id, email: user.email },
+          });
         });
-      });
-    };
-    passport.authenticate("local", cb)(req, res, next);
+      })(req, res, next);
+    } catch (error) {
+      console.error("Unexpected login error:", error);
+      res.status(500).json({ error: "An unexpected error occurred during login" });
+    }
   });
 
   app.post("/api/logout", (req, res) => {
