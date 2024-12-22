@@ -11,6 +11,7 @@ import { queryClient } from "@/lib/queryClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Clock, Calendar as CalendarIcon, CheckCircle2, Circle, Quote } from "lucide-react";
 import { VisionGenerator } from "./VisionGenerator";
+import { OverdueTasksDialog } from "./OverdueTasksDialog";
 
 interface Goal {
   id: number;
@@ -35,8 +36,18 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [taskFilter, setTaskFilter] = useState<'all' | 'active' | 'completed'>('all');
   const [goalFilter, setGoalFilter] = useState<number | 'all'>('all');
+  const [showOverdueTasks, setShowOverdueTasks] = useState(true);
   const { updateTask, createTask, updateGoal, goals } = useGoals();
   const { toast } = useToast();
+
+  // Get overdue tasks
+  const overdueTasks = initialTasks.filter(task => {
+    if (!task.plannedDate || task.completed) return false;
+    const taskDate = new Date(task.plannedDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return taskDate < today;
+  });
 
   // Get all tasks from all goals
   const allTasks = goals.reduce<Task[]>((acc, g) => {
@@ -171,6 +182,14 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
 
   return (
     <>
+      {showOverdueTasks && overdueTasks.length > 0 && (
+        <OverdueTasksDialog
+          tasks={overdueTasks}
+          onClose={() => setShowOverdueTasks(false)}
+          onUpdateTaskDate={handleUpdateTaskDate}
+        />
+      )}
+
       <Tabs defaultValue="tasks" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="tasks">Tasks</TabsTrigger>
