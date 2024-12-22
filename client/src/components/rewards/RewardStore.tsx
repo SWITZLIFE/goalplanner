@@ -29,8 +29,6 @@ interface PurchasedReward {
   userId: number;
   rewardItemId: number;
   purchasedAt: string;
-  activatedAt: string | null;
-  activated: boolean;
   rewardItem: RewardItem;
 }
 
@@ -204,50 +202,8 @@ export function RewardStore() {
                   </CardDescription>
                 </CardHeader>
                 <CardFooter className="mt-auto border-t pt-4 px-6">
-                  <div className="flex justify-between items-center w-full">
-                    <div className="text-sm text-muted-foreground">
-                      Purchased on {new Date(purchase.purchasedAt).toLocaleDateString()}
-                    </div>
-                    {!purchase.activated && (
-                      <Button 
-                        size="sm"
-                        onClick={async () => {
-                          try {
-                            const response = await fetch(`/api/rewards/activate/${purchase.id}`, {
-                              method: 'POST',
-                              credentials: 'include',
-                            });
-                            
-                            const data = await response.json();
-                            if (!response.ok) {
-                              throw new Error(data.message || "Failed to activate reward");
-                            }
-                            
-                            toast({
-                              title: "Reward Activated!",
-                              description: `Successfully activated ${purchase.rewardItem.name}`,
-                            });
-                            
-                            // Refresh the purchased rewards list
-                            queryClient.invalidateQueries({ queryKey: ["/api/rewards/purchased"] });
-                          } catch (error) {
-                            console.error("Activation error:", error);
-                            toast({
-                              title: "Activation Failed",
-                              description: error instanceof Error ? error.message : "Failed to activate reward",
-                              variant: "destructive",
-                            });
-                          }
-                        }}
-                      >
-                        Activate
-                      </Button>
-                    )}
-                    {purchase.activated && (
-                      <div className="text-sm text-muted-foreground">
-                        Activated on {new Date(purchase.activatedAt!).toLocaleDateString()}
-                      </div>
-                    )}
+                  <div className="text-sm text-muted-foreground">
+                    Purchased on {new Date(purchase.purchasedAt).toLocaleDateString()}
                   </div>
                 </CardFooter>
               </Card>

@@ -151,8 +151,6 @@ export const purchasedRewards = pgTable("purchased_rewards", {
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   rewardItemId: integer("reward_item_id").notNull().references(() => rewardItems.id, { onDelete: "cascade" }),
   purchasedAt: timestamp("purchased_at").defaultNow().notNull(),
-  activatedAt: timestamp("activated_at"),
-  activated: boolean("activated").default(false).notNull(),
 });
 
 export const timeTracking = pgTable("time_tracking", {

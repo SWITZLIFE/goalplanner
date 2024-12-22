@@ -6,7 +6,6 @@ import { eq, desc, and, isNull, sql } from "drizzle-orm";
 import { rewards, rewardItems, purchasedRewards, users } from "@db/schema";
 import { goals, tasks, timeTracking, visionBoardImages } from "@db/schema";
 import multer from "multer";
-import fetch from "node-fetch";
 import path from "path";
 import fs from "fs";
 import { generateTaskBreakdown, generateShortTitle } from "./openai";
@@ -1231,94 +1230,6 @@ Remember to:
       });
     }
   });
-  app.post("/api/rewards/activate/:id", requireAuth, async (req, res) => {
-    try {
-      const purchaseId = parseInt(req.params.id);
-      const userId = req.user!.id;
-
-      // Get purchase details with reward item info
-      const purchase = await db.select()
-        .from(purchasedRewards)
-        .where(and(
-          eq(purchasedRewards.id, purchaseId),
-          eq(purchasedRewards.userId, userId),
-          eq(purchasedRewards.activated, false)
-        ))
-        .leftJoin(rewardItems, eq(purchasedRewards.rewardItemId, rewardItems.id))
-        .limit(1)
-        .then(rows => rows[0]);
-
-      if (!purchase) {
-        return res.status(404).json({
-          error: "Purchase not found or already activated",
-          message: "This reward cannot be activated"
-        });
-      }
-
-      const rewardItemDetails = {
-        name: purchase.reward_items.name,
-        description: purchase.reward_items.description,
-        type: purchase.reward_items.type,
-        cost: purchase.reward_items.cost
-      };
-
-      // Update the purchase as activated
-      const [activatedPurchase] = await db.update(purchasedRewards)
-        .set({
-          activated: true,
-          activatedAt: new Date()
-        })
-        .where(eq(purchasedRewards.id, purchaseId))
-        .returning();
-
-      if (!activatedPurchase) {
-        throw new Error("Failed to activate reward");
-      }
-
-      // Get user details for the webhook
-      const [user] = await db.select()
-        .from(users)
-        .where(eq(users.id, userId));
-
-      // Prepare webhook payload
-      const webhookData = {
-        reward: rewardItemDetails,
-        purchase: {
-          purchasedAt: purchase.purchased_rewards.purchasedAt,
-          activatedAt: activatedPurchase.activatedAt
-        },
-        user: {
-          email: user.email
-        }
-      };
-
-      // Send webhook notification
-      const webhookUrl = "https://hook.eu2.make.com/aprechqdxb47crnonasr6ev9zwejps3p";
-      const webhookResponse = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(webhookData),
-      });
-
-      if (!webhookResponse.ok) {
-        console.error("Webhook notification failed:", await webhookResponse.text());
-      }
-
-      res.json({
-        message: "Reward activated successfully",
-        activatedAt: activatedPurchase.activatedAt
-      });
-    } catch (error) {
-      console.error("Activation error:", error);
-      res.status(500).json({
-        error: "Failed to activate reward",
-        message: error instanceof Error ? error.message : "An unexpected error occurred"
-      });
-    }
-  });
-
 
   const httpServer = createServer(app);
   return httpServer;
