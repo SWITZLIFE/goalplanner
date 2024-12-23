@@ -5,20 +5,21 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import type { Task as BaseTask } from "@db/schema";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { useGoals } from "@/hooks/use-goals";
+import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Clock, Calendar as CalendarIcon, CheckCircle2, Circle, Quote, Plus } from "lucide-react";
+import { VisionGenerator } from "./VisionGenerator";
+import { OverdueTasksDialog } from "./OverdueTasksDialog";
 
 // Extend the Task type to include properties needed for the task list dialog
 interface Task extends BaseTask {
   isTaskList?: boolean;
   dayTasks?: Task[];
 }
-import { useGoals } from "@/hooks/use-goals";
-import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/queryClient";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Clock, Calendar as CalendarIcon, CheckCircle2, Circle, Quote } from "lucide-react";
-import { VisionGenerator } from "./VisionGenerator";
-import { OverdueTasksDialog } from "./OverdueTasksDialog";
 
 interface Goal {
   id: number;
@@ -29,6 +30,13 @@ interface Goal {
   totalTasks: number;
   visionStatement: string | null;
   visionResponses: string | null;
+  notes?: Array<{
+    id: number;
+    title: string;
+    content: string;
+    createdAt: string;
+    updatedAt: string;
+  }>;
 }
 
 interface TaskViewsProps {
@@ -205,10 +213,11 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
       )}
 
       <Tabs defaultValue="tasks" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="tasks">Tasks</TabsTrigger>
           <TabsTrigger value="completed">Completed</TabsTrigger>
           <TabsTrigger value="calendar">Calendar</TabsTrigger>
+          <TabsTrigger value="notes">Notes</TabsTrigger>
           <TabsTrigger value="vision">Your Why</TabsTrigger>
         </TabsList>
 
@@ -364,6 +373,48 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                   );
                 })}
               </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="notes" className="space-y-6">
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-medium">Goal Notes</h2>
+              <Button
+                onClick={() => {
+                  const newNote = {
+                    id: Date.now(),
+                    title: "New Note",
+                    content: "",
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                  };
+                  // We'll implement this handler later
+                }}
+                size="sm"
+              >
+                Add Note
+              </Button>
+            </div>
+            <div className="grid gap-4">
+              {goal.notes?.map((note) => (
+                <Card key={note.id} className="p-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-medium">{note.title}</h3>
+                      <div className="text-sm text-muted-foreground">
+                        {format(new Date(note.createdAt), "MMM d, yyyy")}
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{note.content}</p>
+                  </div>
+                </Card>
+              )) || (
+                <div className="text-center py-8 text-muted-foreground">
+                  No notes yet. Click "Add Note" to create your first note for this goal.
+                </div>
+              )}
             </div>
           </div>
         </TabsContent>
