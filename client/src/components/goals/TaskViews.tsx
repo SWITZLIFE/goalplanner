@@ -568,6 +568,30 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
             )}
           </DialogContent>
       </Dialog>
+
+      {/* Date Picker Dialog */}
+      <Dialog 
+        open={showDatePicker !== null} 
+        onOpenChange={(open) => !open && setShowDatePicker(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select Task Date</DialogTitle>
+          </DialogHeader>
+          <Calendar
+            mode="single"
+            selected={showDatePicker?.date}
+            disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+            onSelect={(date) => {
+              if (showDatePicker && date) {
+                handleUpdateTaskDate(showDatePicker.taskId, date);
+                setShowDatePicker(null);
+              }
+            }}
+            className="rounded-md border"
+          />
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
