@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Clock, Calendar as CalendarIcon, CheckCircle2, Circle, Quote } from "lucide-react";
 import { VisionGenerator } from "./VisionGenerator";
 import { OverdueTasksDialog } from "./OverdueTasksDialog";
+import { NotesTab } from "./NotesTab";
 
 interface Goal {
   id: number;
@@ -209,6 +210,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
           <TabsTrigger value="tasks">Tasks</TabsTrigger>
           <TabsTrigger value="completed">Completed</TabsTrigger>
           <TabsTrigger value="calendar">Calendar</TabsTrigger>
+          <TabsTrigger value="notes">Notes</TabsTrigger>
           <TabsTrigger value="vision">Your Why</TabsTrigger>
         </TabsList>
 
@@ -226,6 +228,10 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
             goalId={goalId}
             readOnly
           />
+        </TabsContent>
+
+        <TabsContent value="notes">
+          <NotesTab goalId={goalId} />
         </TabsContent>
 
         <TabsContent value="calendar">
