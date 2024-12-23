@@ -484,7 +484,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
         open={selectedTask !== null} 
         onOpenChange={(open) => !open && setSelectedTask(null)}
       >
-        <DialogContent className="fixed right-0 top-0 bottom-0 w-[400px] rounded-none">
+        <DialogContent className="max-w-xl">
           {selectedTask && (
             <div className="space-y-4">
               {selectedTask.isTaskList ? (
@@ -529,20 +529,33 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                 </>
               ) : (
                 <>
-                  <DialogHeader className="pb-4">
-                    <DialogTitle>Task Details</DialogTitle>
+                  <DialogHeader>
+                    <DialogTitle>
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="cursor-pointer"
+                          onClick={() => handleToggleComplete(selectedTask)}
+                        >
+                          {selectedTask.completed ? (
+                            <CheckCircle2 className="h-5 w-5 text-green-500 hover:text-green-600" />
+                          ) : (
+                            <Circle className="h-5 w-5 text-blue-500 hover:text-blue-600" />
+                          )}
+                        </div>
+                        <span className={cn(
+                          "text-xl font-semibold",
+                          selectedTask.completed && "line-through text-muted-foreground"
+                        )}>
+                          {selectedTask.title}
+                        </span>
+                      </div>
+                    </DialogTitle>
                   </DialogHeader>
 
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-sm font-medium mb-2">Title</h3>
-                      <input 
-                        type="text"
-                        className="w-full p-2 border rounded-md"
-                        value={selectedTask.title}
-                        readOnly
-                      />
-                    </div>
+                  {/* Goal context */}
+                  <div className="text-sm text-muted-foreground">
+                    From goal: {goals.find(g => g.id === selectedTask.goalId)?.title}
+                  </div>
 
                   {/* Subtasks */}
                   <div className="space-y-2">
@@ -575,74 +588,56 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                     ))}
                   </div>
 
-                  <div>
-                      <h3 className="text-sm font-medium mb-2">Planned for</h3>
-                      <div className="flex items-center gap-2">
-                        <input 
-                          type="text"
-                          className="flex-1 p-2 border rounded-md bg-muted"
-                          value={selectedTask.plannedDate 
-                            ? format(new Date(selectedTask.plannedDate), 'MMMM d, yyyy')
-                            : "Not scheduled"}
-                          readOnly
-                        />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowDatePicker({ 
-                            taskId: selectedTask.id, 
-                            date: selectedTask.plannedDate ? new Date(selectedTask.plannedDate) : undefined 
-                          })}
-                        >
-                          Select date
-                        </Button>
+                  {/* Task metadata */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                        <CalendarIcon className="h-4 w-4" />
+                        <span>
+                          {selectedTask.plannedDate 
+                            ? `Due: ${format(new Date(selectedTask.plannedDate), 'MMMM d, yyyy')}`
+                            : "No due date set"}
+                        </span>
                       </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowDatePicker({ 
+                          taskId: selectedTask.id, 
+                          date: selectedTask.plannedDate ? new Date(selectedTask.plannedDate) : undefined 
+                        })}
+                      >
+                        Change Date
+                      </Button>
                     </div>
 
-                    <div>
-                      <h3 className="text-sm font-medium mb-2">Notes</h3>
-                      <div className="relative">
-                        <select 
-                          className="w-full p-2 border rounded-md mb-2"
-                          value="default"
-                          onChange={(e) => {
-                            if (selectedTask && e.target.value !== 'default') {
-                              setSelectedTask({
-                                ...selectedTask,
-                                notes: (selectedTask.notes || '') + e.target.value
-                              });
-                            }
-                          }}
-                        >
-                          <option value="default">Select template</option>
-                          <option value="Meeting notes:&#10;- Agenda:&#10;- Key points:&#10;- Action items:">Meeting Notes</option>
-                          <option value="Research findings:&#10;- Sources:&#10;- Key insights:&#10;- Follow-up questions:">Research Notes</option>
-                        </select>
-                        <textarea
-                          className="w-full min-h-[200px] p-2 border rounded-md"
-                          placeholder="Add notes about this task..."
-                          value={selectedTask.notes || ''}
-                          onChange={async (e) => {
-                            try {
-                              await updateTask({
-                                taskId: selectedTask.id,
-                                notes: e.target.value
-                              });
-                              // Update the selected task state immediately
-                              setSelectedTask({
-                                ...selectedTask,
-                                notes: e.target.value
-                              });
-                            } catch (error) {
-                              toast({
-                                variant: "destructive",
-                                title: "Error",
-                                description: "Failed to update notes"
-                              });
-                            }
-                          }}
-                        />
-                      </div>
+                    {/* Notes Section */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Notes</label>
+                      <textarea
+                        className="w-full min-h-[100px] p-2 border rounded-md"
+                        placeholder="Add notes for this task..."
+                        value={selectedTask.notes || ''}
+                        onChange={async (e) => {
+                          try {
+                            await updateTask({
+                              taskId: selectedTask.id,
+                              notes: e.target.value
+                            });
+                            // Update the selected task state immediately
+                            setSelectedTask({
+                              ...selectedTask,
+                              notes: e.target.value
+                            });
+                          } catch (error) {
+                            toast({
+                              variant: "destructive",
+                              title: "Error",
+                              description: "Failed to update notes"
+                            });
+                          }
+                        }}
+                      />
                     </div>
                   </div>
                 </>
