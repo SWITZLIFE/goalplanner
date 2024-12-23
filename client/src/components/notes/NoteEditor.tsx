@@ -90,8 +90,11 @@ export function NoteEditor({
         />
       </div>
 
-      <div className="min-h-[200px] border rounded-lg p-4">
-        <EditorContent editor={editor} className="prose max-w-none min-h-[200px]" />
+      <div className="min-h-[400px] border rounded-lg p-4">
+        <EditorContent 
+          editor={editor} 
+          className="prose max-w-none min-h-[400px] focus:outline-none"
+        />
       </div>
 
       {!readOnly && (
