@@ -235,40 +235,53 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
         </TabsContent>
 
         <TabsContent value="notes">
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-medium">Task Notes</h2>
-            </div>
-            <div className="space-y-2">
-              {initialTasks
-                .filter(task => task.notes)
-                .map(task => (
-                  <div 
-                    key={task.id} 
-                    className={cn(
-                      "flex items-center justify-between p-4 border rounded-md hover:bg-accent/50 cursor-pointer",
-                      "transition-colors duration-200"
-                    )}
-                    onClick={() => setSelectedTask(task)}
-                  >
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <Quote className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <h3 className="font-medium truncate">{task.title}</h3>
-                    </div>
-                    <div className="text-xs text-muted-foreground shrink-0 ml-4">
-                      {task.updatedAt ? format(new Date(task.updatedAt), 'MMM d') : 'Never'}
-                    </div>
-                  </div>
-              ))}
-              {initialTasks.filter(task => task.notes).length === 0 && (
-                <div className="text-center p-8 text-muted-foreground">
-                  <Quote className="h-8 w-8 text-muted-foreground/50 mx-auto mb-4" />
-                  <p>No notes found for this goal's tasks.</p>
-                  <p className="text-sm mt-2">Select a task to add notes.</p>
+          <Tabs defaultValue="standalone" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="standalone">Standalone Notes</TabsTrigger>
+              <TabsTrigger value="task-notes">Task Notes</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="standalone" className="mt-4">
+              <NotesManager />
+            </TabsContent>
+
+            <TabsContent value="task-notes" className="mt-4">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-medium">Task Notes</h2>
                 </div>
-              )}
-            </div>
-          </div>
+                <div className="space-y-2">
+                  {initialTasks
+                    .filter(task => task.notes)
+                    .map(task => (
+                      <div 
+                        key={task.id} 
+                        className={cn(
+                          "flex items-center justify-between p-4 border rounded-md hover:bg-accent/50 cursor-pointer",
+                          "transition-colors duration-200"
+                        )}
+                        onClick={() => setSelectedTask(task)}
+                      >
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <Quote className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <h3 className="font-medium truncate">{task.title}</h3>
+                        </div>
+                        <div className="text-xs text-muted-foreground shrink-0 ml-4">
+                          {task.updatedAt ? format(new Date(task.updatedAt), 'MMM d') : 'Never'}
+                        </div>
+                      </div>
+                  ))}
+                  {initialTasks.filter(task => task.notes).length === 0 && (
+                    <div className="text-center p-8 text-muted-foreground">
+                      <Quote className="h-8 w-8 text-muted-foreground/50 mx-auto mb-4" />
+                      <p>No notes found for this goal's tasks.</p>
+                      <p className="text-sm mt-2">Select a task to add notes.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         <TabsContent value="calendar">
