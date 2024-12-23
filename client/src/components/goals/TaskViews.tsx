@@ -44,6 +44,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [taskFilter, setTaskFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [isSaving, setIsSaving] = useState(false);
   const [goalFilter, setGoalFilter] = useState<number | 'all'>('all');
   const [showDatePicker, setShowDatePicker] = useState<{ taskId: number; date?: Date } | null>(null);
   const [showOverdueTasks, setShowOverdueTasks] = useState(true);
@@ -511,34 +512,56 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
 
                 {/* Notes Content */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Notes</label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">Notes</label>
+                  </div>
                   <div className="min-h-[200px] p-4 bg-accent/5 rounded-lg">
                     <textarea
                       className="w-full h-full min-h-[300px] bg-transparent resize-none focus:outline-none"
                       placeholder="Add notes for this task..."
                       value={selectedTask.notes || ''}
-                      onChange={async (e) => {
-                        try {
-                          await updateTask({
-                            taskId: selectedTask.id,
-                            notes: e.target.value
-                          });
-                          setSelectedTask({
-                            ...selectedTask,
-                            notes: e.target.value
-                          });
-                        } catch (error) {
-                          toast({
-                            variant: "destructive",
-                            title: "Error",
-                            description: "Failed to update notes"
-                          });
-                        }
+                      onChange={(e) => {
+                        setSelectedTask({
+                          ...selectedTask,
+                          notes: e.target.value
+                        });
                       }}
                     />
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Footer with Save Button */}
+            <div className="p-4 border-t bg-muted/40">
+              <Button 
+                className="w-full"
+                onClick={async () => {
+                  try {
+                    setIsSaving(true);
+                    await updateTask({
+                      taskId: selectedTask.id,
+                      notes: selectedTask.notes
+                    });
+                    toast({
+                      title: "Success",
+                      description: "Note saved successfully"
+                    });
+                  } catch (error) {
+                    console.error('Failed to save note:', error);
+                    toast({
+                      variant: "destructive",
+                      title: "Error",
+                      description: "Failed to save note"
+                    });
+                  } finally {
+                    setIsSaving(false);
+                  }
+                }}
+                disabled={isSaving}
+              >
+                {isSaving ? "Saving..." : "Save Changes"}
+              </Button>
             </div>
           </div>
         )}
