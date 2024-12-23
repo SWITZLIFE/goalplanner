@@ -1,16 +1,12 @@
 import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  email: text("email").unique().notNull(),
+  username: text("username").unique().notNull(),
   password: text("password").notNull(),
-  profilePhotoUrl: text("profile_photo_url"),
-  resetToken: text("reset_token"),
-  resetTokenExpiry: timestamp("reset_token_expiry"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const goals = pgTable("goals", {
@@ -18,29 +14,40 @@ export const goals = pgTable("goals", {
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description"),
-  targetDate: timestamp("target_date").notNull(),
-  progress: integer("progress").default(0).notNull(),
-  totalTasks: integer("total_tasks").default(0).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  targetDate: timestamp("target_date"),
+  progress: integer("progress").default(0),
+  totalTasks: integer("total_tasks").default(0),
   visionStatement: text("vision_statement"),
   visionResponses: text("vision_responses"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
   goalId: integer("goal_id").notNull().references(() => goals.id, { onDelete: "cascade" }),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  parentTaskId: integer("parent_task_id").references(() => tasks.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   completed: boolean("completed").default(false).notNull(),
-  estimatedMinutes: integer("estimated_minutes"),
-  totalMinutesSpent: integer("total_minutes_spent").default(0).notNull(),
-  plannedDate: timestamp("planned_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-  parentTaskId: integer("parent_task_id").references(() => tasks.id),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  plannedDate: timestamp("planned_date"),
+  estimatedMinutes: integer("estimated_minutes"),
   isSubtask: boolean("is_subtask").default(false).notNull(),
   notes: text("notes"),
   isAiGenerated: boolean("is_ai_generated").default(false).notNull(),
   order: integer("order"),
+});
+
+export const standaloneNotes = pgTable("standalone_notes", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  goalId: integer("goal_id").notNull().references(() => goals.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  content: text("content"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const futureMessages = pgTable("future_messages", {
@@ -80,6 +87,17 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   timeTrackingSessions: many(timeTracking),
 }));
 
+export const standaloneNotesRelations = relations(standaloneNotes, ({ one }) => ({
+  user: one(users, {
+    fields: [standaloneNotes.userId],
+    references: [users.id],
+  }),
+  goal: one(goals, {
+    fields: [standaloneNotes.goalId],
+    references: [goals.id],
+  }),
+}));
+
 export const futureMessagesRelations = relations(futureMessages, ({ one }) => ({
   user: one(users, {
     fields: [futureMessages.userId],
@@ -117,6 +135,9 @@ export const updateTaskSchema = selectTaskSchema.partial().extend({
   notes: z.string().optional().nullable(),
 });
 
+export const insertStandaloneNoteSchema = createInsertSchema(standaloneNotes);
+export const selectStandaloneNoteSchema = createSelectSchema(standaloneNotes);
+
 export const selectUserSchema = createSelectSchema(users);
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type SelectUser = typeof users.$inferSelect;
@@ -128,6 +149,8 @@ export type UpdateTask = z.infer<typeof updateTaskSchema>;
 export type Goal = BaseGoal & { tasks?: Task[] };
 export type FutureMessage = typeof futureMessages.$inferSelect;
 export type NewFutureMessage = typeof futureMessages.$inferInsert;
+export type StandaloneNote = typeof standaloneNotes.$inferSelect;
+export type NewStandaloneNote = typeof standaloneNotes.$inferInsert;
 
 export const rewards = pgTable("rewards", {
   id: serial("id").primaryKey(),
@@ -171,7 +194,6 @@ export const visionBoardImages = pgTable("vision_board_images", {
   position: integer("position").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
-
 
 // Relations for remaining tables
 export const rewardItemsRelations = relations(rewardItems, ({ many }) => ({
