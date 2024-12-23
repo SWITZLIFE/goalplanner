@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Clock, Calendar as CalendarIcon, CheckCircle2, Circle, Quote, X } from "lucide-react";
+import { Clock, Calendar as CalendarIcon, CheckCircle2, Circle, Quote, X, Link2 } from "lucide-react";
 import { VisionGenerator } from "./VisionGenerator";
 import { OverdueTasksDialog } from "./OverdueTasksDialog";
 
@@ -51,6 +51,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
   const [showOverdueTasks, setShowOverdueTasks] = useState(true);
   const { updateTask, createTask, updateGoal, goals } = useGoals();
   const { toast } = useToast();
+  const [notes, setNotes] = useState<any[]>([]); // Added state for standalone notes
 
   // Get overdue tasks
   const overdueTasks = initialTasks.filter(task => {
@@ -71,20 +72,20 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
 
   // Get all main tasks (non-subtasks) from the current goal's tasks
   const mainTasks = initialTasks.filter(task => !task.isSubtask);
-  
+
   // Get subtasks for a given parent task from the current goal's tasks
   const getSubtasks = (parentId: number) => initialTasks.filter(task => task.parentTaskId === parentId);
-  
+
   // Split main tasks into active and completed
   const activeMainTasks = mainTasks.filter(task => !task.completed);
   const completedMainTasks = mainTasks.filter(task => task.completed);
-  
+
   // For active view: Include active main tasks and ALL their subtasks
   const activeTasks = [
     ...activeMainTasks,
     ...activeMainTasks.flatMap(task => getSubtasks(task.id))
   ];
-  
+
   // For completed view: Include completed main tasks and ALL their subtasks
   const completedTasks = [
     ...completedMainTasks,
@@ -95,7 +96,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
   const getCalendarTasks = () => {
     // Use all tasks if filter is set to 'all', otherwise use only current goal's tasks
     const baseTasks = goalFilter === 'all' ? allTasks : initialTasks;
-    
+
     // Apply task status filter
     let filtered = baseTasks;
     if (taskFilter === 'active') {
@@ -112,12 +113,12 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
   const getFilteredTasks = () => {
     // Start with all available tasks
     let filtered = allTasks;
-    
+
     // First apply goal filter
     if (goalFilter !== 'all') {
       filtered = filtered.filter(task => task.goalId === Number(goalFilter));
     }
-    
+
     // Then apply task status filter
     if (taskFilter === 'active') {
       filtered = filtered.filter(task => !task.completed);
@@ -127,7 +128,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
 
     // Filter out tasks without planned dates for calendar view
     filtered = filtered.filter(task => task.plannedDate !== null);
-    
+
     return filtered;
   };
 
@@ -136,8 +137,8 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
     // Get filtered tasks based on current filters
     const filtered = getCalendarTasks();
     // Then filter by date
-    return filtered.filter(task => 
-      task.plannedDate && 
+    return filtered.filter(task =>
+      task.plannedDate &&
       format(new Date(task.plannedDate), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
     );
   };
@@ -148,11 +149,11 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
 
   const handleUpdateTaskDate = async (taskId: number, date: Date | undefined) => {
     try {
-      await updateTask({ 
+      await updateTask({
         taskId,
         plannedDate: date ? format(date, 'yyyy-MM-dd') : null
       });
-      
+
       // Update the selected task's date immediately in the UI
       if (selectedTask && selectedTask.id === taskId) {
         setSelectedTask({
@@ -160,9 +161,9 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
           plannedDate: date ? format(date, 'yyyy-MM-dd') : null
         });
       }
-      
+
       queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
-      
+
       toast({
         title: "Success",
         description: "Task date updated successfully"
@@ -179,9 +180,9 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
 
   const handleToggleComplete = async (task: Task) => {
     try {
-      await updateTask({ 
-        taskId: task.id, 
-        completed: !task.completed 
+      await updateTask({
+        taskId: task.id,
+        completed: !task.completed
       });
       // Update the selected task state immediately
       if (selectedTask) {
@@ -220,7 +221,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
         </TabsList>
 
         <TabsContent value="tasks">
-          <TaskList 
+          <TaskList
             tasks={activeTasks}
             goalId={goalId}
             onUpdateTaskDate={handleUpdateTaskDate}
@@ -228,7 +229,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
         </TabsContent>
 
         <TabsContent value="completed">
-          <TaskList 
+          <TaskList
             tasks={completedTasks}
             goalId={goalId}
             readOnly
@@ -236,60 +237,59 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
         </TabsContent>
 
         <TabsContent value="notes">
-          <Tabs defaultValue="standalone" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="standalone">Standalone Notes</TabsTrigger>
-              <TabsTrigger value="task-notes">Task Notes</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="standalone" className="mt-4">
-              <NotesManager />
-            </TabsContent>
-
-            <TabsContent value="task-notes" className="mt-4">
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-medium">Task Notes</h2>
-                </div>
-                <div className="space-y-2">
-                  {initialTasks
-                    .filter(task => task.notes)
-                    .map(task => (
-                      <div 
-                        key={task.id} 
-                        className={cn(
-                          "flex items-center justify-between p-4 border rounded-md hover:bg-accent/50 cursor-pointer",
-                          "transition-colors duration-200"
-                        )}
-                        onClick={() => setSelectedTask(task)}
-                      >
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <Quote className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <h3 className="font-medium truncate">{task.title}</h3>
-                        </div>
-                        <div className="text-xs text-muted-foreground shrink-0 ml-4">
-                          {task.updatedAt ? format(new Date(task.updatedAt), 'MMM d') : 'Never'}
-                        </div>
-                      </div>
-                  ))}
-                  {initialTasks.filter(task => task.notes).length === 0 && (
-                    <div className="text-center p-8 text-muted-foreground">
-                      <Quote className="h-8 w-8 text-muted-foreground/50 mx-auto mb-4" />
-                      <p>No notes found for this goal's tasks.</p>
-                      <p className="text-sm mt-2">Select a task to add notes.</p>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-medium">All Notes</h2>
+            </div>
+            <div className="space-y-2">
+              {/* Show standalone notes */}
+              {initialTasks
+                .filter(task => task.notes)
+                .concat(notes || [])
+                .sort((a, b) => {
+                  const dateA = new Date(a.updatedAt || a.createdAt);
+                  const dateB = new Date(b.updatedAt || b.createdAt);
+                  return dateB.getTime() - dateA.getTime();
+                })
+                .map(note => (
+                  <div
+                    key={note.id}
+                    className={cn(
+                      "flex items-center justify-between p-4 border rounded-md hover:bg-accent/50 cursor-pointer",
+                      "transition-colors duration-200"
+                    )}
+                    onClick={() => setSelectedTask(note)}
+                  >
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      {/* Use Link2 icon for task notes, Quote icon for standalone notes */}
+                      {note.goalId ? (
+                        <Link2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                      ) : (
+                        <Quote className="h-4 w-4 text-muted-foreground shrink-0" />
+                      )}
+                      <h3 className="font-medium truncate">{note.title}</h3>
                     </div>
-                  )}
+                    <div className="text-xs text-muted-foreground shrink-0 ml-4">
+                      {note.updatedAt ? format(new Date(note.updatedAt), 'MMM d') : format(new Date(note.createdAt), 'MMM d')}
+                    </div>
+                  </div>
+                ))}
+              {(initialTasks.filter(task => task.notes).length === 0 && (!notes || notes.length === 0)) && (
+                <div className="text-center p-8 text-muted-foreground">
+                  <Quote className="h-8 w-8 text-muted-foreground/50 mx-auto mb-4" />
+                  <p>No notes found.</p>
+                  <p className="text-sm mt-2">Create a new note or add notes to tasks.</p>
                 </div>
-              </div>
-            </TabsContent>
-          </Tabs>
+              )}
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="calendar">
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <div className="flex gap-2">
-                <select 
+                <select
                   className="border rounded-md p-2"
                   value={taskFilter}
                   onChange={(e) => setTaskFilter(e.target.value as 'all' | 'active' | 'completed')}
@@ -298,7 +298,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                   <option value="active">Active Tasks</option>
                   <option value="completed">Completed Tasks</option>
                 </select>
-                <select 
+                <select
                   className="border rounded-md p-2"
                   value={goalFilter}
                   onChange={(e) => setGoalFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
@@ -308,20 +308,20 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                 </select>
               </div>
               <div className="flex gap-2">
-                <button 
-                  onClick={() => window.print()} 
+                <button
+                  onClick={() => window.print()}
                   className="p-2 border rounded-md hover:bg-gray-100"
                 >
                   🖨️ Print
                 </button>
               </div>
             </div>
-            
+
             <div className="border rounded-lg overflow-hidden">
               <div className="bg-primary/5 p-4">
                 <h2 className="text-xl font-semibold">Task Calendar</h2>
                 <div className="flex justify-between items-center mt-2">
-                  <button 
+                  <button
                     className="p-1 hover:bg-gray-200 rounded"
                     onClick={() => {
                       const newDate = new Date(currentMonth);
@@ -334,7 +334,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                   <span className="font-medium">
                     {format(currentMonth, 'MMMM yyyy')}
                   </span>
-                  <button 
+                  <button
                     className="p-1 hover:bg-gray-200 rounded"
                     onClick={() => {
                       const newDate = new Date(currentMonth);
@@ -346,7 +346,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                   </button>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-7 text-center border-b">
                 {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(day => (
                   <div key={day} className="p-2 font-medium border-r last:border-r-0">
@@ -354,7 +354,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                   </div>
                 ))}
               </div>
-              
+
               <div className="grid grid-cols-7 divide-x divide-y">
                 {Array.from({ length: 35 }, (_, i) => {
                   const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
@@ -365,10 +365,10 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                   const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
                   const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
                   const dayTasks = tasksForDate(date);
-                  
+
                   return (
-                    <div 
-                      key={i} 
+                    <div
+                      key={i}
                       className={cn(
                         "min-h-[100px] p-2",
                         !isCurrentMonth && "bg-gray-50 text-gray-400",
@@ -383,18 +383,18 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                           .sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1))
                           .slice(0, 3)
                           .map(task => (
-                          <div 
-                            key={task.id}
-                            className={cn(
-                              "text-xs p-1 rounded truncate cursor-pointer hover:opacity-80",
-                              task.completed ? "bg-orange-100" : "bg-blue-100"
-                            )}
-                            title={task.title}
-                            onClick={() => setSelectedTask(task)}
-                          >
-                            {task.title}
-                          </div>
-                        ))}
+                            <div
+                              key={task.id}
+                              className={cn(
+                                "text-xs p-1 rounded truncate cursor-pointer hover:opacity-80",
+                                task.completed ? "bg-orange-100" : "bg-blue-100"
+                              )}
+                              title={task.title}
+                              onClick={() => setSelectedTask(task)}
+                            >
+                              {task.title}
+                            </div>
+                          ))}
                         {dayTasks.length > 3 && (
                           <button
                             className="text-xs text-primary hover:text-primary/80 font-medium"
@@ -402,8 +402,8 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                               e.stopPropagation();
                               // Show all tasks for this day
                               setSelectedDate(date);
-                              setSelectedTask({ 
-                                ...dayTasks[0], 
+                              setSelectedTask({
+                                ...dayTasks[0],
                                 title: `Tasks for ${format(date, 'MMMM d, yyyy')}`,
                                 isTaskList: true,
                                 dayTasks: dayTasks
@@ -440,22 +440,22 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                 </p>
               </div>
             )}
-            <VisionGenerator 
-              goalId={goalId} 
+            <VisionGenerator
+              goalId={goalId}
               onVisionGenerated={async (vision) => {
                 try {
                   if (!vision) {
                     throw new Error("No vision statement received");
                   }
-                  
+
                   const response = await fetch(`/api/goals/${goalId}`, {
                     method: 'PATCH',
                     headers: {
                       'Content-Type': 'application/json',
                     },
                     credentials: 'include',
-                    body: JSON.stringify({ 
-                      visionStatement: vision 
+                    body: JSON.stringify({
+                      visionStatement: vision
                     })
                   });
 
@@ -465,12 +465,12 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                   }
 
                   const updatedGoal = await response.json();
-                  
+
                   // Verify the update was successful
                   if (!updatedGoal.visionStatement) {
                     throw new Error("Vision statement was not saved correctly");
                   }
-                  
+
                   toast({
                     title: "Vision Updated",
                     description: "Your vision statement has been saved.",
@@ -486,7 +486,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                     variant: "destructive",
                   });
                 }
-              }} 
+              }}
             />
           </div>
         </TabsContent>
@@ -502,7 +502,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b">
               <div className="flex items-center gap-3">
-                <button 
+                <button
                   onClick={() => setSelectedTask(null)}
                   className="rounded-full p-2 hover:bg-accent/50"
                 >
@@ -548,7 +548,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
 
             {/* Footer with Save Button */}
             <div className="p-4 border-t bg-muted/40">
-              <Button 
+              <Button
                 className="w-full"
                 onClick={async () => {
                   try {
@@ -582,8 +582,8 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
       </div>
 
       {/* Date Picker Dialog */}
-      <Dialog 
-        open={showDatePicker !== null} 
+      <Dialog
+        open={showDatePicker !== null}
         onOpenChange={(open) => !open && setShowDatePicker(null)}
       >
         <DialogContent className="max-w-[min-content]">
