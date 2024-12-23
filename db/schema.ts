@@ -43,15 +43,6 @@ export const tasks = pgTable("tasks", {
   order: integer("order"),
 });
 
-export const notes = pgTable("notes", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  goalId: integer("goal_id").notNull().references(() => goals.id, { onDelete: "cascade" }),
-  taskId: integer("task_id").references(() => tasks.id, { onDelete: "cascade" }),
-  content: text("content").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
 export const futureMessages = pgTable("future_messages", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -87,21 +78,6 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
     references: [tasks.parentTaskId],
   }),
   timeTrackingSessions: many(timeTracking),
-}));
-
-export const notesRelations = relations(notes, ({ one }) => ({
-  user: one(users, {
-    fields: [notes.userId],
-    references: [users.id],
-  }),
-  goal: one(goals, {
-    fields: [notes.goalId],
-    references: [goals.id],
-  }),
-  task: one(tasks, {
-    fields: [notes.taskId],
-    references: [tasks.id],
-  }),
 }));
 
 export const futureMessagesRelations = relations(futureMessages, ({ one }) => ({
@@ -141,12 +117,6 @@ export const updateTaskSchema = selectTaskSchema.partial().extend({
   notes: z.string().optional().nullable(),
 });
 
-// Notes schemas and types
-export const insertNoteSchema = createInsertSchema(notes);
-export const selectNoteSchema = createSelectSchema(notes);
-export type Note = typeof notes.$inferSelect;
-export type NewNote = typeof notes.$inferInsert;
-
 export const selectUserSchema = createSelectSchema(users);
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type SelectUser = typeof users.$inferSelect;
@@ -183,7 +153,7 @@ export const purchasedRewards = pgTable("purchased_rewards", {
   purchasedAt: timestamp("purchased_at").defaultNow().notNull(),
 });
 
-export const timeTracking = pgTable("timeTracking", {
+export const timeTracking = pgTable("time_tracking", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
@@ -201,6 +171,7 @@ export const visionBoardImages = pgTable("vision_board_images", {
   position: integer("position").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
 
 // Relations for remaining tables
 export const rewardItemsRelations = relations(rewardItems, ({ many }) => ({
