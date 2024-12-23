@@ -125,19 +125,15 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         taskId: subtask.id,
         title: subtask.title,
         isSubtask: false,
-        parentTaskId: null
+        parentTaskId: null,
+        // Include all existing task properties to preserve them
+        completed: subtask.completed,
+        // Convert Date objects to ISO strings for the API
+        plannedDate: subtask.plannedDate ? new Date(subtask.plannedDate).toISOString() : null,
+        estimatedMinutes: subtask.estimatedMinutes || undefined,
+        notes: subtask.notes || undefined,
+        goalId: subtask.goalId
       };
-
-      // Only include optional fields if they exist
-      if (subtask.notes) {
-        updatePayload.notes = subtask.notes;
-      }
-      if (subtask.plannedDate) {
-        updatePayload.plannedDate = subtask.plannedDate;
-      }
-      if (typeof subtask.estimatedMinutes === 'number') {
-        updatePayload.estimatedMinutes = subtask.estimatedMinutes;
-      }
 
       await updateTask(updatePayload);
       
