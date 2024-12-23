@@ -5,7 +5,6 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import type { Task as BaseTask } from "@db/schema";
 import { Button } from "@/components/ui/button";
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 
 // Extend the Task type to include properties needed for the task list dialog
 interface Task extends Omit<BaseTask, 'plannedDate' | 'createdAt'> {
@@ -237,88 +236,36 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
         </TabsContent>
 
         <TabsContent value="notes">
-          <ResizablePanelGroup direction="horizontal">
-            <ResizablePanel defaultSize={70}>
-              <div className="h-full p-4 space-y-4">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-medium">Task Notes</h2>
-                </div>
-                <div className="space-y-2">
-                  {initialTasks
-                    .filter(task => task.notes)
-                    .map(task => (
-                      <div 
-                        key={task.id} 
-                        className={cn(
-                          "flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 cursor-pointer",
-                          selectedTask?.id === task.id && "bg-accent"
-                        )}
-                        onClick={() => setSelectedTask(task)}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Quote className="h-4 w-4 text-muted-foreground" />
-                          <h3 className="font-medium">{task.title}</h3>
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {task.updatedAt ? format(new Date(task.updatedAt), 'MMM d, yyyy h:mm a') : 'Never'}
-                        </div>
-                      </div>
-                  ))}
-                  {initialTasks.filter(task => task.notes).length === 0 && (
-                    <div className="text-center p-8 text-muted-foreground">
-                      <p>No notes found for this goal's tasks.</p>
-                      <p className="text-sm mt-2">Select a task to add notes.</p>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-medium">Task Notes</h2>
+            </div>
+            <div className="space-y-2">
+              {initialTasks
+                .filter(task => task.notes)
+                .map(task => (
+                  <div 
+                    key={task.id} 
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 cursor-pointer"
+                    onClick={() => setSelectedTask(task)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Quote className="h-4 w-4 text-muted-foreground" />
+                      <h3 className="font-medium">{task.title}</h3>
                     </div>
-                  )}
-                </div>
-              </div>
-            </ResizablePanel>
-            
-            <ResizableHandle />
-            
-            <ResizablePanel defaultSize={30}>
-              {selectedTask && (
-                <div className="h-full p-4 border-l space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-medium">{selectedTask.title}</h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedTask(null)}
-                    >
-                      ×
-                    </Button>
+                    <div className="text-xs text-muted-foreground">
+                      {task.updatedAt ? format(new Date(task.updatedAt), 'MMM d, yyyy h:mm a') : 'Never'}
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Notes</label>
-                    <textarea
-                      className="w-full min-h-[300px] p-2 border rounded-md"
-                      placeholder="Add notes for this task..."
-                      value={selectedTask.notes || ''}
-                      onChange={async (e) => {
-                        try {
-                          await updateTask({
-                            taskId: selectedTask.id,
-                            notes: e.target.value
-                          });
-                          setSelectedTask({
-                            ...selectedTask,
-                            notes: e.target.value
-                          });
-                        } catch (error) {
-                          toast({
-                            variant: "destructive",
-                            title: "Error",
-                            description: "Failed to update notes"
-                          });
-                        }
-                      }}
-                    />
-                  </div>
+              ))}
+              {initialTasks.filter(task => task.notes).length === 0 && (
+                <div className="text-center p-8 text-muted-foreground">
+                  <p>No notes found for this goal's tasks.</p>
+                  <p className="text-sm mt-2">Select a task to add notes.</p>
                 </div>
               )}
-            </ResizablePanel>
-          </ResizablePanelGroup>
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="calendar">
