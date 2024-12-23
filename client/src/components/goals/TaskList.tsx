@@ -157,14 +157,9 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         taskId,
         completed,
         title: task.title,
-        isSubtask: task.isSubtask,
-        parentTaskId: task.parentTaskId,
-        // Format plannedDate if it exists
-        plannedDate: task.plannedDate 
-          ? format(new Date(task.plannedDate), 'yyyy-MM-dd')
-          : null,
-        estimatedMinutes: task.estimatedMinutes || undefined,
-        notes: task.notes || null
+        plannedDate: task.plannedDate,
+        estimatedMinutes: task.estimatedMinutes,
+        notes: task.notes
       };
 
       await updateTask(taskUpdate);
