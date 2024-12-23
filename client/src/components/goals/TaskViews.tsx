@@ -505,10 +505,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                   <h3 className="text-lg font-medium">{selectedTask.title}</h3>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <CalendarIcon className="h-4 w-4" />
-                    <span>Created on {format(selectedTask.createdAt, 'MMMM d, yyyy')}</span>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    From goal: {goals.find(g => g.id === selectedTask.goalId)?.title}
+                    <span>Created on {format(new Date(selectedTask.createdAt), 'MMMM d, yyyy')}</span>
                   </div>
                 </div>
 
