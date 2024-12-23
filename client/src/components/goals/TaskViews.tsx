@@ -425,7 +425,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                           <h4 className="font-medium">{task.title}</h4>
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {format(new Date(task.updatedAt), "MMM d, yyyy")}
+                          {format(new Date(), "MMM d, yyyy")}
                         </div>
                       </div>
                       <p className="text-sm text-muted-foreground">{task.notes}</p>
