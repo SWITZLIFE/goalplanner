@@ -540,12 +540,26 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                     </div>
 
                     {/* Task metadata */}
-                    {selectedTask.plannedDate && (
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-muted-foreground text-sm">
                         <CalendarIcon className="h-4 w-4" />
-                        <span>Due: {format(new Date(selectedTask.plannedDate), 'MMMM d, yyyy')}</span>
+                        <span>
+                          {selectedTask.plannedDate 
+                            ? `Due: ${format(new Date(selectedTask.plannedDate), 'MMMM d, yyyy')}`
+                            : "No due date set"}
+                        </span>
                       </div>
-                    )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowDatePicker({ 
+                          taskId: selectedTask.id, 
+                          date: selectedTask.plannedDate ? new Date(selectedTask.plannedDate) : undefined 
+                        })}
+                      >
+                        Change Date
+                      </Button>
+                    </div>
                   </>
                 )}
               </div>
