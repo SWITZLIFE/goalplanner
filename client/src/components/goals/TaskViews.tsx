@@ -7,10 +7,14 @@ import type { Task as BaseTask } from "@db/schema";
 import { Button } from "@/components/ui/button";
 
 // Extend the Task type to include properties needed for the task list dialog
-interface Task extends BaseTask {
+interface Task extends Omit<BaseTask, 'plannedDate' | 'createdAt'> {
   isTaskList?: boolean;
   dayTasks?: Task[];
+  updatedAt?: string;
+  plannedDate: string | null;
+  createdAt: string;
 }
+
 import { useGoals } from "@/hooks/use-goals";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -60,7 +64,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
   // Get all tasks from all goals
   const allTasks = goals.reduce<Task[]>((acc, g) => {
     if (g.tasks) {
-      return [...acc, ...g.tasks];
+      return [...acc, ...g.tasks as Task[]];
     }
     return acc;
   }, []);
@@ -180,10 +184,12 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
         completed: !task.completed 
       });
       // Update the selected task state immediately
-      setSelectedTask({
-        ...task,
-        completed: !task.completed
-      });
+      if (selectedTask) {
+        setSelectedTask({
+          ...selectedTask,
+          completed: !task.completed
+        });
+      }
     } catch (error) {
       console.error('Failed to toggle task completion:', error);
       toast({
@@ -205,9 +211,10 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
       )}
 
       <Tabs defaultValue="tasks" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="tasks">Tasks</TabsTrigger>
           <TabsTrigger value="completed">Completed</TabsTrigger>
+          <TabsTrigger value="notes">Notes</TabsTrigger>
           <TabsTrigger value="calendar">Calendar</TabsTrigger>
           <TabsTrigger value="vision">Your Why</TabsTrigger>
         </TabsList>
@@ -226,6 +233,39 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
             goalId={goalId}
             readOnly
           />
+        </TabsContent>
+
+        <TabsContent value="notes">
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-medium">Task Notes</h2>
+            </div>
+            <div className="space-y-2">
+              {initialTasks
+                .filter(task => task.notes)
+                .map(task => (
+                  <div 
+                    key={task.id} 
+                    className="p-4 border rounded-lg hover:bg-accent/50 cursor-pointer space-y-2"
+                    onClick={() => setSelectedTask(task)}
+                  >
+                    <h3 className="font-medium">{task.title}</h3>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                      {task.notes}
+                    </p>
+                    <div className="text-xs text-muted-foreground">
+                      Last updated: {task.updatedAt ? format(new Date(task.updatedAt), 'MMM d, yyyy h:mm a') : 'Never'}
+                    </div>
+                  </div>
+              ))}
+              {initialTasks.filter(task => task.notes).length === 0 && (
+                <div className="text-center p-8 text-muted-foreground">
+                  <p>No notes found for this goal's tasks.</p>
+                  <p className="text-sm mt-2">Select a task to add notes.</p>
+                </div>
+              )}
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="calendar">
@@ -307,10 +347,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                   const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), i - mondayStartDay + 1);
                   const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
                   const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
-                  const dayTasks = getCalendarTasks().filter(task => 
-                    task.plannedDate && 
-                    format(new Date(task.plannedDate), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
-                  );
+                  const dayTasks = tasksForDate(date);
                   
                   return (
                     <div 
@@ -325,7 +362,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                         {format(date, 'd')}
                       </div>
                       <div className="space-y-1">
-                        {[...dayTasks]
+                        {dayTasks
                           .sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1))
                           .slice(0, 3)
                           .map(task => (
@@ -444,110 +481,111 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
         onOpenChange={(open) => !open && setSelectedTask(null)}
       >
         <DialogContent className="max-w-xl">
-            {selectedTask && (
-              <div className="space-y-4">
-                {selectedTask.isTaskList ? (
-                  <>
-                    <DialogHeader>
-                      <DialogTitle className="text-xl font-semibold">
-                        {selectedTask.title}
-                      </DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-2">
-                      {[...selectedTask.dayTasks]
-                        .sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1))
-                        .map(task => (
+          {selectedTask && (
+            <div className="space-y-4">
+              {selectedTask.isTaskList ? (
+                <>
+                  <DialogHeader>
+                    <DialogTitle className="text-xl font-semibold">
+                      {selectedTask.title}
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-2">
+                    {selectedTask.dayTasks && [...selectedTask.dayTasks]
+                      .sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1))
+                      .map(task => (
+                      <div 
+                        key={task.id}
+                        className="flex items-center justify-between p-2 border rounded-lg hover:bg-accent/50 cursor-pointer"
+                      >
                         <div 
-                          key={task.id}
-                          className="flex items-center justify-between p-2 border rounded-lg hover:bg-accent/50 cursor-pointer"
+                          className="flex items-center gap-2 flex-1"
+                          onClick={() => handleToggleComplete(task)}
                         >
-                          <div 
-                            className="flex items-center gap-2 flex-1"
-                            onClick={() => handleToggleComplete(task)}
-                          >
-                            {task.completed ? (
-                              <CheckCircle2 className="h-4 w-4 text-green-500 hover:text-green-600" />
-                            ) : (
-                              <Circle className="h-4 w-4 text-blue-500 hover:text-blue-600" />
-                            )}
-                            <span className={cn(
-                              task.completed && "line-through text-muted-foreground"
-                            )}>{task.title}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                            {task.estimatedMinutes && (
-                              <>
-                                <Clock className="h-4 w-4" />
-                                <span>{task.estimatedMinutes}m</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <DialogHeader>
-                      <DialogTitle>
-                        <div className="flex items-center gap-3">
-                          <div 
-                            className="cursor-pointer"
-                            onClick={() => handleToggleComplete(selectedTask)}
-                          >
-                            {selectedTask.completed ? (
-                              <CheckCircle2 className="h-5 w-5 text-green-500 hover:text-green-600" />
-                            ) : (
-                              <Circle className="h-5 w-5 text-blue-500 hover:text-blue-600" />
-                            )}
-                          </div>
+                          {task.completed ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500 hover:text-green-600" />
+                          ) : (
+                            <Circle className="h-4 w-4 text-blue-500 hover:text-blue-600" />
+                          )}
                           <span className={cn(
-                            "text-xl font-semibold",
-                            selectedTask.completed && "line-through text-muted-foreground"
-                          )}>
-                            {selectedTask.title}
-                          </span>
+                            task.completed && "line-through text-muted-foreground"
+                          )}>{task.title}</span>
                         </div>
-                      </DialogTitle>
-                    </DialogHeader>
+                        <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                          {task.estimatedMinutes && (
+                            <>
+                              <Clock className="h-4 w-4" />
+                              <span>{task.estimatedMinutes}m</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <DialogHeader>
+                    <DialogTitle>
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="cursor-pointer"
+                          onClick={() => handleToggleComplete(selectedTask)}
+                        >
+                          {selectedTask.completed ? (
+                            <CheckCircle2 className="h-5 w-5 text-green-500 hover:text-green-600" />
+                          ) : (
+                            <Circle className="h-5 w-5 text-blue-500 hover:text-blue-600" />
+                          )}
+                        </div>
+                        <span className={cn(
+                          "text-xl font-semibold",
+                          selectedTask.completed && "line-through text-muted-foreground"
+                        )}>
+                          {selectedTask.title}
+                        </span>
+                      </div>
+                    </DialogTitle>
+                  </DialogHeader>
 
-                    {/* Goal context */}
-                    <div className="text-sm text-muted-foreground">
-                      From goal: {goals.find(g => g.id === selectedTask.goalId)?.title}
-                    </div>
+                  {/* Goal context */}
+                  <div className="text-sm text-muted-foreground">
+                    From goal: {goals.find(g => g.id === selectedTask.goalId)?.title}
+                  </div>
 
-                    {/* Subtasks */}
-                    <div className="space-y-2">
-                      {initialTasks
-                        .filter(task => task.parentTaskId === selectedTask.id)
-                        .sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1))
-                        .map(subtask => (
-                          <div 
-                            key={subtask.id}
-                            className="flex items-center gap-2 p-2 border rounded-lg hover:bg-accent/50 cursor-pointer"
-                            onClick={() => handleToggleComplete(subtask)}
-                          >
-                            {subtask.completed ? (
-                              <CheckCircle2 className="h-4 w-4 text-green-500 hover:text-green-600" />
-                            ) : (
-                              <Circle className="h-4 w-4 text-blue-500 hover:text-blue-600" />
-                            )}
-                            <span className={cn(
-                              subtask.completed && "line-through text-muted-foreground"
-                            )}>
-                              {subtask.title}
-                            </span>
-                            {subtask.estimatedMinutes && (
-                              <div className="flex items-center gap-1 text-muted-foreground text-sm ml-auto">
-                                <Clock className="h-3 w-3" />
-                                <span>{subtask.estimatedMinutes}m</span>
-                              </div>
-                            )}
-                          </div>
-                      ))}
-                    </div>
+                  {/* Subtasks */}
+                  <div className="space-y-2">
+                    {initialTasks
+                      .filter(task => task.parentTaskId === selectedTask.id)
+                      .sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1))
+                      .map(subtask => (
+                        <div 
+                          key={subtask.id}
+                          className="flex items-center gap-2 p-2 border rounded-lg hover:bg-accent/50 cursor-pointer"
+                          onClick={() => handleToggleComplete(subtask)}
+                        >
+                          {subtask.completed ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500 hover:text-green-600" />
+                          ) : (
+                            <Circle className="h-4 w-4 text-blue-500 hover:text-blue-600" />
+                          )}
+                          <span className={cn(
+                            subtask.completed && "line-through text-muted-foreground"
+                          )}>
+                            {subtask.title}
+                          </span>
+                          {subtask.estimatedMinutes && (
+                            <div className="flex items-center gap-1 text-muted-foreground text-sm ml-auto">
+                              <Clock className="h-3 w-3" />
+                              <span>{subtask.estimatedMinutes}m</span>
+                            </div>
+                          )}
+                        </div>
+                    ))}
+                  </div>
 
-                    {/* Task metadata */}
+                  {/* Task metadata */}
+                  <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-muted-foreground text-sm">
                         <CalendarIcon className="h-4 w-4" />
@@ -568,11 +606,41 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                         Change Date
                       </Button>
                     </div>
-                  </>
-                )}
-              </div>
-            )}
-          </DialogContent>
+
+                    {/* Notes Section */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Notes</label>
+                      <textarea
+                        className="w-full min-h-[100px] p-2 border rounded-md"
+                        placeholder="Add notes for this task..."
+                        value={selectedTask.notes || ''}
+                        onChange={async (e) => {
+                          try {
+                            await updateTask({
+                              taskId: selectedTask.id,
+                              notes: e.target.value
+                            });
+                            // Update the selected task state immediately
+                            setSelectedTask({
+                              ...selectedTask,
+                              notes: e.target.value
+                            });
+                          } catch (error) {
+                            toast({
+                              variant: "destructive",
+                              title: "Error",
+                              description: "Failed to update notes"
+                            });
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </DialogContent>
       </Dialog>
 
       {/* Date Picker Dialog */}
