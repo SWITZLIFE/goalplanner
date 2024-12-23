@@ -120,22 +120,22 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
 
   const handleConvertToTask = async (subtask: Task) => {
     try {
-      // Create the update payload with correct types
-      const updatePayload = {
+      // Format the date string correctly if it exists
+      const plannedDate = subtask.plannedDate 
+        ? format(new Date(subtask.plannedDate), 'yyyy-MM-dd')
+        : null;
+
+      await updateTask({
         taskId: subtask.id,
         title: subtask.title,
-        isSubtask: false,
-        parentTaskId: null,
-        // Include all existing task properties to preserve them
+        isSubtask: false, // Mark as main task
+        parentTaskId: null, // Remove parent reference
         completed: subtask.completed,
-        // Convert Date objects to ISO strings for the API
-        plannedDate: subtask.plannedDate ? new Date(subtask.plannedDate).toISOString() : null,
+        plannedDate,
         estimatedMinutes: subtask.estimatedMinutes || undefined,
-        notes: subtask.notes || undefined,
+        notes: subtask.notes || null,
         goalId: subtask.goalId
-      };
-
-      await updateTask(updatePayload);
+      });
       
       toast({
         title: "Success",
@@ -156,16 +156,18 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
     if (!task) return;
 
     try {
-      // Update the task's completion status while preserving all other properties
       const taskUpdate = {
         taskId,
         completed,
         title: task.title,
-        notes: task.notes,
-        estimatedMinutes: task.estimatedMinutes,
-        plannedDate: task.plannedDate,
         isSubtask: task.isSubtask,
-        parentTaskId: task.parentTaskId
+        parentTaskId: task.parentTaskId,
+        // Format plannedDate if it exists
+        plannedDate: task.plannedDate 
+          ? format(new Date(task.plannedDate), 'yyyy-MM-dd')
+          : null,
+        estimatedMinutes: task.estimatedMinutes || undefined,
+        notes: task.notes || null
       };
 
       await updateTask(taskUpdate);

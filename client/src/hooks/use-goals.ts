@@ -104,7 +104,10 @@ export function useGoals() {
       title,
       estimatedMinutes,
       plannedDate,
-      notes
+      notes,
+      isSubtask,
+      parentTaskId,
+      goalId
     }: { 
       taskId: number; 
       completed?: boolean; 
@@ -112,11 +115,23 @@ export function useGoals() {
       estimatedMinutes?: number;
       plannedDate?: string | null;
       notes?: string | null;
+      isSubtask?: boolean;
+      parentTaskId?: number | null;
+      goalId?: number;
     }) => {
       const res = await fetch(`/api/tasks/${taskId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ completed, title, estimatedMinutes, plannedDate, notes }),
+        body: JSON.stringify({ 
+          completed, 
+          title, 
+          estimatedMinutes, 
+          plannedDate, 
+          notes,
+          isSubtask,
+          parentTaskId,
+          goalId
+        }),
       });
       if (!res.ok) throw new Error("Failed to update task");
       return res.json();
