@@ -580,7 +580,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
         open={showDatePicker !== null} 
         onOpenChange={(open) => !open && setShowDatePicker(null)}
       >
-        <DialogContent>
+        <DialogContent className="max-w-[min-content]">
           <DialogHeader>
             <DialogTitle>Select Task Date</DialogTitle>
           </DialogHeader>

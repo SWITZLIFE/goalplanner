@@ -87,7 +87,7 @@ export function OverdueTasksDialog({ tasks, onClose, onUpdateTaskDate }: Overdue
 
         {selectedTaskId && (
           <Dialog open={true} onOpenChange={() => setSelectedTaskId(null)}>
-            <DialogContent>
+            <DialogContent className="max-w-[min-content]">
               <DialogHeader>
                 <DialogTitle>Select New Date</DialogTitle>
               </DialogHeader>
