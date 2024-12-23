@@ -13,7 +13,6 @@ import { getCoachingAdvice } from "./coaching";
 import { setupAuth } from "./auth";
 import { openai } from "./openai";
 import { uploadFileToSupabase } from './supabase';
-import notesRouter from './notes';
 
 // Configure multer for handling file uploads
 const upload = multer({
@@ -40,9 +39,6 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 export function registerRoutes(app: Express): Server {
   // Setup authentication middleware and routes first
   setupAuth(app);
-  
-  // Register notes routes
-  app.use(notesRouter);
 
   // Profile photo upload route
   app.post("/api/user/profile-photo", requireAuth, upload.single('photo'), async (req, res) => {
@@ -546,17 +542,8 @@ export function registerRoutes(app: Express): Server {
       if (plannedDate !== undefined) {
         updateData.plannedDate = plannedDate ? new Date(plannedDate) : null;
       }
-
-      // If notes are provided, create/update them in the notes table
       if (notes !== undefined) {
-        await db.insert(notes).values({
-          title: "Task Note",
-          content: notes,
-          goalId: task.goalId,
-          taskId: task.id,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
+        updateData.notes = notes;
       }
 
       console.log('Updating task with data:', { taskId, updateData });
