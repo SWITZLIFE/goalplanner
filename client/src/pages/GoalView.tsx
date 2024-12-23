@@ -7,7 +7,7 @@ import { CreateGoalDialog } from "@/components/goals/CreateGoalDialog";
 import { GoalCard } from "@/components/goals/GoalCard";
 import { CoinBalance } from "@/components/rewards/CoinBalance";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, Trash2, Gift, BarChart2 } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import {
@@ -68,12 +68,26 @@ export default function GoalView() {
               </p>
             </div>
             <div className="flex space-x-2">
-                <Link href="/">
-                  <Button variant="ghost" size="sm">
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back
-                  </Button>
-                </Link>
+                <div className="flex items-center gap-2">
+                  <Link href="/">
+                    <Button variant="ghost" size="sm">
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Back
+                    </Button>
+                  </Link>
+                  <Link href="/rewards">
+                    <Button variant="ghost" size="sm">
+                      <Gift className="h-4 w-4 mr-2" />
+                      Reward Store
+                    </Button>
+                  </Link>
+                  <Link href="/analytics">
+                    <Button variant="ghost" size="sm">
+                      <BarChart2 className="h-4 w-4 mr-2" />
+                      View Analytics
+                    </Button>
+                  </Link>
+                </div>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <button className="text-destructive hover:text-destructive/80 transition-colors">
