@@ -1,8 +1,4 @@
-import { useState, useCallback } from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import Link from "@tiptap/extension-link";
-import Image from "@tiptap/extension-image";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,27 +21,13 @@ export function NoteEditor({
   readOnly = false 
 }: NoteEditorProps) {
   const [title, setTitle] = useState(initialTitle);
+  const [content, setContent] = useState(initialContent || "");
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Link.configure({
-        openOnClick: false,
-      }),
-      Image.configure({
-        inline: true,
-        allowBase64: true,
-      }),
-    ],
-    content: initialContent,
-    editable: !readOnly,
-  });
-
   const handleSave = async () => {
-    if (!editor || !title.trim()) {
+    if (!title.trim()) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -90,10 +72,13 @@ export function NoteEditor({
         />
       </div>
 
-      <div className="min-h-[400px] border rounded-lg p-4">
-        <EditorContent 
-          editor={editor} 
-          className="prose max-w-none min-h-[400px] focus:outline-none"
+      <div className="min-h-[400px] p-4 bg-accent/5 rounded-lg">
+        <textarea
+          className="w-full h-full min-h-[300px] bg-transparent resize-none focus:outline-none"
+          placeholder="Add your note content here..."
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          disabled={readOnly}
         />
       </div>
 
@@ -104,7 +89,31 @@ export function NoteEditor({
               Cancel
             </Button>
           )}
-          <Button onClick={handleSave} disabled={isSaving}>
+          <Button 
+            onClick={async () => {
+              try {
+                setIsSaving(true);
+                await onSave?.({
+                  title: title.trim(),
+                  content: content
+                });
+                toast({
+                  title: "Success",
+                  description: "Note saved successfully"
+                });
+              } catch (error) {
+                console.error('Failed to save note:', error);
+                toast({
+                  variant: "destructive",
+                  title: "Error",
+                  description: "Failed to save note"
+                });
+              } finally {
+                setIsSaving(false);
+              }
+            }} 
+            disabled={isSaving}
+          >
             {isSaving ? "Saving..." : "Save"}
           </Button>
         </div>
