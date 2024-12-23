@@ -4,6 +4,7 @@ import { TaskList } from "./TaskList";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import type { Task as BaseTask } from "@db/schema";
+import { NotesManager } from "@/components/notes/NotesManager";
 import { Button } from "@/components/ui/button";
 
 // Extend the Task type to include properties needed for the task list dialog
