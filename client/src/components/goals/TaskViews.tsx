@@ -398,8 +398,9 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
               </Button>
             </div>
             <div className="grid gap-4">
+              {/* Goal Notes */}
               {goal.notes?.map((note) => (
-                <Card key={note.id} className="p-4">
+                <Card key={`goal-note-${note.id}`} className="p-4">
                   <div className="space-y-2">
                     <div className="flex justify-between items-start">
                       <h3 className="font-medium">{note.title}</h3>
@@ -410,7 +411,30 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                     <p className="text-sm text-muted-foreground">{note.content}</p>
                   </div>
                 </Card>
-              )) || (
+              ))}
+
+              {/* Task Notes */}
+              {initialTasks
+                .filter(task => task.notes)
+                .map(task => (
+                  <Card key={`task-note-${task.id}`} className="p-4 border-l-4 border-l-primary/20">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-medium text-sm text-muted-foreground">Note for task:</h3>
+                          <h4 className="font-medium">{task.title}</h4>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {format(new Date(task.updatedAt), "MMM d, yyyy")}
+                        </div>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{task.notes}</p>
+                    </div>
+                  </Card>
+              ))}
+
+              {/* Empty State */}
+              {(!goal.notes?.length && !initialTasks.some(task => task.notes)) && (
                 <div className="text-center py-8 text-muted-foreground">
                   No notes yet. Click "Add Note" to create your first note for this goal.
                 </div>
