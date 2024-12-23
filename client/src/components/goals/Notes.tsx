@@ -15,6 +15,11 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { Pencil, Trash2, Link } from "lucide-react";
 
+interface Task {
+  id: number;
+  title: string;
+}
+
 interface Note {
   id: number;
   title: string;
@@ -23,6 +28,7 @@ interface Note {
   taskId: number | null;
   createdAt: string;
   updatedAt: string;
+  task?: Task;
 }
 
 interface NotesProps {
@@ -184,14 +190,19 @@ export function Notes({ goalId }: NotesProps) {
                   </CardDescription>
                 </div>
                 <div className="flex gap-2">
-                  {note.taskId && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="Linked to task"
-                    >
-                      <Link className="h-4 w-4" />
-                    </Button>
+                  {note.task && (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title={`Linked to task: ${note.task.title}`}
+                      >
+                        <Link className="h-4 w-4" />
+                      </Button>
+                      <span className="text-sm text-muted-foreground">
+                        Task: {note.task.title}
+                      </span>
+                    </div>
                   )}
                   <Button
                     variant="ghost"

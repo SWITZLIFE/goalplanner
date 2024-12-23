@@ -12,6 +12,9 @@ router.get("/api/goals/:goalId/notes", async (req, res) => {
     const allNotes = await db.query.notes.findMany({
       where: eq(notes.goalId, goalId),
       orderBy: desc(notes.createdAt),
+      with: {
+        task: true
+      }
     });
     res.json(allNotes);
   } catch (error) {
