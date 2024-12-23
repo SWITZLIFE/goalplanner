@@ -144,29 +144,13 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
 
   const handleUpdateTaskDate = async (taskId: number, date: Date | undefined) => {
     try {
-      const task = initialTasks.find(t => t.id === taskId);
-      if (!task) return;
-      
       await updateTask({ 
-        taskId, 
-        title: task.title,
-        plannedDate: date ? format(date, 'yyyy-MM-dd') : null,
-        completed: task.completed,
-        estimatedMinutes: task.estimatedMinutes,
-        notes: task.notes
+        taskId,
+        plannedDate: date ? format(date, 'yyyy-MM-dd') : null
       });
-
-      // Update the selected task state if it's currently selected
-      if (selectedTask?.id === taskId) {
-        setSelectedTask({
-          ...selectedTask,
-          plannedDate: date ? format(date, 'yyyy-MM-dd') : null
-        });
-      }
-
-      // Force a refresh of the tasks data
+      
       queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
-
+      
       toast({
         title: "Success",
         description: "Task date updated successfully"
