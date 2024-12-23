@@ -595,6 +595,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
               }
             }}
             className="rounded-md border"
+            weekStartsOn={1}
           />
         </DialogContent>
       </Dialog>
