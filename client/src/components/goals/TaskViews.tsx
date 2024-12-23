@@ -246,18 +246,16 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                 .map(task => (
                   <div 
                     key={task.id} 
-                    className="p-4 border rounded-lg hover:bg-accent/50 cursor-pointer space-y-2"
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 cursor-pointer"
                     onClick={() => setSelectedTask(task)}
                   >
-                    <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-2">
+                      <Quote className="h-4 w-4 text-muted-foreground" />
                       <h3 className="font-medium">{task.title}</h3>
-                      <div className="text-xs text-muted-foreground">
-                        {task.updatedAt ? format(new Date(task.updatedAt), 'MMM d, yyyy h:mm a') : 'Never'}
-                      </div>
                     </div>
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {task.notes}
-                    </p>
+                    <div className="text-xs text-muted-foreground">
+                      {task.updatedAt ? format(new Date(task.updatedAt), 'MMM d, yyyy h:mm a') : 'Never'}
+                    </div>
                   </div>
               ))}
               {initialTasks.filter(task => task.notes).length === 0 && (
