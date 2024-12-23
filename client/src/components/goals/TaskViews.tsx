@@ -149,6 +149,14 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
         plannedDate: date ? format(date, 'yyyy-MM-dd') : null
       });
       
+      // Update the selected task's date immediately in the UI
+      if (selectedTask && selectedTask.id === taskId) {
+        setSelectedTask({
+          ...selectedTask,
+          plannedDate: date ? format(date, 'yyyy-MM-dd') : null
+        });
+      }
+      
       queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
       
       toast({
