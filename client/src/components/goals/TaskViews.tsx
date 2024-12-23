@@ -150,8 +150,22 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
       await updateTask({ 
         taskId, 
         title: task.title,
-        plannedDate: date ? format(date, 'yyyy-MM-dd') : null
+        plannedDate: date ? format(date, 'yyyy-MM-dd') : null,
+        completed: task.completed,
+        estimatedMinutes: task.estimatedMinutes,
+        notes: task.notes
       });
+
+      // Update the selected task state if it's currently selected
+      if (selectedTask?.id === taskId) {
+        setSelectedTask({
+          ...selectedTask,
+          plannedDate: date ? format(date, 'yyyy-MM-dd') : null
+        });
+      }
+
+      // Force a refresh of the tasks data
+      queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
 
       toast({
         title: "Success",
