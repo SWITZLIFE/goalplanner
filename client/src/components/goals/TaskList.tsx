@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, ChevronRight, StickyNote } from "lucide-react";
+import { Plus, Trash2, ChevronRight, StickyNote, ArrowUpCircle } from "lucide-react";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import type { Task } from "@db/schema";
 import { useGoals } from "@/hooks/use-goals";
@@ -114,6 +114,31 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         variant: "destructive",
         title: "Error",
         description: "Failed to delete task"
+      });
+    }
+  };
+
+  const handleConvertToTask = async (subtask: Task) => {
+    try {
+      await updateTask({
+        taskId: subtask.id,
+        isSubtask: false,
+        parentTaskId: null,
+        title: subtask.title,
+        notes: subtask.notes,
+        plannedDate: subtask.plannedDate,
+        estimatedMinutes: subtask.estimatedMinutes
+      });
+      toast({
+        title: "Success",
+        description: "Subtask converted to task successfully"
+      });
+    } catch (error) {
+      console.error("Failed to convert subtask:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to convert subtask to task"
       });
     }
   };
@@ -487,13 +512,22 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                                 </button>
                               )}
                               {!readOnly && (
-                                <button
-                                  onClick={() => handleDelete(subtask.id)}
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:text-destructive"
-                                  title="Delete subtask"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => handleConvertToTask(subtask)}
+                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:text-primary"
+                                    title="Convert to task"
+                                  >
+                                    <ArrowUpCircle className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDelete(subtask.id)}
+                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:text-destructive"
+                                    title="Delete subtask"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </>
                               )}
                             </div>
                           </div>
