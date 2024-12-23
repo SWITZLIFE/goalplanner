@@ -23,11 +23,12 @@ interface Task extends BaseTask {
   updatedAt?: string;
 }
 
-// Add Note type definition
+// Update Note interface to include goalId
 interface Note {
   id: number;
   title: string;
   content: string;
+  goalId: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -63,9 +64,14 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
   const [selectedNote, setSelectedNote] = useState<(Task | Note) | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
-  // Fetch standalone notes
+  // Update the notes query to fetch only notes for this goal
   const { data: standaloneNotes = [] } = useQuery<Note[]>({
-    queryKey: ["/api/notes"],
+    queryKey: ["/api/notes", goalId],
+    queryFn: async () => {
+      const res = await fetch(`/api/goals/${goalId}/notes`);
+      if (!res.ok) throw new Error("Failed to fetch notes");
+      return res.json();
+    },
   });
 
   // Get overdue tasks
@@ -254,14 +260,14 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
         <TabsContent value="notes">
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-lg font-medium">All Notes</h2>
+              <h2 className="text-lg font-medium">Goal Notes</h2>
               <Button onClick={() => setShowCreateDialog(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 New Note
               </Button>
             </div>
             <div className="space-y-2">
-              {[...initialTasks.filter(task => task.notes), ...standaloneNotes]
+              {standaloneNotes
                 .sort((a, b) => {
                   const dateA = new Date(a.updatedAt || a.createdAt);
                   const dateB = new Date(b.updatedAt || b.createdAt);
@@ -277,7 +283,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                     onClick={() => setSelectedNote(note)}
                   >
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      {'goalId' in note ? (
+                      {'goalId' in note && note.goalId !== null ? (
                         <Link2 className="h-4 w-4 text-muted-foreground shrink-0" />
                       ) : (
                         <Quote className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -289,10 +295,10 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                     </div>
                   </div>
                 ))}
-              {initialTasks.filter(task => task.notes).length === 0 && standaloneNotes.length === 0 && (
+              {standaloneNotes.length === 0 && (
                 <div className="text-center p-8 text-muted-foreground">
                   <Quote className="h-8 w-8 text-muted-foreground/50 mx-auto mb-4" />
-                  <p>No notes found.</p>
+                  <p>No notes found for this goal.</p>
                   <p className="text-sm mt-2">Create a new note or add notes to tasks.</p>
                 </div>
               )}
@@ -590,7 +596,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                         notes: selectedTask.notes
                       });
                     } else if (selectedNote) {
-                      // Handle standalone note update here
+                      // Update standalone note
                       await fetch(`/api/notes/${selectedNote.id}`, {
                         method: 'PATCH',
                         headers: {
@@ -600,7 +606,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                           content: selectedNote.content
                         })
                       });
-                      queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
+                      queryClient.invalidateQueries({ queryKey: ["/api/notes", goalId] });
                     }
                     toast({
                       title: "Success",
@@ -662,14 +668,14 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
           <NoteEditor
             onSave={async (note) => {
               try {
-                await fetch('/api/notes', {
+                await fetch(`/api/goals/${goalId}/notes`, {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
                   },
-                  body: JSON.stringify(note)
+                  body: JSON.stringify({ ...note, goalId })
                 });
-                queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
+                queryClient.invalidateQueries({ queryKey: ["/api/notes", goalId] });
                 toast({
                   title: "Success",
                   description: "Note created successfully"
