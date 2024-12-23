@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@db";
-import { notes, type NewNote } from "@db/schema";
+import { notes, tasks, type NewNote } from "@db/schema";
 import { eq, and, desc } from "drizzle-orm";
 
 const router = Router();
