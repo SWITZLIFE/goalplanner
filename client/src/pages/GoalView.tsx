@@ -63,7 +63,7 @@ export default function GoalView() {
           </Link>
         </div>
         <div className="mt-8 space-y-6">
-          <h2 className="text-sm font-medium text-gray-600">Your Goals</h2>
+          <h2 className="text-sm font-medium text-gray-600 mb-6">Your Goals</h2>
           {goals.map((g) => (
             <GoalCard key={g.id} goal={g} />
           ))}
