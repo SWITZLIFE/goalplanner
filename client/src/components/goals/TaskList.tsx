@@ -120,22 +120,19 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
 
   const handleConvertToTask = async (subtask: Task) => {
     try {
-      // Format the date string correctly if it exists
-      const plannedDate = subtask.plannedDate 
-        ? format(new Date(subtask.plannedDate), 'yyyy-MM-dd')
-        : null;
-
-      await updateTask({
-        taskId: subtask.id,
+      // Create a new main task with the subtask's information
+      await createTask({
+        goalId: subtask.goalId,
         title: subtask.title,
-        isSubtask: false, // Mark as main task
-        parentTaskId: null, // Remove parent reference
-        completed: subtask.completed,
-        plannedDate,
-        estimatedMinutes: subtask.estimatedMinutes || undefined,
-        notes: subtask.notes || null,
-        goalId: subtask.goalId
+        isSubtask: false,
+        plannedDate: subtask.plannedDate,
+        estimatedMinutes: subtask.estimatedMinutes,
+        notes: subtask.notes,
+        completed: subtask.completed
       });
+
+      // Delete the original subtask
+      await deleteTask(subtask.id);
       
       toast({
         title: "Success",
