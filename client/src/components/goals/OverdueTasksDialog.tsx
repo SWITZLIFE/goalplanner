@@ -105,6 +105,7 @@ export function OverdueTasksDialog({ tasks, onClose, onUpdateTaskDate }: Overdue
                   }
                 }}
                 className="rounded-md border"
+                weekStartsOn={1}
               />
             </DialogContent>
           </Dialog>
