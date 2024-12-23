@@ -1,9 +1,12 @@
 import type { Express, Request, Response, NextFunction } from "express";
-import { eq, and, desc, isNull } from "drizzle-orm";
-import { notes, users, goals, tasks, timeTracking, visionBoardImages } from "@db/schema";
+import { eq, and, desc } from "drizzle-orm";
+import { notes } from "@db/schema";
 import { getTodayMessage, markMessageAsRead, generateDailyMessage } from "./future-message";
 import { createServer, type Server } from "http";
 import { db } from "@db";
+import { eq, desc, and, isNull, sql } from "drizzle-orm";
+import { rewards, rewardItems, purchasedRewards, users } from "@db/schema";
+import { goals, tasks, timeTracking, visionBoardImages } from "@db/schema";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -41,35 +44,35 @@ export function registerRoutes(app: Express): Server {
 
   // Profile photo upload route
   app.post("/api/user/profile-photo", requireAuth, upload.single('photo'), async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ error: "No file uploaded" });
-      }
-
-      const userId = req.user!.id;
-
-      // Upload to Supabase storage
-      const imageUrl = await uploadFileToSupabase(req.file);
-
-      // Update user's profile photo URL in database
-      const [updatedUser] = await db.update(users)
-        .set({ profilePhotoUrl: imageUrl })
-        .where(eq(users.id, userId))
-        .returning();
-
-      if (!updatedUser) {
-        throw new Error("Failed to update user profile");
-      }
-
-      res.json({ 
-        message: "Profile photo updated successfully",
-        profilePhotoUrl: imageUrl 
-      });
-    } catch (error) {
-      console.error("Failed to upload profile photo:", error);
-      res.status(500).json({ error: "Failed to upload profile photo" });
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
     }
-  });
+
+    const userId = req.user!.id;
+    
+    // Upload to Supabase storage
+    const imageUrl = await uploadFileToSupabase(req.file);
+    
+    // Update user's profile photo URL in database
+    const [updatedUser] = await db.update(users)
+      .set({ profilePhotoUrl: imageUrl })
+      .where(eq(users.id, userId))
+      .returning();
+
+    if (!updatedUser) {
+      throw new Error("Failed to update user profile");
+    }
+
+    res.json({ 
+      message: "Profile photo updated successfully",
+      profilePhotoUrl: imageUrl 
+    });
+  } catch (error) {
+    console.error("Failed to upload profile photo:", error);
+    res.status(500).json({ error: "Failed to upload profile photo" });
+  }
+});
 
   // Setup authentication middleware and routes
   setupAuth(app);
@@ -266,8 +269,7 @@ export function registerRoutes(app: Express): Server {
           console.log('Task breakdown from OpenAI:', JSON.stringify(breakdown, null, 2));
 
           const createdTasks = [];
-
-
+          
           // Create tasks in the order they come from OpenAI
           for (const task of breakdown) {
             if (!task.title) continue;
@@ -682,6 +684,7 @@ export function registerRoutes(app: Express): Server {
 
       // Generate vision statement using OpenAI
       const prompt = `Write a heartfelt letter from my present self to my future self about my goal: "${goal.title}". This letter should remind me of my core motivations and serve as a powerful reminder of why I started this journey. Use these reflections to craft the message:
+
 My reflections:
 ${answers.map((answer: string, index: number) => `${index + 1}. ${answer}`).join('\n')}
 
@@ -944,7 +947,7 @@ Remember to:
         task: updatedTask,
         coinsEarned,
       });
-    } catch(error) {
+    } catch (error) {
       console.error("Failed to stop timer:", error);
       res.status(500).json({ error: "Failed to stop timer" });
     }
@@ -975,18 +978,11 @@ Remember to:
   app.get("/api/notes", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
-      const { goalId } = req.query;
-
-      let query = db.select()
+      const userNotes = await db.select()
         .from(notes)
-        .where(eq(notes.userId, userId));
+        .where(eq(notes.userId, userId))
+        .orderBy(desc(notes.updatedAt));
 
-      // If goalId is provided, filter notes by goal
-      if (goalId) {
-        query = query.where(eq(notes.goalId, parseInt(goalId as string)));
-      }
-
-      const userNotes = await query.orderBy(desc(notes.updatedAt));
       res.json(userNotes);
     } catch (error) {
       console.error("Failed to fetch notes:", error);
@@ -996,37 +992,151 @@ Remember to:
 
   app.post("/api/notes", requireAuth, async (req, res) => {
     try {
-      const { title, content, goalId } = req.body;
+      const { title, content } = req.body;
       const userId = req.user!.id;
 
       if (!title) {
         return res.status(400).json({ error: "Title is required" });
       }
 
-      // If goalId is provided, verify it exists and belongs to the user
-      if (goalId) {
-        const goal = await db.query.goals.findFirst({
-          where: and(
-            eq(goals.id, goalId),
-            eq(goals.userId, userId)
-          ),
-        });
-
-        if (!goal) {
-          return res.status(404).json({ error: "Goal not found or unauthorized" });
-        }
-      }
-
-      const [note] = await db.insert(notes)
+      const [newNote] = await db.insert(notes)
         .values({
           userId,
-          goalId: goalId || null,
           title,
-          content,
+          content: content || "",
+          updatedAt: new Date(),
         })
         .returning();
 
-      res.json(note);
+      res.json(newNote);
+    } catch (error) {
+      console.error("Failed to create note:", error);
+      res.status(500).json({ error: "Failed to create note" });
+    }
+  });
+
+  app.patch("/api/notes/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { title, content } = req.body;
+      const userId = req.user!.id;
+
+      // Verify note ownership
+      const note = await db.query.notes.findFirst({
+        where: and(
+          eq(notes.id, parseInt(id)),
+          eq(notes.userId, userId)
+        ),
+      });
+
+      if (!note) {
+        return res.status(404).json({ error: "Note not found or unauthorized" });
+      }
+
+      const [updatedNote] = await db.update(notes)
+        .set({
+          title: title || note.title,
+          content: content || note.content,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(notes.id, parseInt(id)),
+          eq(notes.userId, userId)
+        ))
+        .returning();
+
+      res.json(updatedNote);
+    } catch (error) {
+      console.error("Failed to update note:", error);
+      res.status(500).json({ error: "Failed to update note" });
+    }
+  });
+
+  app.delete("/api/notes/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+
+      const [deletedNote] = await db.delete(notes)
+        .where(and(
+          eq(notes.id, parseInt(id)),
+          eq(notes.userId, userId)
+        ))
+        .returning();
+
+      if (!deletedNote) {
+        return res.status(404).json({ error: "Note not found or unauthorized" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete note:", error);
+      res.status(500).json({ error: "Failed to delete note" });
+    }
+  });
+
+  app.get("/api/future-message/today", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const message = await getTodayMessage(userId);
+      res.json(message);
+    } catch (error) {
+      console.error("Failed to get future message:", error);
+      res.status(500).json({ error: "Failed to get future message" });
+    }
+  });
+
+  app.post("/api/future-message/generate", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const message = await generateDailyMessage(userId);
+      res.json({ message, isRead: false });
+    } catch (error) {
+      console.error("Failed to generate future message:", error);
+      res.status(500).json({ error: "Failed to generate future message" });
+    }
+  });
+
+  app.post("/api/future-message/read", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      await markMessageAsRead(userId);
+  // Notes API
+  app.get("/api/notes", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      
+      const userNotes = await db.select()
+        .from(notes)
+        .where(eq(notes.userId, userId))
+        .orderBy(desc(notes.updatedAt));
+
+      res.json(userNotes);
+    } catch (error) {
+      console.error("Failed to fetch notes:", error);
+      res.status(500).json({ error: "Failed to fetch notes" });
+    }
+  });
+
+  app.post("/api/notes", requireAuth, async (req, res) => {
+    try {
+      const { title, content } = req.body;
+      const userId = req.user!.id;
+
+      if (!title) {
+        return res.status(400).json({ error: "Title is required" });
+      }
+
+      const [newNote] = await db.insert(notes)
+        .values({
+          userId,
+          title,
+          content,
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      res.json(newNote);
     } catch (error) {
       console.error("Failed to create note:", error);
       res.status(500).json({ error: "Failed to create note" });
@@ -1039,7 +1149,7 @@ Remember to:
       const { title, content } = req.body;
       const userId = req.user!.id;
 
-      // Verify note exists and belongs to user
+      // Verify note ownership
       const note = await db.query.notes.findFirst({
         where: and(
           eq(notes.id, parseInt(noteId)),
@@ -1099,33 +1209,6 @@ Remember to:
       res.status(500).json({ error: "Failed to delete note" });
     }
   });
-
-  app.get("/api/future-message/today", requireAuth, async (req, res) => {
-    try {
-      const userId = req.user!.id;
-      const message = await getTodayMessage(userId);
-      res.json(message);
-    } catch (error) {
-      console.error("Failed to get future message:", error);
-      res.status(500).json({ error: "Failed to get future message" });
-    }
-  });
-
-  app.post("/api/future-message/generate", requireAuth, async (req, res) => {
-    try {
-      const userId = req.user!.id;
-      const message = await generateDailyMessage(userId);
-      res.json({ message, isRead: false });
-    } catch (error) {
-      console.error("Failed to generate future message:", error);
-      res.status(500).json({ error: "Failed to generate future message" });
-    }
-  });
-
-  app.post("/api/future-message/read", requireAuth, async (req, res) => {
-    try {
-      const userId = req.user!.id;
-      await markMessageAsRead(userId);
       res.json({ success: true });
     } catch (error) {
       console.error("Failed to mark message as read:", error);
