@@ -120,15 +120,27 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
 
   const handleConvertToTask = async (subtask: Task) => {
     try {
-      await updateTask({
+      // Create the update payload with correct types
+      const updatePayload = {
         taskId: subtask.id,
-        isSubtask: false,
-        parentTaskId: null,
         title: subtask.title,
-        notes: subtask.notes,
-        plannedDate: subtask.plannedDate,
-        estimatedMinutes: subtask.estimatedMinutes
-      });
+        isSubtask: false,
+        parentTaskId: null
+      };
+
+      // Only include optional fields if they exist
+      if (subtask.notes) {
+        updatePayload.notes = subtask.notes;
+      }
+      if (subtask.plannedDate) {
+        updatePayload.plannedDate = subtask.plannedDate;
+      }
+      if (typeof subtask.estimatedMinutes === 'number') {
+        updatePayload.estimatedMinutes = subtask.estimatedMinutes;
+      }
+
+      await updateTask(updatePayload);
+      
       toast({
         title: "Success",
         description: "Subtask converted to task successfully"
