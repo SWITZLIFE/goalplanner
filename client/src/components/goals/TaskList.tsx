@@ -575,6 +575,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                 }
               }}
               className="rounded-md border"
+              weekStartsOn={1}
             />
           </DialogContent>
         </Dialog>
