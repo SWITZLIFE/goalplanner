@@ -133,11 +133,6 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
 
       // Delete the original subtask
       await deleteTask(subtask.id);
-      
-      toast({
-        title: "Success",
-        description: "Subtask converted to task successfully"
-      });
     } catch (error) {
       console.error("Failed to convert subtask:", error);
       toast({
