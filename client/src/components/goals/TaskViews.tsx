@@ -252,12 +252,12 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                     )}
                     onClick={() => setSelectedTask(task)}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
                       <Quote className="h-4 w-4 text-muted-foreground shrink-0" />
                       <h3 className="font-medium truncate">{task.title}</h3>
                     </div>
-                    <div className="text-xs text-muted-foreground shrink-0">
-                      {task.updatedAt ? format(new Date(task.updatedAt), 'MMM d, yyyy') : 'Never'}
+                    <div className="text-xs text-muted-foreground shrink-0 ml-4">
+                      {task.updatedAt ? format(new Date(task.updatedAt), 'MMM d') : 'Never'}
                     </div>
                   </div>
               ))}
