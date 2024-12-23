@@ -546,8 +546,17 @@ export function registerRoutes(app: Express): Server {
       if (plannedDate !== undefined) {
         updateData.plannedDate = plannedDate ? new Date(plannedDate) : null;
       }
+
+      // If notes are provided, create/update them in the notes table
       if (notes !== undefined) {
-        updateData.notes = notes;
+        await db.insert(notes).values({
+          title: "Task Note",
+          content: notes,
+          goalId: task.goalId,
+          taskId: task.id,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
       }
 
       console.log('Updating task with data:', { taskId, updateData });
