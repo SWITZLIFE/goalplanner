@@ -237,22 +237,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
         <TabsContent value="notes">
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-lg font-medium">Notes</h2>
-              <Button 
-                onClick={() => {
-                  setSelectedTask({
-                    id: 0,
-                    goalId,
-                    title: "New Note",
-                    notes: "",
-                    createdAt: new Date().toISOString(),
-                    isStandaloneNote: true,
-                  } as Task);
-                }}
-                size="sm"
-              >
-                Add New Note
-              </Button>
+              <h2 className="text-lg font-medium">Task Notes</h2>
             </div>
             <div className="space-y-2">
               {initialTasks
@@ -554,48 +539,10 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                 onClick={async () => {
                   try {
                     setIsSaving(true);
-                    if (selectedTask.isStandaloneNote) {
-                      if (selectedTask.id === 0) {
-                        // Create new standalone note
-                        const response = await fetch('/api/notes', {
-                          method: 'POST',
-                          headers: {
-                            'Content-Type': 'application/json',
-                          },
-                          body: JSON.stringify({
-                            goalId: selectedTask.goalId,
-                            title: selectedTask.title,
-                            content: selectedTask.notes,
-                          }),
-                        });
-
-                        if (!response.ok) {
-                          throw new Error('Failed to create note');
-                        }
-                      } else {
-                        // Update existing standalone note
-                        const response = await fetch(`/api/notes/${selectedTask.id}`, {
-                          method: 'PATCH',
-                          headers: {
-                            'Content-Type': 'application/json',
-                          },
-                          body: JSON.stringify({
-                            title: selectedTask.title,
-                            content: selectedTask.notes,
-                          }),
-                        });
-
-                        if (!response.ok) {
-                          throw new Error('Failed to update note');
-                        }
-                      }
-                    } else {
-                      // Update regular task note
-                      await updateTask({
-                        taskId: selectedTask.id,
-                        notes: selectedTask.notes
-                      });
-                    }
+                    await updateTask({
+                      taskId: selectedTask.id,
+                      notes: selectedTask.notes
+                    });
                     toast({
                       title: "Success",
                       description: "Note saved successfully"
