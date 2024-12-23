@@ -4,6 +4,7 @@ import { TaskList } from "./TaskList";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import type { Task as BaseTask } from "@db/schema";
+import { Button } from "@/components/ui/button";
 
 // Extend the Task type to include properties needed for the task list dialog
 interface Task extends BaseTask {
@@ -42,6 +43,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [taskFilter, setTaskFilter] = useState<'all' | 'active' | 'completed'>('all');
   const [goalFilter, setGoalFilter] = useState<number | 'all'>('all');
+  const [showDatePicker, setShowDatePicker] = useState<{ taskId: number; date?: Date } | null>(null);
   const [showOverdueTasks, setShowOverdueTasks] = useState(true);
   const { updateTask, createTask, updateGoal, goals } = useGoals();
   const { toast } = useToast();
