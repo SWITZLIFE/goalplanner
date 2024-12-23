@@ -113,42 +113,55 @@ export function NotesManager() {
         )}
       </div>
 
-      {/* Create Note Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Create New Note</DialogTitle>
-          </DialogHeader>
-          <NoteEditor
-            onSave={async (note) => {
-              await createNoteMutation.mutateAsync(note);
-            }}
-            onCancel={() => setShowCreateDialog(false)}
-          />
-        </DialogContent>
-      </Dialog>
+      {/* Note Side Panel */}
+      <div className={cn(
+        "fixed inset-y-0 right-0 w-[600px] bg-background border-l shadow-lg transform transition-transform duration-200 ease-in-out z-50",
+        (showCreateDialog || selectedNote) ? "translate-x-0" : "translate-x-full"
+      )}>
+        {(showCreateDialog || selectedNote) && (
+          <div className="flex flex-col h-full">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b">
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => {
+                    setShowCreateDialog(false);
+                    setSelectedNote(null);
+                  }}
+                  className="rounded-full p-2 hover:bg-accent/50"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+                <h2 className="text-xl font-semibold">
+                  {showCreateDialog ? "Create New Note" : "Edit Note"}
+                </h2>
+              </div>
+            </div>
 
-      {/* Edit Note Dialog */}
-      <Dialog open={selectedNote !== null} onOpenChange={(open) => !open && setSelectedNote(null)}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Edit Note</DialogTitle>
-          </DialogHeader>
-          {selectedNote && (
-            <NoteEditor
-              initialTitle={selectedNote.title}
-              initialContent={selectedNote.content}
-              onSave={async (note) => {
-                await updateNoteMutation.mutateAsync({
-                  id: selectedNote.id,
-                  ...note,
-                });
-              }}
-              onCancel={() => setSelectedNote(null)}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <NoteEditor
+                initialTitle={selectedNote?.title}
+                initialContent={selectedNote?.content}
+                onSave={async (note) => {
+                  if (selectedNote) {
+                    await updateNoteMutation.mutateAsync({
+                      id: selectedNote.id,
+                      ...note,
+                    });
+                  } else {
+                    await createNoteMutation.mutateAsync(note);
+                  }
+                }}
+                onCancel={() => {
+                  setShowCreateDialog(false);
+                  setSelectedNote(null);
+                }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
