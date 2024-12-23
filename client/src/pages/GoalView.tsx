@@ -22,6 +22,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { Gift, BarChart2 } from "lucide-react"; // Added imports for icons
+
 
 export default function GoalView() {
   const [, params] = useRoute("/goals/:id");
@@ -46,6 +48,20 @@ export default function GoalView() {
 
         <CreateGoalDialog />
         
+        <div className="mt-6">
+          <Link href="/rewards">
+            <Button variant="outline" className="w-full">
+              <Gift className="mr-2 h-4 w-4" />
+              Reward Store
+            </Button>
+          </Link>
+          <Link href="/analytics" className="block mt-4">
+            <Button variant="outline" className="w-full">
+              <BarChart2 className="mr-2 h-4 w-4" />
+              View Analytics
+            </Button>
+          </Link>
+        </div>
         <div className="mt-8 space-y-6">
           <h2 className="text-sm font-medium text-gray-600">Your Goals</h2>
           {goals.map((g) => (
@@ -117,7 +133,7 @@ export default function GoalView() {
             <p className="text-sm text-muted-foreground">{goal.progress}% completed</p>
           </div>
 
-          <div className="space-y-4 w-full"> {/* Modified this line to make the div full width */}
+          <div className="space-y-4 w-full">
             <h2 className="text-lg font-medium mb-4">Tasks</h2>
             <TaskViews tasks={goal.tasks || []} goalId={goal.id} goal={goal} />
           </div>
