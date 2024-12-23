@@ -156,6 +156,7 @@ export const purchasedRewards = pgTable("purchased_rewards", {
 export const notes = pgTable("notes", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  goalId: integer("goal_id").references(() => goals.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   content: text("content"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -167,6 +168,10 @@ export const notesRelations = relations(notes, ({ one }) => ({
     fields: [notes.userId],
     references: [users.id],
   }),
+  goal: one(goals, {
+    fields: [notes.goalId],
+    references: [goals.id],
+  }),
 }));
 
 export type Note = typeof notes.$inferSelect;
@@ -177,6 +182,7 @@ export const selectNoteSchema = createSelectSchema(notes);
 export const updateNoteSchema = selectNoteSchema.partial().extend({
   title: z.string().optional(),
   content: z.string().optional(),
+  goalId: z.number().optional().nullable(),
 });
 
 export const timeTracking = pgTable("time_tracking", {

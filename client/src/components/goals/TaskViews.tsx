@@ -30,6 +30,7 @@ interface Note {
   content: string;
   createdAt: string;
   updatedAt: string;
+  goalId?: number;
 }
 
 interface Goal {
@@ -63,9 +64,9 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
   const [selectedNote, setSelectedNote] = useState<(Task | Note) | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
-  // Fetch standalone notes
-  const { data: standaloneNotes = [] } = useQuery<Note[]>({
-    queryKey: ["/api/notes"],
+  // Fetch standalone notes for this goal
+  const { data: goalNotes = [] } = useQuery<Note[]>({
+    queryKey: [`/api/notes?goalId=${goalId}`],
   });
 
   // Get overdue tasks
@@ -193,29 +194,6 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
     }
   };
 
-  const handleToggleComplete = async (task: Task) => {
-    try {
-      await updateTask({
-        taskId: task.id,
-        completed: !task.completed
-      });
-      // Update the selected task state immediately
-      if (selectedTask) {
-        setSelectedTask({
-          ...selectedTask,
-          completed: !task.completed
-        });
-      }
-    } catch (error) {
-      console.error('Failed to toggle task completion:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to update task status"
-      });
-    }
-  };
-
   return (
     <>
       {showOverdueTasks && overdueTasks.length > 0 && (
@@ -254,14 +232,14 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
         <TabsContent value="notes">
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-lg font-medium">All Notes</h2>
+              <h2 className="text-lg font-medium">Goal Notes</h2>
               <Button onClick={() => setShowCreateDialog(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 New Note
               </Button>
             </div>
             <div className="space-y-2">
-              {[...initialTasks.filter(task => task.notes), ...standaloneNotes]
+              {[...initialTasks.filter(task => task.notes), ...goalNotes]
                 .sort((a, b) => {
                   const dateA = new Date(a.updatedAt || a.createdAt);
                   const dateB = new Date(b.updatedAt || b.createdAt);
@@ -289,10 +267,10 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                     </div>
                   </div>
                 ))}
-              {initialTasks.filter(task => task.notes).length === 0 && standaloneNotes.length === 0 && (
+              {initialTasks.filter(task => task.notes).length === 0 && goalNotes.length === 0 && (
                 <div className="text-center p-8 text-muted-foreground">
                   <Quote className="h-8 w-8 text-muted-foreground/50 mx-auto mb-4" />
-                  <p>No notes found.</p>
+                  <p>No notes found for this goal.</p>
                   <p className="text-sm mt-2">Create a new note or add notes to tasks.</p>
                 </div>
               )}
@@ -600,7 +578,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                           content: selectedNote.content
                         })
                       });
-                      queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
+                      queryClient.invalidateQueries({ queryKey: [`/api/notes?goalId=${goalId}`] });
                     }
                     toast({
                       title: "Success",
@@ -667,9 +645,12 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                   headers: {
                     'Content-Type': 'application/json',
                   },
-                  body: JSON.stringify(note)
+                  body: JSON.stringify({
+                    ...note,
+                    goalId // Include the current goal's ID
+                  })
                 });
-                queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
+                queryClient.invalidateQueries({ queryKey: [`/api/notes?goalId=${goalId}`] });
                 toast({
                   title: "Success",
                   description: "Note created successfully"
