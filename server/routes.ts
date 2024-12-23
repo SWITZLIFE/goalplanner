@@ -1,4 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
+import { eq, and, desc } from "drizzle-orm";
+import { notes } from "@db/schema";
 import { getTodayMessage, markMessageAsRead, generateDailyMessage } from "./future-message";
 import { createServer, type Server } from "http";
 import { db } from "@db";
@@ -972,6 +974,107 @@ Remember to:
     }
   });
   // Future Message API
+  // Notes API
+  app.get("/api/notes", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const userNotes = await db.select()
+        .from(notes)
+        .where(eq(notes.userId, userId))
+        .orderBy(desc(notes.updatedAt));
+
+      res.json(userNotes);
+    } catch (error) {
+      console.error("Failed to fetch notes:", error);
+      res.status(500).json({ error: "Failed to fetch notes" });
+    }
+  });
+
+  app.post("/api/notes", requireAuth, async (req, res) => {
+    try {
+      const { title, content } = req.body;
+      const userId = req.user!.id;
+
+      if (!title) {
+        return res.status(400).json({ error: "Title is required" });
+      }
+
+      const [newNote] = await db.insert(notes)
+        .values({
+          userId,
+          title,
+          content: content || "",
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      res.json(newNote);
+    } catch (error) {
+      console.error("Failed to create note:", error);
+      res.status(500).json({ error: "Failed to create note" });
+    }
+  });
+
+  app.patch("/api/notes/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { title, content } = req.body;
+      const userId = req.user!.id;
+
+      // Verify note ownership
+      const note = await db.query.notes.findFirst({
+        where: and(
+          eq(notes.id, parseInt(id)),
+          eq(notes.userId, userId)
+        ),
+      });
+
+      if (!note) {
+        return res.status(404).json({ error: "Note not found or unauthorized" });
+      }
+
+      const [updatedNote] = await db.update(notes)
+        .set({
+          title: title || note.title,
+          content: content || note.content,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(notes.id, parseInt(id)),
+          eq(notes.userId, userId)
+        ))
+        .returning();
+
+      res.json(updatedNote);
+    } catch (error) {
+      console.error("Failed to update note:", error);
+      res.status(500).json({ error: "Failed to update note" });
+    }
+  });
+
+  app.delete("/api/notes/:id", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user!.id;
+
+      const [deletedNote] = await db.delete(notes)
+        .where(and(
+          eq(notes.id, parseInt(id)),
+          eq(notes.userId, userId)
+        ))
+        .returning();
+
+      if (!deletedNote) {
+        return res.status(404).json({ error: "Note not found or unauthorized" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete note:", error);
+      res.status(500).json({ error: "Failed to delete note" });
+    }
+  });
+
   app.get("/api/future-message/today", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
