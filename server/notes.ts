@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@db";
-import { notes, tasks, type NewNote } from "@db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { notes, tasks, type InsertNote } from "@db/schema";
+import { eq, desc } from "drizzle-orm";
 
 const router = Router();
 
@@ -11,16 +11,25 @@ router.get("/api/goals/:goalId/notes", async (req, res) => {
     const goalId = parseInt(req.params.goalId);
     console.log('Fetching notes for goal:', goalId);
     
-    // Fetch all notes for the goal including associated task information
-    const allNotes = await db.query.notes.findMany({
-      where: eq(notes.goalId, goalId),
-      with: {
-        task: true
+    const allNotes = await db.select({
+      id: notes.id,
+      title: notes.title,
+      content: notes.content,
+      goalId: notes.goalId,
+      taskId: notes.taskId,
+      createdAt: notes.createdAt,
+      updatedAt: notes.updatedAt,
+      task: {
+        id: tasks.id,
+        title: tasks.title,
       },
-      orderBy: [desc(notes.createdAt)]
-    });
+    })
+    .from(notes)
+    .leftJoin(tasks, eq(notes.taskId, tasks.id))
+    .where(eq(notes.goalId, goalId))
+    .orderBy(desc(notes.createdAt));
 
-    console.log('Found notes:', allNotes.length, 'notes for goal:', goalId);
+    console.log('Found notes:', JSON.stringify(allNotes, null, 2));
     res.json(allNotes);
   } catch (error) {
     console.error("Failed to fetch notes:", error);
@@ -34,7 +43,7 @@ router.post("/api/goals/:goalId/notes", async (req, res) => {
     const goalId = parseInt(req.params.goalId);
     const { title, content, taskId } = req.body;
 
-    const newNote: NewNote = {
+    const newNote: InsertNote = {
       title,
       content,
       goalId,
