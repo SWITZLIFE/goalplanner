@@ -3,6 +3,7 @@ import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 import { z } from "zod";
 
+// Base Tables
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: text("email").unique().notNull(),
@@ -43,6 +44,16 @@ export const tasks = pgTable("tasks", {
   order: integer("order"),
 });
 
+export const notes = pgTable("notes", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  goalId: integer("goal_id").notNull().references(() => goals.id, { onDelete: "cascade" }),
+  taskId: integer("task_id").references(() => tasks.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const futureMessages = pgTable("future_messages", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -50,84 +61,6 @@ export const futureMessages = pgTable("future_messages", {
   isRead: boolean("is_read").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
-
-// Relations
-export const goalsRelations = relations(goals, ({ one, many }) => ({
-  user: one(users, {
-    fields: [goals.userId],
-    references: [users.id],
-  }),
-  tasks: many(tasks),
-}));
-
-export const tasksRelations = relations(tasks, ({ one, many }) => ({
-  goal: one(goals, {
-    fields: [tasks.goalId],
-    references: [goals.id],
-  }),
-  user: one(users, {
-    fields: [tasks.userId],
-    references: [users.id],
-  }),
-  parentTask: one(tasks, {
-    fields: [tasks.parentTaskId],
-    references: [tasks.id],
-  }),
-  subtasks: many(tasks, {
-    fields: [tasks.id],
-    references: [tasks.parentTaskId],
-  }),
-  timeTrackingSessions: many(timeTracking),
-}));
-
-export const futureMessagesRelations = relations(futureMessages, ({ one }) => ({
-  user: one(users, {
-    fields: [futureMessages.userId],
-    references: [users.id],
-  }),
-}));
-
-// Create schema with custom validation
-const baseSchema = createInsertSchema(users);
-
-export const insertUserSchema = baseSchema.extend({
-  email: z.string().email("Invalid email format"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-});
-
-export const resetPasswordSchema = z.object({
-  token: z.string(),
-  newPassword: z.string().min(8, "Password must be at least 8 characters"),
-});
-
-export const forgotPasswordSchema = z.object({
-  email: z.string().email("Invalid email format"),
-});
-
-// Type definitions and schemas
-export const insertGoalSchema = createInsertSchema(goals);
-export const selectGoalSchema = createSelectSchema(goals);
-export const insertTaskSchema = createInsertSchema(tasks);
-export const selectTaskSchema = createSelectSchema(tasks);
-export const updateTaskSchema = selectTaskSchema.partial().extend({
-  completed: z.boolean().optional(),
-  title: z.string().optional(),
-  estimatedMinutes: z.number().optional().nullable(),
-  plannedDate: z.string().optional().nullable(),
-  notes: z.string().optional().nullable(),
-});
-
-export const selectUserSchema = createSelectSchema(users);
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type SelectUser = typeof users.$inferSelect;
-export type BaseGoal = typeof goals.$inferSelect;
-export type NewGoal = typeof goals.$inferInsert;
-export type Task = typeof tasks.$inferSelect;
-export type NewTask = typeof tasks.$inferInsert;
-export type UpdateTask = z.infer<typeof updateTaskSchema>;
-export type Goal = BaseGoal & { tasks?: Task[] };
-export type FutureMessage = typeof futureMessages.$inferSelect;
-export type NewFutureMessage = typeof futureMessages.$inferInsert;
 
 export const rewards = pgTable("rewards", {
   id: serial("id").primaryKey(),
@@ -172,8 +105,48 @@ export const visionBoardImages = pgTable("vision_board_images", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Relations
+export const goalsRelations = relations(goals, ({ one, many }) => ({
+  user: one(users, {
+    fields: [goals.userId],
+    references: [users.id],
+  }),
+  tasks: many(tasks),
+  notes: many(notes),
+}));
 
-// Relations for remaining tables
+export const tasksRelations = relations(tasks, ({ one, many }) => ({
+  goal: one(goals, {
+    fields: [tasks.goalId],
+    references: [goals.id],
+  }),
+  user: one(users, {
+    fields: [tasks.userId],
+    references: [users.id],
+  }),
+  parentTask: one(tasks, {
+    fields: [tasks.parentTaskId],
+    references: [tasks.id],
+  }),
+  subtasks: many(tasks, {
+    fields: [tasks.id],
+    references: [tasks.parentTaskId],
+  }),
+  timeTrackingSessions: many(timeTracking),
+  notes: many(notes),
+}));
+
+export const notesRelations = relations(notes, ({ one }) => ({
+  goal: one(goals, {
+    fields: [notes.goalId],
+    references: [goals.id],
+  }),
+  task: one(tasks, {
+    fields: [notes.taskId],
+    references: [tasks.id],
+  }),
+}));
+
 export const rewardItemsRelations = relations(rewardItems, ({ many }) => ({
   purchases: many(purchasedRewards),
 }));
@@ -206,3 +179,48 @@ export const visionBoardRelations = relations(visionBoardImages, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+// Schemas and Types
+export const insertUserSchema = z.object({
+  email: z.string().email("Invalid email format"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string(),
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("Invalid email format"),
+});
+
+export const insertGoalSchema = createInsertSchema(goals);
+export const selectGoalSchema = createSelectSchema(goals);
+export const insertTaskSchema = createInsertSchema(tasks);
+export const selectTaskSchema = createSelectSchema(tasks);
+export const updateTaskSchema = selectTaskSchema.partial().extend({
+  completed: z.boolean().optional(),
+  title: z.string().optional(),
+  estimatedMinutes: z.number().optional().nullable(),
+  plannedDate: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+});
+
+export const insertNoteSchema = createInsertSchema(notes);
+export const selectNoteSchema = createSelectSchema(notes);
+export const selectUserSchema = createSelectSchema(users);
+
+// Type exports
+export type Note = typeof notes.$inferSelect;
+export type NewNote = typeof notes.$inferInsert;
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type SelectUser = typeof users.$inferSelect;
+export type BaseGoal = typeof goals.$inferSelect;
+export type NewGoal = typeof goals.$inferInsert;
+export type Task = typeof tasks.$inferSelect;
+export type NewTask = typeof tasks.$inferInsert;
+export type UpdateTask = z.infer<typeof updateTaskSchema>;
+export type Goal = BaseGoal & { tasks?: Task[] };
+export type FutureMessage = typeof futureMessages.$inferSelect;
+export type NewFutureMessage = typeof futureMessages.$inferInsert;

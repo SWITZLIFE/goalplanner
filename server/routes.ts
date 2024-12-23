@@ -13,6 +13,7 @@ import { getCoachingAdvice } from "./coaching";
 import { setupAuth } from "./auth";
 import { openai } from "./openai";
 import { uploadFileToSupabase } from './supabase';
+import notesRouter from './notes';
 
 // Configure multer for handling file uploads
 const upload = multer({
@@ -39,6 +40,9 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 export function registerRoutes(app: Express): Server {
   // Setup authentication middleware and routes first
   setupAuth(app);
+  
+  // Register notes routes
+  app.use(notesRouter);
 
   // Profile photo upload route
   app.post("/api/user/profile-photo", requireAuth, upload.single('photo'), async (req, res) => {
