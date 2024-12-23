@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 
 export const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY_2,
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 export async function generateTaskBreakdown(goalTitle: string, numTasks: number): Promise<{ title: string; subtasks: string[] }[]> {
@@ -101,4 +101,37 @@ Output: "Launch Goal Planner App"`;
 
   const shortTitle = response.choices[0].message.content?.trim() || longTitle;
   return shortTitle.replace(/^"|"$/g, '').trim();
+}
+
+export async function generateMotivationalQuote(goalDescription: string): Promise<string> {
+  const prompt = `Generate a short, powerful motivational quote (max 120 characters) that relates to this goal: "${goalDescription}"
+
+Requirements:
+1. The quote should be inspiring and relate to the goal's theme
+2. Keep it under 120 characters
+3. Make it personal and actionable
+4. Focus on growth, progress, and achievement
+5. Return only the quote text, no attribution or extra formatting
+
+Example response format:
+"Your journey of a thousand miles begins with the courage to take the first step."`;
+
+  const response = await openai.chat.completions.create({
+    model: "gpt-3.5-turbo",
+    messages: [
+      {
+        role: "system",
+        content: "You are a motivational coach who creates personalized, inspiring quotes. Be concise but impactful."
+      },
+      {
+        role: "user",
+        content: prompt
+      }
+    ],
+    temperature: 0.7,
+    max_tokens: 60,
+  });
+
+  const quote = response.choices[0].message.content?.trim() || "Every step forward is a step toward your dreams.";
+  return quote.replace(/^["']|["']$/g, ''); // Remove any quotes if present
 }
