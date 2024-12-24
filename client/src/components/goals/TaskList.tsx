@@ -156,6 +156,13 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         notes: task.notes
       };
 
+      if (!task.isSubtask && completed) {
+        const subtasks = tasks.filter(t => t.parentTaskId === taskId);
+        subtasks.forEach(subtask => {
+          setOptimisticTaskStates(prev => ({ ...prev, [subtask.id]: true }));
+        });
+      }
+
       await updateTask(taskUpdate);
 
       if (!task.isSubtask && completed) {
@@ -270,7 +277,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
   };
 
   const mainTasks = tasks
-    .filter(task => !task.isSubtask)
+    .filter(task => !task.isSubtask && (!optimisticTaskStates[task.id] || !task.completed))
     .sort((a, b) => {
       const aHasDate = !!a.plannedDate;
       const bHasDate = !!b.plannedDate;
@@ -301,7 +308,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
 
   const getOrderedSubtasks = (parentId: number) => {
     return tasks
-      .filter(task => task.parentTaskId === parentId)
+      .filter(task => task.parentTaskId === parentId && (!optimisticTaskStates[task.id] || !task.completed))
       .sort((a, b) => a.id - b.id);
   };
 
