@@ -22,7 +22,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Gift, BarChart2 } from "lucide-react"; // Added imports for icons
+import { Gift, BarChart2 } from "lucide-react";
+import { DailyQuote } from "@/components/goals/DailyQuote";
 
 
 export default function GoalView() {
@@ -30,7 +31,7 @@ export default function GoalView() {
   const [, setLocation] = useLocation();
   const { goals, isLoading, deleteGoal } = useGoals();
   const { toast } = useToast();
-  
+
   const goal = goals.find((g) => g.id === parseInt(params?.id || ""));
 
   if (isLoading || !goal) {
@@ -47,7 +48,7 @@ export default function GoalView() {
         </div>
 
         <CreateGoalDialog />
-        
+
         <div className="mt-6">
           <Link href="/rewards">
             <Button variant="outline" className="w-full">
@@ -84,49 +85,52 @@ export default function GoalView() {
               </p>
             </div>
             <div className="flex space-x-2">
-                <Link href="/">
-                  <Button variant="ghost" size="sm">
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back
-                  </Button>
-                </Link>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <button className="text-destructive hover:text-destructive/80 transition-colors">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete Goal</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action will permanently delete this goal and all its tasks.
-                        This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={async () => {
-                        try {
-                          await deleteGoal(goal.id);
-                          toast({
-                            title: "Goal deleted",
-                            description: "The goal has been permanently deleted.",
-                          });
-                          setLocation("/");
-                        } catch (error) {
-                          toast({
-                            title: "Error",
-                            description: "Failed to delete goal. Please try again.",
-                            variant: "destructive",
-                          });
-                        }
-                      }}>Delete</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
+              <Link href="/">
+                <Button variant="ghost" size="sm">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Button>
+              </Link>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button className="text-destructive hover:text-destructive/80 transition-colors">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Goal</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action will permanently delete this goal and all its tasks.
+                      This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={async () => {
+                      try {
+                        await deleteGoal(goal.id);
+                        toast({
+                          title: "Goal deleted",
+                          description: "The goal has been permanently deleted.",
+                        });
+                        setLocation("/");
+                      } catch (error) {
+                        toast({
+                          title: "Error",
+                          description: "Failed to delete goal. Please try again.",
+                          variant: "destructive",
+                        });
+                      }
+                    }}>Delete</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </div>
+
+          {/* Add Daily Quote here */}
+          <DailyQuote goalId={goal.id} />
 
           <div className="space-y-2">
             <GoalProgress progress={goal.progress} />
@@ -137,7 +141,7 @@ export default function GoalView() {
             <h2 className="text-lg font-medium mb-4">Tasks</h2>
             <TaskViews tasks={goal.tasks || []} goalId={goal.id} goal={goal} />
           </div>
-          
+
           {/* Floating AI Coach */}
           <CoachingCard goalId={goal.id} />
         </div>

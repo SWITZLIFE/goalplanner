@@ -51,6 +51,15 @@ export const futureMessages = pgTable("future_messages", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const goalDailyQuotes = pgTable("goal_daily_quotes", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  goalId: integer("goal_id").notNull().references(() => goals.id, { onDelete: "cascade" }),
+  quote: text("quote").notNull(),
+  isRead: boolean("is_read").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Relations
 export const goalsRelations = relations(goals, ({ one, many }) => ({
   user: one(users, {
@@ -84,6 +93,17 @@ export const futureMessagesRelations = relations(futureMessages, ({ one }) => ({
   user: one(users, {
     fields: [futureMessages.userId],
     references: [users.id],
+  }),
+}));
+
+export const goalDailyQuotesRelations = relations(goalDailyQuotes, ({ one }) => ({
+  user: one(users, {
+    fields: [goalDailyQuotes.userId],
+    references: [users.id],
+  }),
+  goal: one(goals, {
+    fields: [goalDailyQuotes.goalId],
+    references: [goals.id],
   }),
 }));
 
@@ -128,6 +148,8 @@ export type UpdateTask = z.infer<typeof updateTaskSchema>;
 export type Goal = BaseGoal & { tasks?: Task[] };
 export type FutureMessage = typeof futureMessages.$inferSelect;
 export type NewFutureMessage = typeof futureMessages.$inferInsert;
+export type GoalDailyQuote = typeof goalDailyQuotes.$inferSelect;
+export type NewGoalDailyQuote = typeof goalDailyQuotes.$inferInsert;
 
 export const rewards = pgTable("rewards", {
   id: serial("id").primaryKey(),
