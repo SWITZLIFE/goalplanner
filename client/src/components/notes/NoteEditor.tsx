@@ -21,47 +21,15 @@ export function NoteEditor({
   readOnly = false 
 }: NoteEditorProps) {
   const [title, setTitle] = useState(initialTitle);
-  const [content, setContent] = useState(initialContent || "");
+  const [content, setContent] = useState(initialContent);
   const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const handleSave = async () => {
-    if (!title.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Please provide a title for your note"
-      });
-      return;
-    }
-
-    try {
-      setIsSaving(true);
-      await onSave?.({
-        title: title.trim(),
-        content: editor.getHTML()
-      });
-
-      toast({
-        title: "Success",
-        description: "Note saved successfully"
-      });
-    } catch (error) {
-      console.error('Failed to save note:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to save note"
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
+    <div className="flex flex-col h-full">
+      {/* Fixed Title Section */}
+      <div className="space-y-2 p-4 border-b">
         <Label htmlFor="title">Title</Label>
         <Input
           id="title"
@@ -72,7 +40,8 @@ export function NoteEditor({
         />
       </div>
 
-      <div className="min-h-[400px] p-4 bg-accent/5 rounded-lg">
+      {/* Scrollable Content Section */}
+      <div className="flex-1 min-h-0 p-4 overflow-auto">
         <textarea
           className="w-full h-full min-h-[300px] bg-transparent resize-none focus:outline-none"
           placeholder="Add your note content here..."
@@ -82,8 +51,9 @@ export function NoteEditor({
         />
       </div>
 
+      {/* Fixed Button Section */}
       {!readOnly && (
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2 p-4 border-t bg-background">
           {onCancel && (
             <Button variant="outline" onClick={onCancel}>
               Cancel
@@ -91,6 +61,15 @@ export function NoteEditor({
           )}
           <Button 
             onClick={async () => {
+              if (!title.trim()) {
+                toast({
+                  variant: "destructive",
+                  title: "Error",
+                  description: "Please provide a title for your note"
+                });
+                return;
+              }
+
               try {
                 setIsSaving(true);
                 await onSave?.({

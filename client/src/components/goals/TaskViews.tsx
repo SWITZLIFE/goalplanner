@@ -738,7 +738,8 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
       )}>
         {selectedNote && (
           <div className="flex flex-col h-full">
-            <div className="flex items-center justify-between p-4 border-b">
+            {/* Fixed Header */}
+            <div className="flex items-center justify-between p-4 border-b shrink-0">
               <h2 className="text-lg font-semibold">Edit Note</h2>
               <Button
                 variant="ghost"
@@ -748,7 +749,8 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <div className="flex-1 overflow-y-auto p-4">
+            {/* Scrollable Content Area */}
+            <div className="flex-1 min-h-0 overflow-y-auto p-4">
               <NoteEditor
                 initialTitle={selectedNote.title}
                 initialContent={'notes' in selectedNote ? selectedNote.notes : selectedNote.content}
