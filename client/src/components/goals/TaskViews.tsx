@@ -117,7 +117,7 @@ function TaskDialog({ task, onClose, onUpdateDate, onToggleComplete }: TaskDialo
 
           {/* Subtasks Section */}
           {subtasks.length > 0 && (
-            <div className="space-y-2">
+            <div className="space-y-2 mt-4">
               <h3 className="text-sm font-medium">Subtasks</h3>
               <div className="space-y-2">
                 {subtasks.map(subtask => (
@@ -290,7 +290,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
       if (selectedTask && selectedTask.id === taskId) {
         setSelectedTask({
           ...selectedTask,
-          plannedDate: date ? date : null 
+          plannedDate: date ? date : null
         });
       }
 
