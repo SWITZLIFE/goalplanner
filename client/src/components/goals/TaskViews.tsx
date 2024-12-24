@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { NoteEditor } from "@/components/notes/NoteEditor";
+import { TaskEditor } from "./TaskEditor"; // Fixed import path
+
 
 // Extend the Task type to include properties needed for the task list dialog
 interface Task extends BaseTask {
@@ -52,6 +54,7 @@ interface TaskViewsProps {
 export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps) {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [showTaskEditor, setShowTaskEditor] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [taskFilter, setTaskFilter] = useState<'all' | 'active' | 'completed'>('all');
   const [isSaving, setIsSaving] = useState(false);
@@ -60,7 +63,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
   const [showOverdueTasks, setShowOverdueTasks] = useState(true);
   const { updateTask, createTask, updateGoal, goals } = useGoals();
   const { toast } = useToast();
-  const [selectedNote, setSelectedNote] = useState<(Task | Note) | null>(null);
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   // Fetch standalone notes
@@ -213,6 +216,18 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
         title: "Error",
         description: "Failed to update task status"
       });
+    }
+  };
+
+  // Update the click handler for calendar tasks
+  const handleTaskClick = (task: Task) => {
+    if (task.isTaskList) {
+      // Show task list dialog for multiple tasks
+      setSelectedTask(task);
+    } else {
+      // Show task editor dialog for single task
+      setSelectedTask(task);
+      setShowTaskEditor(true);
     }
   };
 
@@ -405,7 +420,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                                 task.completed ? "bg-orange-100" : "bg-blue-100"
                               )}
                               title={task.title}
-                              onClick={() => setSelectedTask(task)}
+                              onClick={() => handleTaskClick(task)}
                             >
                               {task.title}
                             </div>
@@ -507,149 +522,19 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
         </TabsContent>
       </Tabs>
 
-      {/* Task/Note Details Side Panel */}
-      <div className={cn(
-        "fixed inset-y-0 right-0 w-[600px] bg-background border-l shadow-lg transform transition-transform duration-200 ease-in-out z-50",
-        selectedTask || selectedNote ? "translate-x-0" : "translate-x-full"
-      )}>
-        {(selectedTask || selectedNote) && (
-          <div className="flex flex-col h-full">
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => {
-                    setSelectedTask(null);
-                    setSelectedNote(null);
-                  }}
-                  className="rounded-full p-2 hover:bg-accent/50"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-                <h2 className="text-xl font-semibold">
-                  {selectedTask ? "Task Details" : "Note Details"}
-                </h2>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="space-y-6">
-                {/* Task/Note Information */}
-                <div className="space-y-2">
-                  <h3 className="text-lg font-medium">
-                    {(selectedTask || selectedNote)?.title}
-                  </h3>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <CalendarIcon className="h-4 w-4" />
-                    <span>
-                      Created on {format(new Date((selectedTask || selectedNote)?.createdAt), 'MMMM d, yyyy')}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Notes Content */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">Content</label>
-                  </div>
-                  <div className="min-h-[200px] p-4 bg-accent/5 rounded-lg">
-                    <textarea
-                      className="w-full h-full min-h-[300px] bg-transparent resize-none focus:outline-none"
-                      placeholder="Add notes here..."
-                      value={selectedTask ? selectedTask.notes || '' : selectedNote?.content || ''}
-                      onChange={(e) => {
-                        if (selectedTask) {
-                          setSelectedTask({
-                            ...selectedTask,
-                            notes: e.target.value
-                          });
-                        } else if (selectedNote) {
-                          setSelectedNote({
-                            ...selectedNote,
-                            content: e.target.value
-                          });
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Footer with Save Button */}
-            <div className="p-4 border-t bg-muted/40">
-              <Button
-                className="w-full"
-                onClick={async () => {
-                  try {
-                    setIsSaving(true);
-                    if (selectedTask) {
-                      await updateTask({
-                        taskId: selectedTask.id,
-                        notes: selectedTask.notes
-                      });
-                    } else if (selectedNote) {
-                      // Handle standalone note update here
-                      await fetch(`/api/notes/${selectedNote.id}`, {
-                        method: 'PATCH',
-                        headers: {
-                          'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                          content: selectedNote.content
-                        })
-                      });
-                      queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
-                    }
-                    toast({
-                      title: "Success",
-                      description: "Note saved successfully"
-                    });
-                    setSelectedTask(null);
-                    setSelectedNote(null);
-                  } catch (error) {
-                    console.error('Failed to save note:', error);
-                    toast({
-                      variant: "destructive",
-                      title: "Error",
-                      description: "Failed to save note"
-                    });
-                  } finally {
-                    setIsSaving(false);
-                  }
-                }}
-                disabled={isSaving}
-              >
-                {isSaving ? "Saving..." : "Save Changes"}
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Date Picker Dialog */}
-      <Dialog
-        open={showDatePicker !== null}
-        onOpenChange={(open) => !open && setShowDatePicker(null)}
-      >
-        <DialogContent className="max-w-[min-content]">
+      {/* Task Editor Dialog */}
+      <Dialog open={showTaskEditor} onOpenChange={setShowTaskEditor}>
+        <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle>Select Task Date</DialogTitle>
+            <DialogTitle>Task Details</DialogTitle>
           </DialogHeader>
-          <Calendar
-            mode="single"
-            selected={showDatePicker?.date}
-            disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-            onSelect={(date) => {
-              if (showDatePicker && date) {
-                handleUpdateTaskDate(showDatePicker.taskId, date);
-                setShowDatePicker(null);
-              }
-            }}
-            className="rounded-md border"
-            weekStartsOn={1}
-          />
+          {selectedTask && (
+            <TaskEditor
+              task={selectedTask}
+              open={showTaskEditor}
+              onOpenChange={setShowTaskEditor}
+            />
+          )}
         </DialogContent>
       </Dialog>
 
