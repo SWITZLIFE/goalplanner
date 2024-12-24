@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Clock, Calendar as CalendarIcon, Quote, X, Link2, Plus, ChevronRight } from "lucide-react";
 import { VisionGenerator } from "./VisionGenerator";
 import { OverdueTasksDialog } from "./OverdueTasksDialog";
-//import { useQuery } from "@tanstack/react-query"; // Removed useQuery
+import { useQuery } from "@tanstack/react-query"; 
 import { useGoals } from "@/hooks/use-goals";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -56,10 +56,10 @@ interface TaskDialogProps {
   onClose: () => void;
   onUpdateDate: (date: Date | undefined) => void;
   onToggleComplete: (completed: boolean, subtaskId?: number) => void;
-  initialTasks: Task[]; // Added initialTasks prop
+  initialTasks: Task[];
 }
 
-function TaskDialog({ task, onClose, onUpdateDate, onToggleComplete, initialTasks }: TaskDialogProps) { //Added initialTasks prop
+function TaskDialog({ task, onClose, onUpdateDate, onToggleComplete, initialTasks }: TaskDialogProps) {
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Get subtasks directly from the task list
@@ -664,7 +664,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
               handleToggleComplete(selectedTask, completed, subtaskId);
             }
           }}
-          initialTasks={initialTasks} // Pass initialTasks prop
+          initialTasks={initialTasks}
         />
       )}
 
