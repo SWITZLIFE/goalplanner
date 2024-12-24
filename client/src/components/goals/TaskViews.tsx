@@ -117,8 +117,8 @@ function TaskDialog({ task, onClose, onUpdateDate, onToggleComplete }: TaskDialo
 
           {/* Subtasks Section */}
           {subtasks.length > 0 && (
-            <div className="space-y-2 mt-4">
-              <h3 className="text-sm font-medium">Subtasks</h3>
+            <div className="border-t pt-4 mt-4">
+              <h3 className="text-sm font-medium mb-2">Subtasks</h3>
               <div className="space-y-2">
                 {subtasks.map(subtask => (
                   <div
