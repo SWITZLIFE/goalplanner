@@ -6,7 +6,7 @@ import { format } from "date-fns";
 import type { Task as BaseTask } from "@db/schema";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Clock, Calendar as CalendarIcon, Quote, X, Link2, Plus } from "lucide-react";
+import { Clock, Calendar as CalendarIcon, Quote, X, Link2, Plus, ChevronRight } from "lucide-react";
 import { VisionGenerator } from "./VisionGenerator";
 import { OverdueTasksDialog } from "./OverdueTasksDialog";
 import { useQuery } from "@tanstack/react-query";
@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { NoteEditor } from "@/components/notes/NoteEditor";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Extend the Task type to include properties needed for the task list dialog
 interface Task extends BaseTask {
@@ -47,6 +48,116 @@ interface TaskViewsProps {
   tasks: Task[];
   goalId: number;
   goal: Goal;
+}
+
+interface TaskDialogProps {
+  task: Task;
+  onClose: () => void;
+  onUpdateDate: (date: Date | undefined) => void;
+  onToggleComplete: (completed: boolean, subtaskId?: number) => void;
+}
+
+function TaskDialog({ task, onClose, onUpdateDate, onToggleComplete }: TaskDialogProps) {
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const { data: goalData } = useQuery<{ tasks: Task[] }>({
+    queryKey: ["/api/goals"],
+  });
+
+  // Get subtasks if any
+  const subtasks = (goalData?.tasks || []).filter((t: Task) => t.parentTaskId === task.id);
+
+  return (
+    <Dialog open={true} onOpenChange={() => onClose()}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center justify-between">
+            <span>{task.title}</span>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={task.completed}
+                onCheckedChange={(checked) => onToggleComplete(checked as boolean)}
+              />
+            </div>
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          {/* Date Section */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm">
+              <CalendarIcon className="h-4 w-4" />
+              <span>
+                {task.plannedDate
+                  ? format(new Date(task.plannedDate), 'MMMM d, yyyy')
+                  : "No date set"}
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDatePicker(true)}
+            >
+              Change Date
+            </Button>
+          </div>
+
+          {/* Time Estimate */}
+          {task.estimatedMinutes && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              <span>Estimated: {task.estimatedMinutes} minutes</span>
+            </div>
+          )}
+
+          {/* Subtasks Section */}
+          {subtasks.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium">Subtasks</h3>
+              <div className="space-y-2">
+                {subtasks.map(subtask => (
+                  <div
+                    key={subtask.id}
+                    className="flex items-center gap-2 p-2 rounded-md border"
+                  >
+                    <Checkbox
+                      checked={subtask.completed}
+                      onCheckedChange={(checked) =>
+                        onToggleComplete(checked as boolean, subtask.id)
+                      }
+                    />
+                    <span className={cn(
+                      "text-sm",
+                      subtask.completed && "line-through text-muted-foreground"
+                    )}>
+                      {subtask.title}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Date Picker Dialog */}
+        <Dialog open={showDatePicker} onOpenChange={setShowDatePicker}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Select New Date</DialogTitle>
+            </DialogHeader>
+            <Calendar
+              mode="single"
+              selected={task.plannedDate ? new Date(task.plannedDate) : undefined}
+              onSelect={(date) => {
+                onUpdateDate(date || undefined);
+                setShowDatePicker(false);
+              }}
+              className="rounded-md border"
+            />
+          </DialogContent>
+        </Dialog>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps) {
@@ -193,19 +304,47 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
     }
   };
 
-  const handleToggleComplete = async (task: Task) => {
+  // Update handleToggleComplete to handle subtasks
+  const handleToggleComplete = async (task: Task, completed: boolean, subtaskId?: number) => {
     try {
+      const taskToUpdate = subtaskId
+        ? initialTasks.find(t => t.id === subtaskId)
+        : task;
+
+      if (!taskToUpdate) return;
+
       await updateTask({
-        taskId: task.id,
-        completed: !task.completed
+        taskId: taskToUpdate.id,
+        completed
       });
-      // Update the selected task state immediately
-      if (selectedTask) {
+
+      // Update the selected task's state immediately in the UI
+      if (selectedTask && selectedTask.id === taskToUpdate.id) {
         setSelectedTask({
           ...selectedTask,
-          completed: !task.completed
+          completed
         });
       }
+
+      // If completing a main task, complete all its subtasks
+      if (!taskToUpdate.isSubtask && completed) {
+        const subtasks = initialTasks.filter(t => t.parentTaskId === taskToUpdate.id);
+        await Promise.all(
+          subtasks.map(subtask =>
+            updateTask({
+              taskId: subtask.id,
+              completed: true
+            })
+          )
+        );
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+
+      toast({
+        title: "Success",
+        description: completed ? "Task completed!" : "Task reopened"
+      });
     } catch (error) {
       console.error('Failed to toggle task completion:', error);
       toast({
@@ -507,126 +646,23 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
         </TabsContent>
       </Tabs>
 
-      {/* Task/Note Details Side Panel */}
-      <div className={cn(
-        "fixed inset-y-0 right-0 w-[600px] bg-background border-l shadow-lg transform transition-transform duration-200 ease-in-out z-50",
-        selectedTask || selectedNote ? "translate-x-0" : "translate-x-full"
-      )}>
-        {(selectedTask || selectedNote) && (
-          <div className="flex flex-col h-full">
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => {
-                    setSelectedTask(null);
-                    setSelectedNote(null);
-                  }}
-                  className="rounded-full p-2 hover:bg-accent/50"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-                <h2 className="text-xl font-semibold">
-                  {selectedTask ? "Task Details" : "Note Details"}
-                </h2>
-              </div>
-            </div>
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="space-y-6">
-                {/* Task/Note Information */}
-                <div className="space-y-2">
-                  <h3 className="text-lg font-medium">
-                    {(selectedTask || selectedNote)?.title}
-                  </h3>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <CalendarIcon className="h-4 w-4" />
-                    <span>
-                      Created on {format(new Date((selectedTask || selectedNote)?.createdAt), 'MMMM d, yyyy')}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Notes Content */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">Content</label>
-                  </div>
-                  <div className="min-h-[200px] p-4 bg-accent/5 rounded-lg">
-                    <textarea
-                      className="w-full h-full min-h-[300px] bg-transparent resize-none focus:outline-none"
-                      placeholder="Add notes here..."
-                      value={selectedTask ? selectedTask.notes || '' : selectedNote?.content || ''}
-                      onChange={(e) => {
-                        if (selectedTask) {
-                          setSelectedTask({
-                            ...selectedTask,
-                            notes: e.target.value
-                          });
-                        } else if (selectedNote) {
-                          setSelectedNote({
-                            ...selectedNote,
-                            content: e.target.value
-                          });
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Footer with Save Button */}
-            <div className="p-4 border-t bg-muted/40">
-              <Button
-                className="w-full"
-                onClick={async () => {
-                  try {
-                    setIsSaving(true);
-                    if (selectedTask) {
-                      await updateTask({
-                        taskId: selectedTask.id,
-                        notes: selectedTask.notes
-                      });
-                    } else if (selectedNote) {
-                      // Handle standalone note update here
-                      await fetch(`/api/notes/${selectedNote.id}`, {
-                        method: 'PATCH',
-                        headers: {
-                          'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                          content: selectedNote.content
-                        })
-                      });
-                      queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
-                    }
-                    toast({
-                      title: "Success",
-                      description: "Note saved successfully"
-                    });
-                    setSelectedTask(null);
-                    setSelectedNote(null);
-                  } catch (error) {
-                    console.error('Failed to save note:', error);
-                    toast({
-                      variant: "destructive",
-                      title: "Error",
-                      description: "Failed to save note"
-                    });
-                  } finally {
-                    setIsSaving(false);
-                  }
-                }}
-                disabled={isSaving}
-              >
-                {isSaving ? "Saving..." : "Save Changes"}
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
+      {selectedTask && (
+        <TaskDialog
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onUpdateDate={(date) => {
+            if (selectedTask) {
+              handleUpdateTaskDate(selectedTask.id, date);
+            }
+          }}
+          onToggleComplete={(completed, subtaskId) => {
+            if (selectedTask) {
+              handleToggleComplete(selectedTask, completed, subtaskId);
+            }
+          }}
+        />
+      )}
 
       {/* Date Picker Dialog */}
       <Dialog

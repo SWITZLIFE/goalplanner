@@ -18,7 +18,7 @@ interface TaskListProps {
   tasks: Task[];
   goalId: number;
   readOnly?: boolean;
-  onUpdateTaskDate?: (taskId: number, date: Date | undefined) => Promise<void>;
+  onUpdateTaskDate?: (taskId: number, date: string | undefined) => Promise<void>;
 }
 
 interface EditableTaskTitleProps {
@@ -153,23 +153,23 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         completed,
         title: task.title,
         plannedDate: task.plannedDate,
-        estimatedMinutes: task.estimatedMinutes,
+        estimatedMinutes: task.estimatedMinutes ?? undefined,
         notes: task.notes
       };
 
       await updateTask(taskUpdate);
-      
+
       // Only modify subtasks when completing (not uncompleting) a main task
       if (!task.isSubtask && completed) {
         const subtasks = tasks.filter(t => t.parentTaskId === taskId);
         await Promise.all(
-          subtasks.map(subtask => 
+          subtasks.map(subtask =>
             updateTask({
               taskId: subtask.id,
               completed: true,
               title: subtask.title,
               notes: subtask.notes,
-              estimatedMinutes: subtask.estimatedMinutes,
+              estimatedMinutes: subtask.estimatedMinutes ?? undefined,
               plannedDate: subtask.plannedDate,
               isSubtask: true,
               parentTaskId: taskId
@@ -177,9 +177,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
           )
         );
       }
-      // When uncompleting a task, do not modify its subtasks
-      // This ensures subtasks retain their state when parent is uncompleted
-      
+
       toast({
         title: "Success",
         description: completed ? "Task completed!" : "Task reopened"
@@ -197,19 +195,19 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
   const parseEstimatedTime = (title: string): { title: string; estimatedMinutes?: number } => {
     const timePattern = /\(est:(\d+)m\)/;
     const match = title.match(timePattern);
-    
+
     if (match) {
       const minutes = parseInt(match[1], 10);
       const cleanTitle = title.replace(timePattern, '').trim();
       return { title: cleanTitle, estimatedMinutes: minutes };
     }
-    
+
     return { title };
   };
 
   const handleTaskTitleChange = async (taskId: number, title: string, createAnother = false) => {
     const task = tasks.find(t => t.id === taskId);
-    
+
     if (!title) {
       // Empty title means the user didn't edit the new task/subtask, so delete it
       if (task && (task.title === "New Task" || task.title === "New Subtask")) {
@@ -218,12 +216,12 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
     } else if (title.trim()) {
       const { title: cleanTitle, estimatedMinutes } = parseEstimatedTime(title);
       await updateTask({ taskId, title: cleanTitle, estimatedMinutes });
-      
+
       if (createAnother && task?.parentTaskId) {
         await handleAddSubtask(task.parentTaskId);
       }
     }
-    
+
     if (!createAnother) {
       setEditingTaskId(null);
     }
@@ -272,32 +270,32 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
       // First, prioritize tasks with dates
       const aHasDate = !!a.plannedDate;
       const bHasDate = !!b.plannedDate;
-      
+
       if (aHasDate !== bHasDate) {
         return aHasDate ? -1 : 1;
       }
-      
+
       // If both tasks have dates, sort by date ascending
       if (aHasDate && bHasDate) {
         const aDate = new Date(a.plannedDate!);
         const bDate = new Date(b.plannedDate!);
         return aDate.getTime() - bDate.getTime();
       }
-      
+
       // For tasks without dates, maintain the existing sort logic
       const aAiGenerated = a.isAiGenerated ?? false;
       const bAiGenerated = b.isAiGenerated ?? false;
-      
+
       // Group manual vs AI-generated tasks
       if (aAiGenerated !== bAiGenerated) {
         return aAiGenerated ? 1 : -1;
       }
-      
+
       // For manual tasks, sort by ID descending (newest first)
       if (!aAiGenerated) {
         return b.id - a.id;
       }
-      
+
       // For AI tasks, sort by ID ascending to maintain chronological order
       return a.id - b.id;
     });
@@ -317,20 +315,20 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
             variant="outline"
             size="sm"
             onClick={() => {
-            const mainTaskIds = mainTasks.map(task => task.id);
-            const newExpanded = new Set(Array.from(expandedTasks));
-            const shouldExpandAll = mainTaskIds.some(id => !expandedTasks.has(id));
-            
-            mainTaskIds.forEach(id => {
-              if (shouldExpandAll) {
-                newExpanded.add(id);
-              } else {
-                newExpanded.delete(id);
-              }
-            });
-            
-            setExpandedTasks(newExpanded);
-          }}
+              const mainTaskIds = mainTasks.map(task => task.id);
+              const newExpanded = new Set(Array.from(expandedTasks));
+              const shouldExpandAll = mainTaskIds.some(id => !expandedTasks.has(id));
+
+              mainTaskIds.forEach(id => {
+                if (shouldExpandAll) {
+                  newExpanded.add(id);
+                } else {
+                  newExpanded.delete(id);
+                }
+              });
+
+              setExpandedTasks(newExpanded);
+            }}
           >
             {mainTasks.some(task => !expandedTasks.has(task.id)) ? 'Expand All' : 'Collapse All'}
           </Button>
@@ -363,7 +361,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                       setExpandedTasks(newExpanded);
                     }}
                   >
-                    <ChevronRight 
+                    <ChevronRight
                       className={cn(
                         "h-4 w-4 transition-transform",
                         expandedTasks.has(mainTask.id) ? "transform rotate-90" : ""
@@ -375,7 +373,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     checked={mainTask.completed}
                     onCheckedChange={(checked) => handleTaskToggle(mainTask.id, checked as boolean)}
                   />
-                  <div 
+                  <div
                     className="flex items-center gap-2 flex-grow cursor-pointer"
                     onClick={(e) => {
                       // Only open task details if clicking the container, not the title or buttons
@@ -393,15 +391,15 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                       )}
                     />
                     <div className="flex items-center gap-1">
-                        {!mainTask.isSubtask && mainTask.notes && (
-                          <button
-                            onClick={() => setEditingTaskId(mainTask.id)}
-                            className="text-muted-foreground hover:text-foreground transition-colors"
-                            title="View notes"
-                          >
-                            <StickyNote className="h-4 w-4" />
-                          </button>
-                        )}
+                      {!mainTask.isSubtask && mainTask.notes && (
+                        <button
+                          onClick={() => setEditingTaskId(mainTask.id)}
+                          className="text-muted-foreground hover:text-foreground transition-colors"
+                          title="View notes"
+                        >
+                          <StickyNote className="h-4 w-4" />
+                        </button>
+                      )}
                       {!readOnly && (
                         <button
                           onClick={() => handleDelete(mainTask.id)}
@@ -414,7 +412,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     </div>
                   </div>
                   {!mainTask.completed && (
-                    <TaskTimer 
+                    <TaskTimer
                       taskId={mainTask.id}
                       totalMinutesSpent={mainTask.totalMinutesSpent || 0}
                       onTimerStop={(coinsEarned) => {
@@ -426,20 +424,20 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     />
                   )}
                   {!readOnly && onUpdateTaskDate && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowDatePicker({ 
-                            taskId: mainTask.id, 
-                            date: mainTask.plannedDate ? new Date(mainTask.plannedDate) : undefined 
-                          })}
-                        >
-                          {mainTask.plannedDate 
-                            ? format(new Date(mainTask.plannedDate), 'MMM d, yyyy')
-                            : "Set Date"
-                          }
-                        </Button>
-                      )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowDatePicker({
+                        taskId: mainTask.id,
+                        date: mainTask.plannedDate ? new Date(mainTask.plannedDate) : undefined
+                      })}
+                    >
+                      {mainTask.plannedDate
+                        ? format(new Date(mainTask.plannedDate), 'MMM d, yyyy')
+                        : "Set Date"
+                      }
+                    </Button>
+                  )}
                 </div>
 
                 <div className="flex justify-between items-center ml-6">
@@ -471,7 +469,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                 </div>
               </div>
 
-              <Collapsible.Root 
+              <Collapsible.Root
                 open={expandedTasks.has(mainTask.id)}
                 className="ml-10 border-l-2 border-gray-200 pl-4 mt-2"
               >
@@ -538,7 +536,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     ))}
                     {/* Hover area for adding new subtask */}
                     {!readOnly && (
-                      <div 
+                      <div
                         className="flex items-center space-x-2 group h-8 px-8 -ml-6 cursor-pointer hover:bg-accent/50 rounded-sm"
                         onClick={() => handleAddSubtask(mainTask.id)}
                       >
@@ -556,8 +554,8 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         </div>
 
         {/* Date Picker Dialog */}
-        <Dialog 
-          open={showDatePicker !== null} 
+        <Dialog
+          open={showDatePicker !== null}
           onOpenChange={(open) => !open && setShowDatePicker(null)}
         >
           <DialogContent>
@@ -570,7 +568,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
               disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
               onSelect={(date) => {
                 if (showDatePicker && onUpdateTaskDate && date) {
-                  onUpdateTaskDate(showDatePicker.taskId, date);
+                  onUpdateTaskDate(showDatePicker.taskId, date.toISOString()); // changed here
                   setShowDatePicker(null);
                 }
               }}
