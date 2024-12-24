@@ -64,11 +64,11 @@ function TaskDialog({ task, onClose, onUpdateDate, onToggleComplete }: TaskDialo
     queryKey: ["/api/goals"],
   });
 
-  // Get subtasks if any
+  // Get subtasks by filtering tasks that have this task as their parent
   const subtasks = goalData?.goals
     ?.find(g => g.id === task.goalId)
     ?.tasks
-    ?.filter(t => t.parentTaskId === task.id) || [];
+    ?.filter(t => t.parentTaskId === task.id && t.isSubtask) || [];
 
   return (
     <Dialog open={true} onOpenChange={() => onClose()}>
