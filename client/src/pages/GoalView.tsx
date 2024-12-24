@@ -7,7 +7,7 @@ import { CreateGoalDialog } from "@/components/goals/CreateGoalDialog";
 import { GoalCard } from "@/components/goals/GoalCard";
 import { CoinBalance } from "@/components/rewards/CoinBalance";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, Trash2, CalendarIcon } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import {
@@ -80,8 +80,8 @@ export default function GoalView() {
               {goal.description && goal.description !== goal.title && (
                 <p className="text-sm text-muted-foreground mb-1">{goal.description}</p>
               )}
-              <p className="text-muted-foreground">
-                Target completion: {format(new Date(goal.targetDate), "MMMM d, yyyy")}
+              <p className="text-muted-foreground flex items-center gap-2">
+                <CalendarIcon className="h-4 w-4" /> {format(new Date(goal.targetDate), "MMMM d, yyyy")}
               </p>
             </div>
             <div className="flex space-x-2">
