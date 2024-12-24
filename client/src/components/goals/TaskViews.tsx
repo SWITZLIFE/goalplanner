@@ -119,7 +119,7 @@ function TaskDialog({ task, onClose, onUpdateDate, onToggleComplete }: TaskDialo
                 {subtasks.map(subtask => (
                   <div
                     key={subtask.id}
-                    className="flex items-center gap-2 p-2 rounded-md border"
+                    className="flex items-center gap-2 p-2 rounded-md hover:bg-accent/50"
                   >
                     <Checkbox
                       checked={subtask.completed}
