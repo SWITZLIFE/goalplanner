@@ -70,13 +70,25 @@ function TaskDialog({ task, onClose, onUpdateDate, onToggleComplete }: TaskDialo
     <Dialog open={true} onOpenChange={() => onClose()}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>{task.title}</span>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                checked={task.completed}
-                onCheckedChange={(checked) => onToggleComplete(checked as boolean)}
-              />
+          <DialogTitle>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Checkbox
+                  checked={task.completed}
+                  onCheckedChange={(checked) => onToggleComplete(checked as boolean)}
+                />
+                <span className={cn(
+                  task.completed && "line-through text-muted-foreground"
+                )}>{task.title}</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onClose()}
+                className="h-6 w-6 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
             </div>
           </DialogTitle>
         </DialogHeader>
