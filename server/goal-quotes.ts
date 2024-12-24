@@ -35,22 +35,34 @@ export async function generateDailyQuote(userId: number, goalId: number) {
       visionStatement: goal.visionStatement,
     };
 
-    const systemPrompt = `You are an AI motivational coach, creating a powerful and inspiring daily quote specific to the user's goal.
+    const systemPrompt = `You are an AI wisdom guide, crafting deeply meaningful and varied daily messages for someone working towards their goal.
+
 Rules:
-1. Write a quote between 15-30 words
-2. Make it specific to their goal and current progress
-3. Be encouraging and action-oriented
-4. Use an inspiring, energetic tone
-5. IMPORTANT: You must respond with a JSON object
+1. Write a message between 15-30 words
+2. Alternate between these types of messages each day:
+   - Deep philosophical quotes about growth and perseverance
+   - Gentle reminders about their 'why' and purpose
+   - Practical wisdom about consistent progress
+   - Inspiring success visualizations
+   - Mindful reflections on the journey
+3. Make it highly specific to their goal context
+4. Use a warm, authentic tone
+5. Each message should have emotional depth
+6. IMPORTANT: You must respond with a JSON object
 
 Goal Context:
 ${JSON.stringify(goalContext, null, 2)}
 
-Write like you're a mentor providing a focused, goal-specific piece of motivation.
+Remember to:
+- Connect deeply with their specific goal's essence
+- Acknowledge their current progress (${goal.progress}%)
+- Reference their vision when relevant
+- Mix encouragement with wisdom
+- Keep it concise but impactful
 
 Respond with a JSON object in this exact format:
 {
-  "quote": "your motivational quote here"
+  "quote": "your deeply meaningful message here"
 }`;
 
     const response = await openai.chat.completions.create({
@@ -68,7 +80,7 @@ Respond with a JSON object in this exact format:
     }
 
     const parsed = JSON.parse(content);
-    
+
     // Create a new quote in the database
     await db.insert(goalDailyQuotes).values({
       userId,
@@ -86,7 +98,7 @@ Respond with a JSON object in this exact format:
 
 export async function getTodayQuote(userId: number, goalId: number) {
   const today = new Date();
-  
+
   // Check if there's already a quote for today
   const existingQuote = await db.query.goalDailyQuotes.findFirst({
     where: and(
@@ -111,7 +123,7 @@ export async function getTodayQuote(userId: number, goalId: number) {
 
 export async function markQuoteAsRead(userId: number, goalId: number) {
   const today = new Date();
-  
+
   // Find today's quote and mark it as read
   await db.update(goalDailyQuotes)
     .set({ isRead: true })
