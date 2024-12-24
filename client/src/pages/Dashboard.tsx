@@ -20,12 +20,13 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex overflow-hidden">
       {/* Left Sidebar */}
       <motion.div 
         initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
+        transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 }}
+        style={{ opacity: 0 }}
         className="w-96 border-r p-6 bg-gray-50"
       >
         <div className="flex justify-between items-center mb-6">
@@ -69,6 +70,7 @@ export default function Dashboard() {
         initial={{ x: 50, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
+        style={{ opacity: 0 }}
         className="flex-1 p-8 bg-white"
       >
         <div className="max-w-7xl mx-auto space-y-8">

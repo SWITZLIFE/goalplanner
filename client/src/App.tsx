@@ -66,16 +66,21 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-hidden">
       <Header />
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="wait" initial={false}>
         <motion.main
           key={location}
           initial="initial"
           animate="enter"
           exit="exit"
           variants={pageVariants}
-          className="container py-6"
+          className="container py-6 relative"
+          style={{ 
+            position: 'relative',
+            width: '100%',
+            opacity: 0 
+          }}
         >
           <Switch>
             <Route path="/" component={Dashboard} />
