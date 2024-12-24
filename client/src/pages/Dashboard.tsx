@@ -29,7 +29,7 @@ export default function Dashboard() {
         className="w-96 border-r p-6 bg-gray-50"
       >
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-xl font-semibold">Goal Planner</h1>
+          <h2 className="text-lg font-semibold">Coin Balance</h2>
           <CoinBalance />
         </div>
 
