@@ -67,7 +67,7 @@ function TaskDialog({ task, onClose, onUpdateDate, onToggleComplete }: TaskDialo
   const subtasks = (goalData?.tasks || []).filter((t: Task) => t.parentTaskId === task.id);
 
   return (
-    <Dialog open={true} onOpenChange={() => onClose()}>
+    <Dialog open={true}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
