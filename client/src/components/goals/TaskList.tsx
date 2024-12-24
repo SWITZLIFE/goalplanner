@@ -13,6 +13,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { TaskTimer } from "./TaskTimer";
 import { TaskEditor } from "./TaskEditor";
 import { useToast } from "@/hooks/use-toast";
+import { motion } from "framer-motion";
 
 interface TaskListProps {
   tasks: Task[];
@@ -393,14 +394,19 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                       }
                     }}
                   >
-                    <EditableTaskTitle
-                      task={mainTask}
-                      onSave={(title) => handleTaskTitleChange(mainTask.id, title)}
-                      className={cn(
-                        "font-medium",
-                        mainTask.completed && "line-through text-muted-foreground"
-                      )}
-                    />
+                    <motion.div
+                      initial={{ scale: 1, opacity: 1 }}
+                      animate={{
+                        scale: mainTask.completed ? 0.95 : 1,
+                        opacity: mainTask.completed ? 0.7 : 1,
+                        textDecoration: mainTask.completed ? "line-through" : "none",
+                        color: mainTask.completed ? "var(--muted-foreground)" : "var(--foreground)"
+                      }}
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      className="font-medium"
+                    >
+                      {mainTask.title}
+                    </motion.div>
                     <div className="flex items-center gap-1">
                       {!mainTask.isSubtask && mainTask.notes && (
                         <button
@@ -498,15 +504,19 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                         />
                         <div className="flex flex-col flex-grow">
                           <div className="flex items-center gap-2">
-                            <EditableTaskTitle
-                              task={subtask}
-                              onSave={(title, createAnother) => handleTaskTitleChange(subtask.id, title, createAnother)}
-                              className={cn(
-                                "text-sm",
-                                subtask.completed && "line-through text-muted-foreground"
-                              )}
-                              continuousCreate={true}
-                            />
+                            <motion.div
+                              initial={{ scale: 1, opacity: 1 }}
+                              animate={{
+                                scale: subtask.completed ? 0.95 : 1,
+                                opacity: subtask.completed ? 0.7 : 1,
+                                textDecoration: subtask.completed ? "line-through" : "none",
+                                color: subtask.completed ? "var(--muted-foreground)" : "var(--foreground)"
+                              }}
+                              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                              className="text-sm"
+                            >
+                              {subtask.title}
+                            </motion.div>
                             <div className="flex items-center gap-1">
                               {!subtask.isSubtask && subtask.notes && (
                                 <button
