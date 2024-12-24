@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Clock, Calendar as CalendarIcon, Quote, X, Link2, Plus, ChevronRight } from "lucide-react";
 import { VisionGenerator } from "./VisionGenerator";
 import { OverdueTasksDialog } from "./OverdueTasksDialog";
-import { useQuery } from "@tanstack/react-query";
+//import { useQuery } from "@tanstack/react-query"; // Removed useQuery
 import { useGoals } from "@/hooks/use-goals";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -56,21 +56,16 @@ interface TaskDialogProps {
   onClose: () => void;
   onUpdateDate: (date: Date | undefined) => void;
   onToggleComplete: (completed: boolean, subtaskId?: number) => void;
+  initialTasks: Task[]; // Added initialTasks prop
 }
 
-function TaskDialog({ task, onClose, onUpdateDate, onToggleComplete }: TaskDialogProps) {
+function TaskDialog({ task, onClose, onUpdateDate, onToggleComplete, initialTasks }: TaskDialogProps) { //Added initialTasks prop
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // Fetch subtasks directly for this task
-  const { data: subtasksData, isLoading } = useQuery<{ goals: Goal[] }>({
-    queryKey: [`/api/goals`],
-    select: (data) => {
-      const currentGoal = data.goals.find(g => g.id === task.goalId);
-      return currentGoal?.tasks.filter(t => t.parentTaskId === task.id && t.isSubtask) || [];
-    },
-  });
-
-  const subtasks = subtasksData || [];
+  // Get subtasks directly from the task list
+  const subtasks = task.isTaskList && task.dayTasks
+    ? task.dayTasks
+    : initialTasks.filter(t => t.parentTaskId === task.id && t.isSubtask);
 
   return (
     <Dialog open={true} onOpenChange={() => onClose()}>
@@ -118,7 +113,7 @@ function TaskDialog({ task, onClose, onUpdateDate, onToggleComplete }: TaskDialo
           )}
 
           {/* Subtasks Section */}
-          {!isLoading && subtasks.length > 0 && (
+          {subtasks.length > 0 && (
             <div className="border-t pt-4 mt-4">
               <h3 className="text-sm font-medium mb-2">Subtasks</h3>
               <div className="space-y-2">
@@ -669,6 +664,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
               handleToggleComplete(selectedTask, completed, subtaskId);
             }
           }}
+          initialTasks={initialTasks} // Pass initialTasks prop
         />
       )}
 
