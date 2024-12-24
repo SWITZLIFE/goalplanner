@@ -7,7 +7,7 @@ interface GoalProgressProps {
 export function GoalProgress({ progress }: GoalProgressProps) {
   return (
     <div className="space-y-2">
-      <Progress value={progress} className="h-2" />
+      <Progress value={progress} className="h-2 progress-bar" />
     </div>
   );
 }

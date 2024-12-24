@@ -18,7 +18,7 @@ export function GoalCard({ goal }: GoalCardProps) {
     <Link href={`/goals/${goal.id}`}>
       <Card className={cn(
         "cursor-pointer hover:shadow-md transition-shadow mb-6",
-        isActive && "bg-primary/5 border-primary/20"
+        isActive && "bg-primary/5 border-primary/20 [&_.progress-bar]:bg-white"
       )}>
         <CardHeader className="pb-2">
           <h3 className="font-medium text-lg">{goal.title}</h3>
