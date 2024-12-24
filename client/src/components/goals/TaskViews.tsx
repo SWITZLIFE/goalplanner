@@ -15,8 +15,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { NoteEditor } from "@/components/notes/NoteEditor";
-import { TaskEditor } from "./TaskEditor"; // Fixed import path
-
+import { TaskEditor } from "./TaskEditor";
 
 // Extend the Task type to include properties needed for the task list dialog
 interface Task extends BaseTask {
@@ -522,23 +521,14 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
         </TabsContent>
       </Tabs>
 
-      {/* Task Editor Dialog */}
-      <Dialog open={showTaskEditor} onOpenChange={setShowTaskEditor}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>Task Details</DialogTitle>
-          </DialogHeader>
-          {selectedTask && (
-            <TaskEditor
-              task={selectedTask}
-              open={showTaskEditor}
-              onOpenChange={setShowTaskEditor}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {selectedTask && (
+        <TaskEditor
+          task={selectedTask}
+          open={showTaskEditor}
+          onOpenChange={setShowTaskEditor}
+        />
+      )}
 
-      {/* Note Editor Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent>
           <DialogHeader>
