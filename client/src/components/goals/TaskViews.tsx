@@ -730,6 +730,67 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
           />
         </DialogContent>
       </Dialog>
+
+      {/* Note Editor Side Panel */}
+      <div className={cn(
+        "fixed inset-y-0 right-0 w-[600px] bg-background border-l shadow-lg transform transition-transform duration-200 ease-in-out z-50",
+        selectedNote ? "translate-x-0" : "translate-x-full"
+      )}>
+        {selectedNote && (
+          <div className="flex flex-col h-full">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-lg font-semibold">Edit Note</h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSelectedNote(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              <NoteEditor
+                initialTitle={selectedNote.title}
+                initialContent={'notes' in selectedNote ? selectedNote.notes : selectedNote.content}
+                onSave={async (note) => {
+                  try {
+                    if ('notes' in selectedNote) {
+                      // Update task note
+                      await updateTask({
+                        taskId: selectedNote.id,
+                        notes: note.content
+                      });
+                    } else {
+                      // Update standalone note
+                      await fetch(`/api/notes/${selectedNote.id}`, {
+                        method: 'PATCH',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(note)
+                      });
+                      queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
+                    }
+                    toast({
+                      title: "Success",
+                      description: "Note updated successfully"
+                    });
+                    setSelectedNote(null);
+                  } catch (error) {
+                    console.error('Failed to update note:', error);
+                    toast({
+                      variant: "destructive",
+                      title: "Error",
+                      description: "Failed to update note"
+                    });
+                  }
+                }}
+                onCancel={() => setSelectedNote(null)}
+              />
+            </div>
+          </div>
+        )}
+      </div>
     </>
   );
 }
