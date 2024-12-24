@@ -17,7 +17,6 @@ import { openai } from "./openai";
 import { uploadFileToSupabase } from './supabase';
 import { getTodayQuote, markQuoteAsRead } from "./goal-quotes"; // Import from the correct file
 
-
 // Configure multer for handling file uploads
 const upload = multer({
   storage: multer.memoryStorage(),

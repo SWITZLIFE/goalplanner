@@ -254,3 +254,17 @@ export const visionBoardRelations = relations(visionBoardImages, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+export const userTokens = pgTable("user_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(), // e.g. "google"
+  accessToken: text("access_token"), // store in text or encrypted column
+  refreshToken: text("refresh_token"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+
+export const userTokensRelations = relations(userTokens, ({ one }) => ({
+  user: one(users, { fields: [userTokens.userId], references: [users.id] }),
+}));
