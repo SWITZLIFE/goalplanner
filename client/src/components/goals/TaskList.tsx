@@ -45,7 +45,6 @@ function EditableTaskTitle({ task, onSave, className, continuousCreate }: Editab
     if (title.trim() && !isUnedited) {
       onSave(title.trim(), createAnother);
     } else if (isUnedited) {
-      // If it's a new task/subtask and wasn't edited, treat it as a cancellation
       onSave('', false);
     }
     if (!createAnother || isUnedited) {
@@ -100,6 +99,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [showDatePicker, setShowDatePicker] = useState<{ taskId: number; date?: Date } | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
+  const [optimisticTaskStates, setOptimisticTaskStates] = useState<Record<number, boolean>>({});
 
   const handleDelete = async (taskId: number) => {
     try {
@@ -120,7 +120,6 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
 
   const handleConvertToTask = async (subtask: Task) => {
     try {
-      // Create a new main task with the subtask's information
       await createTask({
         goalId: subtask.goalId,
         title: subtask.title,
@@ -130,8 +129,6 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         notes: subtask.notes,
         completed: subtask.completed
       });
-
-      // Delete the original subtask
       await deleteTask(subtask.id);
     } catch (error) {
       console.error("Failed to convert subtask:", error);
@@ -147,16 +144,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
-    // Optimistically update the UI state
-    const taskElement = document.getElementById(`task-${taskId}`);
-    if (taskElement) {
-      taskElement.checked = completed;
-      const titleElement = taskElement.parentElement?.querySelector('.task-title');
-      if (titleElement) {
-        titleElement.classList.toggle('line-through', completed);
-        titleElement.classList.toggle('text-muted-foreground', completed);
-      }
-    }
+    setOptimisticTaskStates(prev => ({ ...prev, [taskId]: completed }));
 
     try {
       const taskUpdate = {
@@ -170,7 +158,6 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
 
       await updateTask(taskUpdate);
 
-      // Only modify subtasks when completing (not uncompleting) a main task
       if (!task.isSubtask && completed) {
         const subtasks = tasks.filter(t => t.parentTaskId === taskId);
         await Promise.all(
@@ -194,15 +181,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         description: completed ? "Task completed!" : "Task reopened"
       });
     } catch (error) {
-      // Revert the UI state if the API call fails
-      if (taskElement) {
-        taskElement.checked = !completed;
-        const titleElement = taskElement.parentElement?.querySelector('.task-title');
-        if (titleElement) {
-          titleElement.classList.toggle('line-through', !completed);
-          titleElement.classList.toggle('text-muted-foreground', !completed);
-        }
-      }
+      setOptimisticTaskStates(prev => ({ ...prev, [taskId]: !completed }));
 
       console.error("Failed to update task completion:", error);
       toast({
@@ -230,7 +209,6 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
     const task = tasks.find(t => t.id === taskId);
 
     if (!title) {
-      // Empty title means the user didn't edit the new task/subtask, so delete it
       if (task && (task.title === "New Task" || task.title === "New Subtask")) {
         await deleteTask(taskId);
       }
@@ -241,7 +219,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         title: cleanTitle,
         estimatedMinutes,
         isSubtask: task?.isSubtask,
-        parentTaskId: task?.parentTaskId // Ensure we maintain the parent-child relationship
+        parentTaskId: task?.parentTaskId
       });
 
       if (createAnother && task?.parentTaskId) {
@@ -299,7 +277,6 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
   const mainTasks = tasks
     .filter(task => !task.isSubtask)
     .sort((a, b) => {
-      // First, prioritize tasks with dates
       const aHasDate = !!a.plannedDate;
       const bHasDate = !!b.plannedDate;
 
@@ -307,32 +284,26 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         return aHasDate ? -1 : 1;
       }
 
-      // If both tasks have dates, sort by date ascending
       if (aHasDate && bHasDate) {
         const aDate = new Date(a.plannedDate!);
         const bDate = new Date(b.plannedDate!);
         return aDate.getTime() - bDate.getTime();
       }
 
-      // For tasks without dates, maintain the existing sort logic
       const aAiGenerated = a.isAiGenerated ?? false;
       const bAiGenerated = b.isAiGenerated ?? false;
 
-      // Group manual vs AI-generated tasks
       if (aAiGenerated !== bAiGenerated) {
         return aAiGenerated ? 1 : -1;
       }
 
-      // For manual tasks, sort by ID descending (newest first)
       if (!aAiGenerated) {
         return b.id - a.id;
       }
 
-      // For AI tasks, sort by ID ascending to maintain chronological order
       return a.id - b.id;
     });
 
-  // Get all subtasks for a parent task, regardless of completion status
   const getOrderedSubtasks = (parentId: number) => {
     return tasks
       .filter(task => task.parentTaskId === parentId)
@@ -402,24 +373,16 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                   </Button>
                   <Checkbox
                     id={`task-${mainTask.id}`}
-                    checked={mainTask.completed}
+                    checked={optimisticTaskStates[mainTask.id] ?? mainTask.completed}
                     onCheckedChange={(checked) => handleTaskToggle(mainTask.id, checked as boolean)}
                   />
-                  <div
-                    className="flex items-center gap-2 flex-grow cursor-pointer"
-                    onClick={(e) => {
-                      // Only open task details if clicking the container, not the title or buttons
-                      if (e.target === e.currentTarget) {
-                        setEditingTaskId(mainTask.id);
-                      }
-                    }}
-                  >
+                  <div className="flex items-center gap-2 flex-grow cursor-pointer">
                     <EditableTaskTitle
                       task={mainTask}
                       onSave={(title) => handleTaskTitleChange(mainTask.id, title)}
                       className={cn(
                         "font-medium task-title",
-                        mainTask.completed && "line-through text-muted-foreground"
+                        (optimisticTaskStates[mainTask.id] ?? mainTask.completed) && "line-through text-muted-foreground"
                       )}
                     />
                     <div className="flex items-center gap-1">
@@ -497,7 +460,6 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                       )}
                     </div>
                   </div>
-                  {/* Date is now shown in the Set Date button */}
                 </div>
               </div>
 
@@ -505,7 +467,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                 open={expandedTasks.has(mainTask.id)}
                 className="ml-10 border-l-2 border-gray-200 pl-4 mt-2"
               >
-                <Collapsible.Content className="transition-all data-[state=closed]:animate-collapse data-[state=open]:animate-expand overflow-hidden">
+                <Collapsible.Content>
                   <div className="space-y-2">
                     {getOrderedSubtasks(mainTask.id).map((subtask) => (
                       <div
@@ -514,7 +476,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                       >
                         <Checkbox
                           id={`task-${subtask.id}`}
-                          checked={subtask.completed}
+                          checked={optimisticTaskStates[subtask.id] ?? subtask.completed}
                           onCheckedChange={(checked) => handleTaskToggle(subtask.id, checked as boolean)}
                         />
                         <div className="flex flex-col flex-grow">
@@ -524,7 +486,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                               onSave={(title, createAnother) => handleTaskTitleChange(subtask.id, title, createAnother)}
                               className={cn(
                                 "text-sm task-title",
-                                subtask.completed && "line-through text-muted-foreground"
+                                (optimisticTaskStates[subtask.id] ?? subtask.completed) && "line-through text-muted-foreground"
                               )}
                               continuousCreate={true}
                             />
@@ -566,7 +528,6 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                         </div>
                       </div>
                     ))}
-                    {/* Hover area for adding new subtask */}
                     {!readOnly && (
                       <div
                         className="flex items-center space-x-2 group h-8 px-8 -ml-6 cursor-pointer hover:bg-accent/50 rounded-sm"
@@ -585,7 +546,6 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
           ))}
         </div>
 
-        {/* Date Picker Dialog */}
         <Dialog
           open={showDatePicker !== null}
           onOpenChange={(open) => !open && setShowDatePicker(null)}
@@ -611,7 +571,6 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         </Dialog>
       </div>
 
-      {/* Task Editor Dialog - only for main tasks */}
       {editingTaskId && tasks.find(t => t.id === editingTaskId && !t.isSubtask) && (
         <TaskEditor
           task={tasks.find(t => t.id === editingTaskId)!}
