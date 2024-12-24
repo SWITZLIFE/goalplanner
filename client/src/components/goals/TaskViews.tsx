@@ -290,7 +290,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
       if (selectedTask && selectedTask.id === taskId) {
         setSelectedTask({
           ...selectedTask,
-          plannedDate: date ? date : null //Corrected line 292
+          plannedDate: date ? date : null 
         });
       }
 

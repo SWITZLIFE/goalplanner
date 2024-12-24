@@ -18,7 +18,7 @@ interface TaskListProps {
   tasks: Task[];
   goalId: number;
   readOnly?: boolean;
-  onUpdateTaskDate?: (taskId: number, date: string | undefined) => Promise<void>;
+  onUpdateTaskDate?: (taskId: number, date: Date | undefined) => Promise<void>;
 }
 
 interface EditableTaskTitleProps {
@@ -568,7 +568,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
               disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
               onSelect={(date) => {
                 if (showDatePicker && onUpdateTaskDate && date) {
-                  onUpdateTaskDate(showDatePicker.taskId, date.toISOString()); // changed here
+                  onUpdateTaskDate(showDatePicker.taskId, date);
                   setShowDatePicker(null);
                 }
               }}
