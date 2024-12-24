@@ -5,8 +5,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import type { Task as BaseTask } from "@db/schema";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Calendar as CalendarIcon, Quote, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Clock, Calendar as CalendarIcon, Quote, X, Link2, Plus } from "lucide-react";
 import { VisionGenerator } from "./VisionGenerator";
 import { OverdueTasksDialog } from "./OverdueTasksDialog";
 import { useQuery } from "@tanstack/react-query";
@@ -14,11 +14,22 @@ import { useGoals } from "@/hooks/use-goals";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import { Checkbox } from "@/components/ui/checkbox";
+import { NoteEditor } from "@/components/notes/NoteEditor";
 
+// Extend the Task type to include properties needed for the task list dialog
 interface Task extends BaseTask {
   isTaskList?: boolean;
   dayTasks?: Task[];
+  updatedAt?: string;
+}
+
+// Add Note type definition
+interface Note {
+  id: number;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface Goal {
@@ -41,15 +52,23 @@ interface TaskViewsProps {
 export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps) {
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [taskFilter, setTaskFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [isSaving, setIsSaving] = useState(false);
   const [goalFilter, setGoalFilter] = useState<number | 'all'>('all');
   const [showDatePicker, setShowDatePicker] = useState<{ taskId: number; date?: Date } | null>(null);
   const [showOverdueTasks, setShowOverdueTasks] = useState(true);
   const { updateTask, createTask, updateGoal, goals } = useGoals();
   const { toast } = useToast();
+  const [selectedNote, setSelectedNote] = useState<(Task | Note) | null>(null);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
+  // Fetch standalone notes
+  const { data: standaloneNotes = [] } = useQuery<Note[]>({
+    queryKey: ["/api/notes"],
+  });
+
+  // Get overdue tasks
   const overdueTasks = initialTasks.filter(task => {
     if (!task.plannedDate || task.completed) return false;
     const taskDate = new Date(task.plannedDate);
@@ -58,6 +77,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
     return taskDate < today;
   });
 
+  // Get all tasks from all goals
   const allTasks = goals.reduce<Task[]>((acc, g) => {
     if (g.tasks) {
       return [...acc, ...g.tasks as Task[]];
@@ -65,35 +85,73 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
     return acc;
   }, []);
 
+  // Get all main tasks (non-subtasks) from the current goal's tasks
   const mainTasks = initialTasks.filter(task => !task.isSubtask);
+
+  // Get subtasks for a given parent task from the current goal's tasks
   const getSubtasks = (parentId: number) => initialTasks.filter(task => task.parentTaskId === parentId);
 
+  // Split main tasks into active and completed
   const activeMainTasks = mainTasks.filter(task => !task.completed);
   const completedMainTasks = mainTasks.filter(task => task.completed);
 
+  // For active view: Include active main tasks and ALL their subtasks
   const activeTasks = [
     ...activeMainTasks,
     ...activeMainTasks.flatMap(task => getSubtasks(task.id))
   ];
 
+  // For completed view: Include completed main tasks and ALL their subtasks
   const completedTasks = [
     ...completedMainTasks,
     ...completedMainTasks.flatMap(task => getSubtasks(task.id))
   ];
 
+  // Get tasks for calendar view (can include tasks from all goals)
   const getCalendarTasks = () => {
+    // Use all tasks if filter is set to 'all', otherwise use only current goal's tasks
     const baseTasks = goalFilter === 'all' ? allTasks : initialTasks;
+
+    // Apply task status filter
     let filtered = baseTasks;
     if (taskFilter === 'active') {
       filtered = filtered.filter(task => !task.completed);
     } else if (taskFilter === 'completed') {
       filtered = filtered.filter(task => task.completed);
     }
+
+    // Only return tasks with planned dates
     return filtered.filter(task => task.plannedDate !== null);
   };
 
+  // Get filtered tasks based on selected filters
+  const getFilteredTasks = () => {
+    // Start with all available tasks
+    let filtered = allTasks;
+
+    // First apply goal filter
+    if (goalFilter !== 'all') {
+      filtered = filtered.filter(task => task.goalId === Number(goalFilter));
+    }
+
+    // Then apply task status filter
+    if (taskFilter === 'active') {
+      filtered = filtered.filter(task => !task.completed);
+    } else if (taskFilter === 'completed') {
+      filtered = filtered.filter(task => task.completed);
+    }
+
+    // Filter out tasks without planned dates for calendar view
+    filtered = filtered.filter(task => task.plannedDate !== null);
+
+    return filtered;
+  };
+
+  // Get tasks for selected date
   const tasksForDate = (date: Date) => {
+    // Get filtered tasks based on current filters
     const filtered = getCalendarTasks();
+    // Then filter by date
     return filtered.filter(task =>
       task.plannedDate &&
       format(new Date(task.plannedDate), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
@@ -111,13 +169,16 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
         plannedDate: date ? format(date, 'yyyy-MM-dd') : null
       });
 
+      // Update the selected task's date immediately in the UI
       if (selectedTask && selectedTask.id === taskId) {
         setSelectedTask({
           ...selectedTask,
-          plannedDate: date ? date : null //Corrected line
+          plannedDate: date ? format(date, 'yyyy-MM-dd') : null
         });
       }
+
       queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+
       toast({
         title: "Success",
         description: "Task date updated successfully"
@@ -138,7 +199,8 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
         taskId: task.id,
         completed: !task.completed
       });
-      if (selectedTask && selectedTask.id === task.id) {
+      // Update the selected task state immediately
+      if (selectedTask) {
         setSelectedTask({
           ...selectedTask,
           completed: !task.completed
@@ -154,29 +216,6 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
     }
   };
 
-  const handleTaskToggle = async (taskId: number, completed: boolean) => {
-    try {
-      await updateTask({ taskId, completed });
-      queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
-      toast({ 
-        title: "Success", 
-        description: `Task ${completed ? 'completed' : 'reopened'}`
-      });
-    } catch (error) {
-      console.error("Failed to toggle task:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to update task status",
-      });
-    }
-  };
-
-  const handleTaskClick = (task: Task) => {
-    setSelectedTask(task);
-    setShowTaskDialog(true);
-  };
-
   return (
     <>
       {showOverdueTasks && overdueTasks.length > 0 && (
@@ -188,9 +227,10 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
       )}
 
       <Tabs defaultValue="tasks" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="tasks">Tasks</TabsTrigger>
           <TabsTrigger value="completed">Completed</TabsTrigger>
+          <TabsTrigger value="notes">Notes</TabsTrigger>
           <TabsTrigger value="calendar">Calendar</TabsTrigger>
           <TabsTrigger value="vision">Your Why</TabsTrigger>
         </TabsList>
@@ -209,6 +249,55 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
             goalId={goalId}
             readOnly
           />
+        </TabsContent>
+
+        <TabsContent value="notes">
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-medium">All Notes</h2>
+              <Button onClick={() => setShowCreateDialog(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Note
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {[...initialTasks.filter(task => task.notes), ...standaloneNotes]
+                .sort((a, b) => {
+                  const dateA = new Date(a.updatedAt || a.createdAt);
+                  const dateB = new Date(b.updatedAt || b.createdAt);
+                  return dateB.getTime() - dateA.getTime();
+                })
+                .map(note => (
+                  <div
+                    key={note.id}
+                    className={cn(
+                      "flex items-center justify-between p-4 border rounded-md hover:bg-accent/50 cursor-pointer",
+                      "transition-colors duration-200"
+                    )}
+                    onClick={() => setSelectedNote(note)}
+                  >
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      {'goalId' in note ? (
+                        <Link2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                      ) : (
+                        <Quote className="h-4 w-4 text-muted-foreground shrink-0" />
+                      )}
+                      <h3 className="font-medium truncate">{note.title}</h3>
+                    </div>
+                    <div className="text-xs text-muted-foreground shrink-0 ml-4">
+                      {format(new Date(note.updatedAt || note.createdAt), 'MMM d')}
+                    </div>
+                  </div>
+                ))}
+              {initialTasks.filter(task => task.notes).length === 0 && standaloneNotes.length === 0 && (
+                <div className="text-center p-8 text-muted-foreground">
+                  <Quote className="h-8 w-8 text-muted-foreground/50 mx-auto mb-4" />
+                  <p>No notes found.</p>
+                  <p className="text-sm mt-2">Create a new note or add notes to tasks.</p>
+                </div>
+              )}
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="calendar">
@@ -232,6 +321,14 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                   <option value="all">All Goals</option>
                   <option value={goalId}>{goal.title}</option>
                 </select>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="p-2 border rounded-md hover:bg-gray-100"
+                >
+                  🖨️ Print
+                </button>
               </div>
             </div>
 
@@ -276,7 +373,8 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
               <div className="grid grid-cols-7 divide-x divide-y">
                 {Array.from({ length: 35 }, (_, i) => {
                   const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-                  const startDay = startOfMonth.getDay();
+                  const startDay = startOfMonth.getDay(); // 0 = Sunday
+                  // Convert Sunday = 0 to Monday = 0 by shifting the days
                   const mondayStartDay = startDay === 0 ? 6 : startDay - 1;
                   const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), i - mondayStartDay + 1);
                   const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
@@ -307,7 +405,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                                 task.completed ? "bg-orange-100" : "bg-blue-100"
                               )}
                               title={task.title}
-                              onClick={() => handleTaskClick(task)}
+                              onClick={() => setSelectedTask(task)}
                             >
                               {task.title}
                             </div>
@@ -315,14 +413,16 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                         {dayTasks.length > 3 && (
                           <button
                             className="text-xs text-primary hover:text-primary/80 font-medium"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Show all tasks for this day
+                              setSelectedDate(date);
                               setSelectedTask({
                                 ...dayTasks[0],
                                 title: `Tasks for ${format(date, 'MMMM d, yyyy')}`,
                                 isTaskList: true,
                                 dayTasks: dayTasks
                               });
-                              setShowTaskDialog(true);
                             }}
                           >
                             + {dayTasks.length - 3} more
@@ -337,7 +437,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
           </div>
         </TabsContent>
 
-        <TabsContent value="vision">
+        <TabsContent value="vision" className="space-y-6">
           <div className="space-y-4">
             <h2 className="text-lg font-medium">Your Vision Statement</h2>
             {goal.visionStatement ? (
@@ -381,6 +481,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
 
                   const updatedGoal = await response.json();
 
+                  // Verify the update was successful
                   if (!updatedGoal.visionStatement) {
                     throw new Error("Vision statement was not saved correctly");
                   }
@@ -390,6 +491,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                     description: "Your vision statement has been saved.",
                   });
 
+                  // Force a refresh of the goals data
                   queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
                 } catch (error) {
                   console.error("Failed to update vision:", error);
@@ -405,119 +507,140 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
         </TabsContent>
       </Tabs>
 
-      {/* Task Details Dialog */}
-      {selectedTask && (
-        <Dialog open={showTaskDialog} onOpenChange={setShowTaskDialog}>
-          <DialogContent className="sm:max-w-[425px]">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">
-                {selectedTask?.title}
-              </h2>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowTaskDialog(false)}
-                className="h-6 w-6 p-0"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+      {/* Task/Note Details Side Panel */}
+      <div className={cn(
+        "fixed inset-y-0 right-0 w-[600px] bg-background border-l shadow-lg transform transition-transform duration-200 ease-in-out z-50",
+        selectedTask || selectedNote ? "translate-x-0" : "translate-x-full"
+      )}>
+        {(selectedTask || selectedNote) && (
+          <div className="flex flex-col h-full">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    setSelectedTask(null);
+                    setSelectedNote(null);
+                  }}
+                  className="rounded-full p-2 hover:bg-accent/50"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+                <h2 className="text-xl font-semibold">
+                  {selectedTask ? "Task Details" : "Note Details"}
+                </h2>
+              </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <CalendarIcon className="h-4 w-4" />
-                  <span>
-                    {selectedTask?.plannedDate
-                      ? format(new Date(selectedTask.plannedDate), 'MMMM d, yyyy')
-                      : 'No date set'}
-                  </span>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => selectedTask && setShowDatePicker({
-                    taskId: selectedTask.id,
-                    date: selectedTask.plannedDate ? new Date(selectedTask.plannedDate) : undefined
-                  })}
-                >
-                  Change Date
-                </Button>
-              </div>
-
-              {/* Show subtasks for regular tasks */}
-              {selectedTask && !selectedTask.isTaskList && (
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-6">
+                {/* Task/Note Information */}
                 <div className="space-y-2">
-                  <h3 className="text-sm font-medium">Subtasks</h3>
-                  <div className="space-y-2">
-                    {getSubtasks(selectedTask.id).map((subtask) => (
-                      <div
-                        key={subtask.id}
-                        className="flex items-center space-x-2"
-                      >
-                        <Checkbox
-                          id={`subtask-${subtask.id}`}
-                          checked={subtask.completed}
-                          onCheckedChange={(checked) => handleTaskToggle(subtask.id, checked as boolean)}
-                        />
-                        <label
-                          htmlFor={`subtask-${subtask.id}`}
-                          className={cn(
-                            "text-sm",
-                            subtask.completed && "line-through text-muted-foreground"
-                          )}
-                        >
-                          {subtask.title}
-                        </label>
-                      </div>
-                    ))}
-                    {getSubtasks(selectedTask.id).length === 0 && (
-                      <p className="text-sm text-muted-foreground">No subtasks</p>
-                    )}
+                  <h3 className="text-lg font-medium">
+                    {(selectedTask || selectedNote)?.title}
+                  </h3>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <CalendarIcon className="h-4 w-4" />
+                    <span>
+                      Created on {format(new Date((selectedTask || selectedNote)?.createdAt), 'MMMM d, yyyy')}
+                    </span>
                   </div>
                 </div>
-              )}
 
-              {/* Show task list for multiple tasks on same date */}
-              {selectedTask?.isTaskList && selectedTask.dayTasks && (
+                {/* Notes Content */}
                 <div className="space-y-2">
-                  {selectedTask.dayTasks.map((task) => (
-                    <div
-                      key={task.id}
-                      className="flex items-center space-x-2"
-                    >
-                      <Checkbox
-                        id={`task-${task.id}`}
-                        checked={task.completed}
-                        onCheckedChange={(checked) => handleTaskToggle(task.id, checked as boolean)}
-                      />
-                      <label
-                        htmlFor={`task-${task.id}`}
-                        className={cn(
-                          "text-sm",
-                          task.completed && "line-through text-muted-foreground"
-                        )}
-                      >
-                        {task.title}
-                      </label>
-                    </div>
-                  ))}
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">Content</label>
+                  </div>
+                  <div className="min-h-[200px] p-4 bg-accent/5 rounded-lg">
+                    <textarea
+                      className="w-full h-full min-h-[300px] bg-transparent resize-none focus:outline-none"
+                      placeholder="Add notes here..."
+                      value={selectedTask ? selectedTask.notes || '' : selectedNote?.content || ''}
+                      onChange={(e) => {
+                        if (selectedTask) {
+                          setSelectedTask({
+                            ...selectedTask,
+                            notes: e.target.value
+                          });
+                        } else if (selectedNote) {
+                          setSelectedNote({
+                            ...selectedNote,
+                            content: e.target.value
+                          });
+                        }
+                      }}
+                    />
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
-          </DialogContent>
-        </Dialog>
-      )}
+
+            {/* Footer with Save Button */}
+            <div className="p-4 border-t bg-muted/40">
+              <Button
+                className="w-full"
+                onClick={async () => {
+                  try {
+                    setIsSaving(true);
+                    if (selectedTask) {
+                      await updateTask({
+                        taskId: selectedTask.id,
+                        notes: selectedTask.notes
+                      });
+                    } else if (selectedNote) {
+                      // Handle standalone note update here
+                      await fetch(`/api/notes/${selectedNote.id}`, {
+                        method: 'PATCH',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                          content: selectedNote.content
+                        })
+                      });
+                      queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
+                    }
+                    toast({
+                      title: "Success",
+                      description: "Note saved successfully"
+                    });
+                    setSelectedTask(null);
+                    setSelectedNote(null);
+                  } catch (error) {
+                    console.error('Failed to save note:', error);
+                    toast({
+                      variant: "destructive",
+                      title: "Error",
+                      description: "Failed to save note"
+                    });
+                  } finally {
+                    setIsSaving(false);
+                  }
+                }}
+                disabled={isSaving}
+              >
+                {isSaving ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Date Picker Dialog */}
       <Dialog
         open={showDatePicker !== null}
         onOpenChange={(open) => !open && setShowDatePicker(null)}
       >
-        <DialogContent className="sm:max-w-[350px]">
+        <DialogContent className="max-w-[min-content]">
+          <DialogHeader>
+            <DialogTitle>Select Task Date</DialogTitle>
+          </DialogHeader>
           <Calendar
             mode="single"
             selected={showDatePicker?.date}
+            disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
             onSelect={(date) => {
               if (showDatePicker && date) {
                 handleUpdateTaskDate(showDatePicker.taskId, date);
@@ -526,6 +649,42 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
             }}
             className="rounded-md border"
             weekStartsOn={1}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Note Editor Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Note</DialogTitle>
+          </DialogHeader>
+          <NoteEditor
+            onSave={async (note) => {
+              try {
+                await fetch('/api/notes', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify(note)
+                });
+                queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
+                toast({
+                  title: "Success",
+                  description: "Note created successfully"
+                });
+                setShowCreateDialog(false);
+              } catch (error) {
+                console.error('Failed to create note:', error);
+                toast({
+                  variant: "destructive",
+                  title: "Error",
+                  description: "Failed to create note"
+                });
+              }
+            }}
+            onCancel={() => setShowCreateDialog(false)}
           />
         </DialogContent>
       </Dialog>
