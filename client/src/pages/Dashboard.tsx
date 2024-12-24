@@ -20,13 +20,12 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen flex overflow-hidden">
+    <div className="min-h-screen flex">
       {/* Left Sidebar */}
-      <motion.div 
-        initial={{ y: 50, opacity: 0 }}
+      <motion.div
+        initial={{ y: 50, opacity: 1 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5, ease: "easeOut", delay: 0.1 }}
-        style={{ opacity: 0 }}
+        transition={{ duration: 1.5 }}
         className="w-96 border-r p-6 bg-gray-50"
       >
         <div className="flex justify-between items-center mb-6">
@@ -58,19 +57,16 @@ export default function Dashboard() {
               No goals yet. Create your first goal to get started!
             </p>
           ) : (
-            goals.map((goal) => (
-              <GoalCard key={goal.id} goal={goal} />
-            ))
+            goals.map((goal) => <GoalCard key={goal.id} goal={goal} />)
           )}
         </div>
       </motion.div>
 
       {/* Main Content Area */}
-      <motion.div 
-        initial={{ x: 50, opacity: 0 }}
+      <motion.div
+        initial={{ x: 50, opacity: 1 }}
         animate={{ x: 0, opacity: 1 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-        style={{ opacity: 0 }}
+        transition={{ duration: 1.5 }}
         className="flex-1 p-8 bg-white"
       >
         <div className="max-w-7xl mx-auto space-y-8">

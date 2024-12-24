@@ -14,31 +14,20 @@ import { AnimatePresence, motion } from "framer-motion";
 // Page transition variants
 const pageVariants = {
   initial: {
-    opacity: 0,
-    y: 20,
+    opacity: 1,
   },
   enter: {
     opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.4,
-      ease: "easeOut",
-    },
   },
   exit: {
-    opacity: 0,
-    y: -20,
-    transition: {
-      duration: 0.3,
-      ease: "easeIn",
-    },
+    opacity: 1,
   },
 };
 
 function App() {
   const { user, isLoading } = useUser();
   const urlParams = new URLSearchParams(window.location.search);
-  const resetToken = urlParams.get('token');
+  const resetToken = urlParams.get("token");
   const [location] = useLocation();
 
   if (isLoading) {
@@ -50,7 +39,7 @@ function App() {
   }
 
   // Special case for password reset page
-  if (window.location.pathname === '/reset-password' && resetToken) {
+  if (window.location.pathname === "/reset-password" && resetToken) {
     return <ResetPasswordPage />;
   }
 
@@ -58,7 +47,7 @@ function App() {
   if (!user && !resetToken) {
     localStorage.clear();
     sessionStorage.clear();
-    const dashboard = document.querySelector('.dashboard-content');
+    const dashboard = document.querySelector(".dashboard-content");
     if (dashboard) {
       dashboard.remove();
     }
@@ -76,10 +65,10 @@ function App() {
           exit="exit"
           variants={pageVariants}
           className="container py-6 relative"
-          style={{ 
-            position: 'relative',
-            width: '100%',
-            opacity: 0 
+          style={{
+            position: "relative",
+            width: "100%",
+            opacity: 0,
           }}
         >
           <Switch>
