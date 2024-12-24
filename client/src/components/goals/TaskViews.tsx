@@ -418,7 +418,17 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                       "flex items-center justify-between p-4 border rounded-md hover:bg-accent/50 cursor-pointer",
                       "transition-colors duration-200"
                     )}
-                    onClick={() => setSelectedNote(note)}
+                    onClick={() => {
+                      setSelectedNote(note);
+                      const noteData = {
+                        id: note.id,
+                        title: note.title,
+                        content: note.notes || note.content,
+                        createdAt: note.createdAt,
+                        updatedAt: note.updatedAt
+                      };
+                      setSelectedNote(noteData);
+                    }}
                   >
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       {'goalId' in note ? (
