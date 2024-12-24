@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2, ChevronRight, StickyNote, ArrowUpCircle } from "lucide-react";
 import * as Collapsible from "@radix-ui/react-collapsible";
@@ -393,14 +394,22 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                       }
                     }}
                   >
-                    <EditableTaskTitle
-                      task={mainTask}
-                      onSave={(title) => handleTaskTitleChange(mainTask.id, title)}
-                      className={cn(
-                        "font-medium",
-                        mainTask.completed && "line-through text-muted-foreground"
-                      )}
-                    />
+                    <motion.div
+                      animate={{
+                        scale: mainTask.completed ? 0.95 : 1,
+                        opacity: mainTask.completed ? 0.7 : 1,
+                      }}
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    >
+                      <EditableTaskTitle
+                        task={mainTask}
+                        onSave={(title) => handleTaskTitleChange(mainTask.id, title)}
+                        className={cn(
+                          "font-medium",
+                          mainTask.completed && "line-through text-muted-foreground"
+                        )}
+                      />
+                    </motion.div>
                     <div className="flex items-center gap-1">
                       {!mainTask.isSubtask && mainTask.notes && (
                         <button
@@ -498,15 +507,23 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                         />
                         <div className="flex flex-col flex-grow">
                           <div className="flex items-center gap-2">
-                            <EditableTaskTitle
-                              task={subtask}
-                              onSave={(title, createAnother) => handleTaskTitleChange(subtask.id, title, createAnother)}
-                              className={cn(
-                                "text-sm",
-                                subtask.completed && "line-through text-muted-foreground"
-                              )}
-                              continuousCreate={true}
-                            />
+                            <motion.div
+                              animate={{
+                                scale: subtask.completed ? 0.95 : 1,
+                                opacity: subtask.completed ? 0.7 : 1,
+                              }}
+                              transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                            >
+                              <EditableTaskTitle
+                                task={subtask}
+                                onSave={(title, createAnother) => handleTaskTitleChange(subtask.id, title, createAnother)}
+                                className={cn(
+                                  "text-sm",
+                                  subtask.completed && "line-through text-muted-foreground"
+                                )}
+                                continuousCreate={true}
+                              />
+                            </motion.div>
                             <div className="flex items-center gap-1">
                               {!subtask.isSubtask && subtask.notes && (
                                 <button
