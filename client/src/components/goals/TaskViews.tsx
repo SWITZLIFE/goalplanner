@@ -653,7 +653,6 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
       </Tabs>
 
 
-
       {selectedTask && (
         <TaskDialog
           task={selectedTask}
