@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { Loader2 } from "lucide-react";
 import Dashboard from "./pages/Dashboard";
 import GoalView from "./pages/GoalView";
@@ -9,11 +9,37 @@ import ProfilePage from "./pages/ProfilePage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import { Header } from "@/components/Header";
 import { useUser } from "@/hooks/use-user";
+import { AnimatePresence, motion } from "framer-motion";
+
+// Page transition variants
+const pageVariants = {
+  initial: {
+    opacity: 0,
+    y: 20,
+  },
+  enter: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.4,
+      ease: "easeOut",
+    },
+  },
+  exit: {
+    opacity: 0,
+    y: -20,
+    transition: {
+      duration: 0.3,
+      ease: "easeIn",
+    },
+  },
+};
 
 function App() {
   const { user, isLoading } = useUser();
   const urlParams = new URLSearchParams(window.location.search);
   const resetToken = urlParams.get('token');
+  const [location] = useLocation();
 
   if (isLoading) {
     return (
@@ -30,10 +56,8 @@ function App() {
 
   // If not authenticated (and not on reset password page), show auth page
   if (!user && !resetToken) {
-    // Remove any stale data
     localStorage.clear();
     sessionStorage.clear();
-    // Clear any existing DOM state
     const dashboard = document.querySelector('.dashboard-content');
     if (dashboard) {
       dashboard.remove();
@@ -44,15 +68,24 @@ function App() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="container py-6">
-        <Switch>
-          <Route path="/" component={Dashboard} />
-          <Route path="/goals/:id" component={GoalView} />
-          <Route path="/rewards" component={RewardPage} />
-          <Route path="/analytics" component={AnalyticsPage} />
-          <Route path="/profile" component={ProfilePage} />
-        </Switch>
-      </main>
+      <AnimatePresence mode="wait">
+        <motion.main
+          key={location}
+          initial="initial"
+          animate="enter"
+          exit="exit"
+          variants={pageVariants}
+          className="container py-6"
+        >
+          <Switch>
+            <Route path="/" component={Dashboard} />
+            <Route path="/goals/:id" component={GoalView} />
+            <Route path="/rewards" component={RewardPage} />
+            <Route path="/analytics" component={AnalyticsPage} />
+            <Route path="/profile" component={ProfilePage} />
+          </Switch>
+        </motion.main>
+      </AnimatePresence>
     </div>
   );
 }

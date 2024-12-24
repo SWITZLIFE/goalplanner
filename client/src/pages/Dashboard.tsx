@@ -6,6 +6,31 @@ import { useGoals } from "@/hooks/use-goals";
 import { Gift, Loader2, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
+import { motion } from "framer-motion";
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: "spring",
+      stiffness: 300,
+      damping: 24,
+    },
+  },
+};
 
 export default function Dashboard() {
   const { goals, isLoading } = useGoals();
@@ -21,15 +46,25 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen flex">
       {/* Left Sidebar */}
-      <div className="w-96 border-r p-6 bg-gray-50">
+      <motion.div 
+        initial={{ x: -20, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.4 }}
+        className="w-96 border-r p-6 bg-gray-50"
+      >
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-xl font-semibold">Goal Planner</h1>
           <CoinBalance />
         </div>
 
         <CreateGoalDialog />
-        
-        <div className="mt-6">
+
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.2, duration: 0.4 }}
+          className="mt-6"
+        >
           <Link href="/rewards">
             <Button variant="outline" className="w-full">
               <Gift className="mr-2 h-4 w-4" />
@@ -42,29 +77,48 @@ export default function Dashboard() {
               View Analytics
             </Button>
           </Link>
-        </div>
-        
-        <div className="mt-8 space-y-4">
+        </motion.div>
+
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          animate="show"
+          className="mt-8 space-y-4"
+        >
           <h2 className="text-sm font-medium text-gray-600">Your Goals</h2>
           {goals.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
+            <motion.p 
+              variants={itemVariants}
+              className="text-muted-foreground text-sm"
+            >
               No goals yet. Create your first goal to get started!
-            </p>
+            </motion.p>
           ) : (
             goals.map((goal) => (
-              <GoalCard key={goal.id} goal={goal} />
+              <motion.div
+                key={goal.id}
+                variants={itemVariants}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <GoalCard goal={goal} />
+              </motion.div>
             ))
           )}
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* Main Content Area */}
-      <div className="flex-1 p-8 bg-white">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6 }}
+        className="flex-1 p-8 bg-white"
+      >
         <div className="max-w-7xl mx-auto space-y-8">
           <VisionBoard />
-          
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
