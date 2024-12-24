@@ -60,15 +60,17 @@ interface TaskDialogProps {
 
 function TaskDialog({ task, onClose, onUpdateDate, onToggleComplete }: TaskDialogProps) {
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const { data: goalData } = useQuery<{ goals: Goal[] }>({
-    queryKey: ["/api/goals"],
+
+  // Fetch subtasks directly for this task
+  const { data: subtasksData, isLoading } = useQuery<{ goals: Goal[] }>({
+    queryKey: [`/api/goals`],
+    select: (data) => {
+      const currentGoal = data.goals.find(g => g.id === task.goalId);
+      return currentGoal?.tasks.filter(t => t.parentTaskId === task.id && t.isSubtask) || [];
+    },
   });
 
-  // Get subtasks by filtering tasks that have this task as their parent
-  const subtasks = goalData?.goals
-    ?.find(g => g.id === task.goalId)
-    ?.tasks
-    ?.filter(t => t.parentTaskId === task.id && t.isSubtask) || [];
+  const subtasks = subtasksData || [];
 
   return (
     <Dialog open={true} onOpenChange={() => onClose()}>
@@ -116,7 +118,7 @@ function TaskDialog({ task, onClose, onUpdateDate, onToggleComplete }: TaskDialo
           )}
 
           {/* Subtasks Section */}
-          {subtasks.length > 0 && (
+          {!isLoading && subtasks.length > 0 && (
             <div className="border-t pt-4 mt-4">
               <h3 className="text-sm font-medium mb-2">Subtasks</h3>
               <div className="space-y-2">
