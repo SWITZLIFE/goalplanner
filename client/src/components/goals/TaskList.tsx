@@ -147,6 +147,17 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
+    // Optimistically update the UI state
+    const taskElement = document.getElementById(`task-${taskId}`);
+    if (taskElement) {
+      taskElement.checked = completed;
+      const titleElement = taskElement.parentElement?.querySelector('.task-title');
+      if (titleElement) {
+        titleElement.classList.toggle('line-through', completed);
+        titleElement.classList.toggle('text-muted-foreground', completed);
+      }
+    }
+
     try {
       const taskUpdate = {
         taskId,
@@ -183,6 +194,16 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
         description: completed ? "Task completed!" : "Task reopened"
       });
     } catch (error) {
+      // Revert the UI state if the API call fails
+      if (taskElement) {
+        taskElement.checked = !completed;
+        const titleElement = taskElement.parentElement?.querySelector('.task-title');
+        if (titleElement) {
+          titleElement.classList.toggle('line-through', !completed);
+          titleElement.classList.toggle('text-muted-foreground', !completed);
+        }
+      }
+
       console.error("Failed to update task completion:", error);
       toast({
         variant: "destructive",
@@ -397,7 +418,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                       task={mainTask}
                       onSave={(title) => handleTaskTitleChange(mainTask.id, title)}
                       className={cn(
-                        "font-medium",
+                        "font-medium task-title",
                         mainTask.completed && "line-through text-muted-foreground"
                       )}
                     />
@@ -502,7 +523,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                               task={subtask}
                               onSave={(title, createAnother) => handleTaskTitleChange(subtask.id, title, createAnother)}
                               className={cn(
-                                "text-sm",
+                                "text-sm task-title",
                                 subtask.completed && "line-through text-muted-foreground"
                               )}
                               continuousCreate={true}
