@@ -89,43 +89,22 @@ function TaskDialog({ task, onClose, onUpdateDate, onToggleComplete }: TaskDialo
 
         <div className="space-y-4 py-4">
           {/* Date Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm">
-                <CalendarIcon className="h-4 w-4" />
-                <span>
-                  {task.plannedDate
-                    ? format(new Date(task.plannedDate), 'MMMM d, yyyy')
-                    : "No date set"}
-                </span>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowDatePicker(true)}
-              >
-                Change Date
-              </Button>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm">
+              <CalendarIcon className="h-4 w-4" />
+              <span>
+                {task.plannedDate
+                  ? format(new Date(task.plannedDate), 'MMMM d, yyyy')
+                  : "No date set"}
+              </span>
             </div>
-
-            {/* Task Details */}
-            {!task.isSubtask && (
-              <div className="pl-6 space-y-2">
-                {subtasks.map(subtask => (
-                  <div
-                    key={subtask.id}
-                    className="flex items-center gap-2 text-sm text-muted-foreground"
-                  >
-                    <div className="w-2 h-2 rounded-full bg-primary/50" />
-                    <span className={cn(
-                      subtask.completed && "line-through"
-                    )}>
-                      {subtask.title}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDatePicker(true)}
+            >
+              Change Date
+            </Button>
           </div>
 
           {/* Time Estimate */}
