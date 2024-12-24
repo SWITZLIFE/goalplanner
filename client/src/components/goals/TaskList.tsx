@@ -175,11 +175,6 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
           )
         );
       }
-
-      toast({
-        title: "Success",
-        description: completed ? "Task completed!" : "Task reopened"
-      });
     } catch (error) {
       setOptimisticTaskStates(prev => ({ ...prev, [taskId]: !completed }));
 
