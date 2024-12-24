@@ -59,12 +59,12 @@ interface TaskDialogProps {
 
 function TaskDialog({ task, onClose, onUpdateDate, onToggleComplete }: TaskDialogProps) {
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const { data: goalData } = useQuery<{ tasks: Task[] }>({
+  const { data: goalData } = useQuery<{ goals: { tasks: Task[] }[] }>({
     queryKey: ["/api/goals"],
   });
 
   // Get subtasks if any
-  const subtasks = (goalData?.tasks || []).filter((t: Task) => t.parentTaskId === task.id);
+  const subtasks = goalData?.goals?.flatMap(g => g.tasks || []).filter((t: Task) => t.parentTaskId === task.id) || [];
 
   return (
     <Dialog open={true} onOpenChange={() => onClose()}>
