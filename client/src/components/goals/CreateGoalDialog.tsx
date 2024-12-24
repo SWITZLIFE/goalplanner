@@ -11,9 +11,9 @@ export function CreateGoalDialog() {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [targetDate, setTargetDate] = useState("");
-  const [totalTasks, setTotalTasks] = useState("1");
+  const [totalTasks, setTotalTasks] = useState("0");
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const { createGoal } = useGoals();
   const { toast } = useToast();
 
@@ -29,7 +29,9 @@ export function CreateGoalDialog() {
       setOpen(false);
       toast({
         title: "Goal created",
-        description: "Your new goal has been created successfully.",
+        description: parseInt(totalTasks) > 0 
+          ? "Your new goal has been created with AI-generated tasks." 
+          : "Your new goal has been created. You can now add your own tasks.",
       });
     } catch (error) {
       setIsLoading(false);
@@ -75,21 +77,28 @@ export function CreateGoalDialog() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="tasks">Number of tasks to generate</Label>
+            <Label htmlFor="tasks">
+              Number of tasks to generate (0 for no AI-generated tasks)
+            </Label>
             <Input
               id="tasks"
               type="number"
-              min="1"
+              min="0"
               value={totalTasks}
               onChange={(e) => setTotalTasks(e.target.value)}
               required
             />
+            {totalTasks === "0" && (
+              <p className="text-sm text-muted-foreground mt-1">
+                You'll be able to add your own tasks after creating the goal.
+              </p>
+            )}
           </div>
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? (
               <>
                 <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                Generating Tasks...
+                {parseInt(totalTasks) > 0 ? 'Generating Tasks...' : 'Creating Goal...'}
               </>
             ) : (
               'Create Goal'

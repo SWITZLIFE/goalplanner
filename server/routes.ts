@@ -204,7 +204,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const { title, description, targetDate, totalTasks } = req.body;
       const userId = req.user!.id;
-      console.log('Creating goal for user:', userId);
+      console.log('Creating goal for user:', userId, 'with totalTasks:', totalTasks);
 
       // Verify user exists
       const [user] = await db.select()
@@ -227,9 +227,9 @@ export function registerRoutes(app: Express): Server {
         return res.status(403).json({ error: "Unauthorized access" });
       }
 
-      // Generate a shorter title using AI
-      const shortTitle = await generateShortTitle(title);
-      console.log('Generated short title:', shortTitle);
+      // Generate a shorter title using AI only if we're generating tasks
+      const shortTitle = totalTasks > 0 ? await generateShortTitle(title) : title;
+      console.log('Using title:', shortTitle);
 
       // Create the goal with strict user association
       const [newGoal] = await db.insert(goals)
@@ -263,14 +263,12 @@ export function registerRoutes(app: Express): Server {
 
       console.log('Created and verified goal:', verifiedGoal);
 
-      // Create tasks and subtasks
+      // Create tasks and subtasks only if totalTasks > 0
+      let createdTasks = [];
       if (totalTasks > 0) {
         try {
-          const breakdown = await generateTaskBreakdown(title, parseInt(totalTasks));
+          const breakdown = await generateTaskBreakdown(title, totalTasks);
           console.log('Task breakdown from OpenAI:', JSON.stringify(breakdown, null, 2));
-
-          const createdTasks = [];
-          
 
           // Create tasks in the order they come from OpenAI
           for (const task of breakdown) {
@@ -281,7 +279,7 @@ export function registerRoutes(app: Express): Server {
               const [mainTask] = await db.insert(tasks)
                 .values({
                   goalId: newGoal.id,
-                  userId: userId, // Explicitly set userId
+                  userId: userId,
                   title: task.title,
                   completed: false,
                   isSubtask: false,
@@ -301,7 +299,7 @@ export function registerRoutes(app: Express): Server {
                   const [createdSubtask] = await db.insert(tasks)
                     .values({
                       goalId: newGoal.id,
-                      userId: userId, // Explicitly set userId
+                      userId: userId,
                       title: subtask.title,
                       completed: false,
                       estimatedMinutes: subtask.estimatedMinutes || null,
@@ -326,44 +324,10 @@ export function registerRoutes(app: Express): Server {
         }
       }
 
-
-      // Fetch the complete goal with tasks, ensuring proper user isolation
-      const goalWithTasks = await db.select({
-        id: goals.id,
-        title: goals.title,
-        description: goals.description,
-        targetDate: goals.targetDate,
-        progress: goals.progress,
-        totalTasks: goals.totalTasks,
-        createdAt: goals.createdAt,
-        visionStatement: goals.visionStatement,
-        visionResponses: goals.visionResponses,
-        userId: goals.userId,
-      })
-      .from(goals)
-      .where(and(
-        eq(goals.id, newGoal.id),
-        eq(goals.userId, userId)
-      ))
-      .limit(1);
-
-      if (!goalWithTasks || goalWithTasks.length === 0) {
-        throw new Error("Failed to fetch created goal");
-      }
-
-      // Get tasks for this goal with user isolation
-      const goalTasks = await db.select()
-        .from(tasks)
-        .where(and(
-          eq(tasks.goalId, newGoal.id),
-          eq(tasks.userId, userId)
-        ))
-        .orderBy(tasks.createdAt);
-
-      // Combine goal and tasks
+      // Return the goal with any created tasks
       const response = {
-        ...goalWithTasks[0],
-        tasks: goalTasks
+        ...verifiedGoal,
+        tasks: createdTasks
       };
 
       res.json(response);
@@ -968,7 +932,7 @@ Remember to:
             coins: sql`${rewards.coins} + ${coinsEarned}`,
             lastUpdated: new Date(),
           })
-          .where(eq(rewards.userId, userId));
+                    .where(eq(rewards.userId, userId));
       }
 
       res.json({
