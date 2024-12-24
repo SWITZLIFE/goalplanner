@@ -215,7 +215,13 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
       }
     } else if (title.trim()) {
       const { title: cleanTitle, estimatedMinutes } = parseEstimatedTime(title);
-      await updateTask({ taskId, title: cleanTitle, estimatedMinutes });
+      await updateTask({
+        taskId,
+        title: cleanTitle,
+        estimatedMinutes,
+        isSubtask: task?.isSubtask,
+        parentTaskId: task?.parentTaskId // Ensure we maintain the parent-child relationship
+      });
 
       if (createAnother && task?.parentTaskId) {
         await handleAddSubtask(task.parentTaskId);
@@ -252,6 +258,11 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
       setExpandedTasks(new Set([...Array.from(expandedTasks), parentTaskId]));
     } catch (error) {
       console.error("Failed to create subtask:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create subtask"
+      });
     }
   };
 
