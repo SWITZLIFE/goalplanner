@@ -42,6 +42,7 @@ interface Goal {
   totalTasks: number;
   visionStatement: string | null;
   visionResponses: string | null;
+  tasks: Task[];
 }
 
 interface TaskViewsProps {
@@ -59,12 +60,15 @@ interface TaskDialogProps {
 
 function TaskDialog({ task, onClose, onUpdateDate, onToggleComplete }: TaskDialogProps) {
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const { data: goalData } = useQuery<{ goals: { tasks: Task[] }[] }>({
+  const { data: goalData } = useQuery<{ goals: Goal[] }>({
     queryKey: ["/api/goals"],
   });
 
   // Get subtasks if any
-  const subtasks = goalData?.goals?.flatMap(g => g.tasks || []).filter((t: Task) => t.parentTaskId === task.id) || [];
+  const subtasks = goalData?.goals
+    ?.find(g => g.id === task.goalId)
+    ?.tasks
+    ?.filter(t => t.parentTaskId === task.id) || [];
 
   return (
     <Dialog open={true} onOpenChange={() => onClose()}>
@@ -286,7 +290,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
       if (selectedTask && selectedTask.id === taskId) {
         setSelectedTask({
           ...selectedTask,
-          plannedDate: date ? format(date, 'yyyy-MM-dd') : null
+          plannedDate: date ? date : null //Corrected line 292
         });
       }
 
@@ -647,6 +651,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
           </div>
         </TabsContent>
       </Tabs>
+
 
 
       {selectedTask && (
