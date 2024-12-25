@@ -39,7 +39,7 @@ export default function GoalView() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex pt-14">
       {/* Left Sidebar */}
       <div className="w-96 border-r p-6 bg-gray-100">
         <div className="flex justify-between items-center mb-6">

@@ -20,7 +20,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex pt-14">
       {/* Left Sidebar */}
       <motion.div
         initial={{ y: 50, opacity: 1 }}
