@@ -438,7 +438,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                           const diffTime = Math.ceil((taskDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
                           if (diffTime === 0) {
-                            return "bg-primary/20 hover:bg-primary/30 border-primary/30";
+                            return "bg-primary text-primary-foreground hover:bg-primary/90";
                           } else if (diffTime > 0 && diffTime <= 7) {
                             return "bg-primary/10 hover:bg-primary/20 border-primary/20";
                           }
