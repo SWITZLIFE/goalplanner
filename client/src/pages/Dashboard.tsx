@@ -29,7 +29,7 @@ export default function Dashboard() {
         className="w-96 p-6 bg-gray-100"
       >
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-lg font-semibold">Coin Balance</h2>
+          <h2 className="text-l font-semibold">Coin Balance</h2>
           <CoinBalance />
         </div>
 
