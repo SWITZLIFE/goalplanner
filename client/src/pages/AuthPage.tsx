@@ -72,8 +72,8 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <Card className="w-[350px]">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 via-violet-500 to-purple-700">
+      <Card className="w-[350px] bg-white/95 backdrop-blur-sm shadow-xl">
         <CardHeader>
           <CardTitle>{isLogin ? "Login" : "Register"}</CardTitle>
           <CardDescription>
