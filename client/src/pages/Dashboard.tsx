@@ -26,7 +26,7 @@ export default function Dashboard() {
         initial={{ y: 50, opacity: 1 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 1.5 }}
-        className="w-96 border-r p-6 bg-gray-50"
+        className="w-96 border-r p-6 bg-gray-100"
       >
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-lg font-semibold">Coin Balance</h2>

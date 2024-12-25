@@ -41,7 +41,7 @@ export default function GoalView() {
   return (
     <div className="min-h-screen flex">
       {/* Left Sidebar */}
-      <div className="w-96 border-r p-6 bg-gray-50">
+      <div className="w-96 border-r p-6 bg-gray-100">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-xl font-semibold">Goal Planner</h1>
           <CoinBalance />
