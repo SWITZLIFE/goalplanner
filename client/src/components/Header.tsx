@@ -1,4 +1,3 @@
-
 import { UserMenu } from "./UserMenu";
 
 export function Header() {
