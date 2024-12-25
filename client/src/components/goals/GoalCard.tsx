@@ -1,17 +1,6 @@
 
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { CalendarIcon, X } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { GoalProgress } from "./GoalProgress";
 import type { Goal } from "@db/schema";
 import { format } from "date-fns";
@@ -53,28 +42,12 @@ export function GoalCard({ goal }: GoalCardProps) {
         "cursor-pointer hover:shadow-md transition-shadow mb-6 group relative",
         isActive && "bg-primary/5 border-primary/20 [&_.progress-bar]:bg-white"
       )}>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <button 
-              className="absolute hidden group-hover:flex items-center justify-center top-2 right-2 w-6 h-6 rounded-full bg-background hover:bg-accent text-muted-foreground"
-              onClick={(e) => e.preventDefault()}
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Goal</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action will permanently delete this goal. This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <button
+          onClick={handleDelete}
+          className="absolute hidden group-hover:flex items-center justify-center top-2 right-2 w-6 h-6 rounded-full bg-destructive/10 hover:bg-destructive/20 text-destructive"
+        >
+          <X className="h-4 w-4" />
+        </button>
         <CardHeader className="pb-2">
           <h3 className="font-medium text-lg">{goal.title}</h3>
           <p className="text-sm text-muted-foreground">
