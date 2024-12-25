@@ -5,7 +5,7 @@ import { Link } from "wouter";
 
 export default function AnalyticsPage() {
   return (
-    <div className="container py-8 max-w-6xl mx-auto">
+    <div className="container py-8 max-w-6xl mx-auto mt-8">
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-4">
           <Link href="/">

@@ -26,7 +26,7 @@ export default function Dashboard() {
         initial={{ y: 50, opacity: 1 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 1.5 }}
-        className="w-96 border-r p-6 bg-gray-100"
+        className="w-96 p-6 bg-gray-100"
       >
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-lg font-semibold">Coin Balance</h2>
@@ -37,13 +37,13 @@ export default function Dashboard() {
 
         <div className="mt-6">
           <Link href="/rewards">
-            <Button variant="outline" className="w-full">
+            <Button variant="subtle" className="w-full">
               <Gift className="mr-2 h-4 w-4" />
               Reward Store
             </Button>
           </Link>
           <Link href="/analytics" className="block mt-4">
-            <Button variant="outline" className="w-full">
+            <Button variant="subtle" className="w-full">
               <BarChart2 className="mr-2 h-4 w-4" />
               View Analytics
             </Button>
@@ -51,7 +51,7 @@ export default function Dashboard() {
         </div>
 
         <div className="mt-8 space-y-4">
-          <h2 className="text-sm font-medium text-gray-600">Your Goals</h2>
+          <h2 className="text-sm font-medium text-gray-600 mb-4">Your Goals</h2>
           {goals.length === 0 ? (
             <p className="text-muted-foreground text-sm">
               No goals yet. Create your first goal to get started!
