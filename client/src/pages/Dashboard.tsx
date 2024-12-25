@@ -69,7 +69,7 @@ export default function Dashboard() {
         transition={{ duration: 1.5 }}
         className="flex-1 p-8 bg-white"
       >
-        <div className="max-w-7xl mx-auto space-y-8">
+        <div className="max-w-8xl mx-auto ml-4">
           <VisionBoard />
         </div>
       </motion.div>
