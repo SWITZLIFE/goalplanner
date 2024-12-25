@@ -466,15 +466,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                   <option value={goalId}>{goal.title}</option>
                 </select>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => window.print()}
-                  className="p-2 border rounded-md hover:bg-gray-100"
-                >
-                  🖨️ Print
-                </button>
               </div>
-            </div>
 
             <div className="border rounded-lg overflow-hidden">
               <div className="bg-primary/5 p-4">
