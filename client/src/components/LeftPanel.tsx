@@ -11,8 +11,8 @@ export function LeftPanel() {
   const { goals } = useGoals();
 
   return (
-    <div className="w-96 px-6 bg-primary h-[calc(100vh-3.5rem)] overflow-hidden">
-      <div className="flex justify-between items-center mb-6">
+    <div className="w-96 px-6 py-4 bg-primary h-[calc(100vh-3.5rem)] overflow-hidden">
+      <div className="flex justify-between items-center mb-4">
         <h1 className="text-l font-semibold text-white">Coin balance</h1>
         <CoinBalance />
       </div>
