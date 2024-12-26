@@ -1,6 +1,7 @@
 
 import { AnalyticsDashboard } from "@/components/analytics/AnalyticsDashboard";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/PageHeader";
 import { ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
 import { LeftPanel } from "@/components/LeftPanel";

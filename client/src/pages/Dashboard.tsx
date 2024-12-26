@@ -1,6 +1,7 @@
 
 import { VisionBoard } from "@/components/vision-board/VisionBoard";
 import { LeftPanel } from "@/components/LeftPanel";
+import { PageHeader } from "@/components/PageHeader";
 import { useGoals } from "@/hooks/use-goals";
 import { Loader2 } from "lucide-react";
 import { motion } from "framer-motion";

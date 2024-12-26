@@ -1,6 +1,7 @@
 
 import { CoinBalance } from "@/components/rewards/CoinBalance";
 import { RewardStore } from "@/components/rewards/RewardStore";
+import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
