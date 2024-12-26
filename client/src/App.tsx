@@ -1,3 +1,4 @@
+
 import { Switch, Route, useLocation } from "wouter";
 import { Loader2 } from "lucide-react";
 import Dashboard from "./pages/Dashboard";
@@ -7,11 +8,9 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import AuthPage from "./pages/AuthPage";
 import ProfilePage from "./pages/ProfilePage";
 import AnalyticsPage from "./pages/AnalyticsPage";
-import { Header } from "@/components/Header";
 import { useUser } from "@/hooks/use-user";
 import { AnimatePresence, motion } from "framer-motion";
 
-// Page transition variants
 const pageVariants = {
   initial: {
     opacity: 1,
@@ -38,12 +37,10 @@ function App() {
     );
   }
 
-  // Special case for password reset page
   if (window.location.pathname === "/reset-password" && resetToken) {
     return <ResetPasswordPage />;
   }
 
-  // If not authenticated (and not on reset password page), show auth page
   if (!user && !resetToken) {
     localStorage.clear();
     sessionStorage.clear();
@@ -55,8 +52,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-background overflow-hidden">
-      <Header />
+    <div className="min-h-screen bg-background flex">
       <AnimatePresence mode="wait" initial={false}>
         <motion.main
           key={location}
@@ -64,12 +60,7 @@ function App() {
           animate="enter"
           exit="exit"
           variants={pageVariants}
-          className="container py-6 relative"
-          style={{
-            position: "relative",
-            width: "100%",
-            opacity: 0,
-          }}
+          className="flex-1 relative"
         >
           <Switch>
             <Route path="/" component={Dashboard} />

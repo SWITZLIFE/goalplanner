@@ -1,16 +1,12 @@
-import { CreateGoalDialog } from "@/components/goals/CreateGoalDialog";
+
 import { VisionBoard } from "@/components/vision-board/VisionBoard";
 import { LeftPanel } from "@/components/LeftPanel";
-import { GoalCard } from "@/components/goals/GoalCard";
-import { CoinBalance } from "@/components/rewards/CoinBalance";
 import { useGoals } from "@/hooks/use-goals";
-import { Gift, Loader2, BarChart2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Link } from "wouter";
+import { Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function Dashboard() {
-  const { goals, isLoading } = useGoals();
+  const { isLoading } = useGoals();
 
   if (isLoading) {
     return (
@@ -21,20 +17,21 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="h-[calc(100vh-3.5rem)] flex overflow-hidden">
+    <div className="flex h-screen">
       <LeftPanel />
-
-      {/* Main Content Area */}
-      <motion.div
-        initial={{ x: 50, opacity: 1 }}
-        animate={{ x: 0, opacity: 1 }}
-        transition={{ duration: 1.5 }}
-        className="flex-1 px-8 bg-white overflow-hidden"
-      >
-        <div className="max-w-8xl mx-auto ml-4">
-          <VisionBoard />
+      <div className="flex-1 flex flex-col">
+        <div className="h-20 bg-primary w-full" />
+        <div className="flex-1 px-8 bg-white overflow-auto">
+          <motion.div
+            initial={{ x: 50, opacity: 1 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ duration: 1.5 }}
+            className="max-w-8xl mx-auto ml-4"
+          >
+            <VisionBoard />
+          </motion.div>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }
