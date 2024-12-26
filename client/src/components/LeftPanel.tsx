@@ -12,7 +12,7 @@ export function LeftPanel() {
 
   return (
     <div className="w-96 bg-primary h-screen overflow-hidden">
-      <div className="flex justify-between items-center p-6 pb-0">
+      <div className="flex justify-between items-center p-6 pb-0 mt-5">
         <h1 className="text-l font-semibold text-white">Coin balance</h1>
         <CoinBalance />
       </div>
