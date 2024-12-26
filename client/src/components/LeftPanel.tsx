@@ -11,8 +11,8 @@ export function LeftPanel() {
   const { goals } = useGoals();
 
   return (
-    <div className="w-96 p-6 bg-primary h-[calc(100vh-3.5rem)] overflow-hidden">
-      <div className="flex justify-between items-center mb-6">
+    <div className="w-96 bg-primary h-screen overflow-hidden">
+      <div className="flex justify-between items-center p-6 pb-0">
         <h1 className="text-l font-semibold text-white">Coin balance</h1>
         <CoinBalance />
       </div>
@@ -34,9 +34,9 @@ export function LeftPanel() {
         </Link>
       </div>
 
-      <div className="mt-8">
+      <div className="px-6">
         <h2 className="text-sm font-medium text-white mb-4">Your Goals</h2>
-        <div className="space-y-6 overflow-y-auto max-h-[calc(100vh-20rem)] scrollbar-hide">
+        <div className="space-y-6 overflow-hidden">
           {goals.map((goal) => (
             <GoalCard key={goal.id} goal={goal} />
           ))}
