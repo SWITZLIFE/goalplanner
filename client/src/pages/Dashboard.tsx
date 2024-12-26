@@ -21,7 +21,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="h-[calc(100vh-3.5rem)] flex pt-8 overflow-hidden">
+    <div className="h-[calc(100vh-3.5rem)] flex overflow-hidden">
       <LeftPanel />
 
       {/* Main Content Area */}
@@ -29,7 +29,7 @@ export default function Dashboard() {
         initial={{ x: 50, opacity: 1 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 1.5 }}
-        className="flex-1 p-8 bg-white overflow-hidden"
+        className="flex-1 px-8 bg-white overflow-hidden"
       >
         <div className="max-w-8xl mx-auto ml-4">
           <VisionBoard />
