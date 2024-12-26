@@ -10,17 +10,39 @@ import AnalyticsPage from "./pages/AnalyticsPage";
 import { Header } from "@/components/Header";
 import { useUser } from "@/hooks/use-user";
 import { AnimatePresence, motion } from "framer-motion";
+import { 
+  Sidebar, 
+  SidebarContent,
+  SidebarProvider,
+  SidebarInset,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton
+} from "@/components/ui/sidebar";
 
 // Page transition variants
 const pageVariants = {
   initial: {
-    opacity: 1,
+    opacity: 0,
+    scale: 0.96,
   },
   enter: {
     opacity: 1,
+    scale: 1,
+    transition: {
+      duration: 0.3,
+      ease: "easeOut",
+    },
   },
   exit: {
-    opacity: 1,
+    opacity: 0,
+    scale: 0.96,
+    transition: {
+      duration: 0.2,
+      ease: "easeIn",
+    },
   },
 };
 
@@ -55,32 +77,49 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-background overflow-hidden">
-      <Header />
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.main
-          key={location}
-          initial="initial"
-          animate="enter"
-          exit="exit"
-          variants={pageVariants}
-          className="container py-6 relative"
-          style={{
-            position: "relative",
-            width: "100%",
-            opacity: 0,
-          }}
-        >
-          <Switch>
-            <Route path="/" component={Dashboard} />
-            <Route path="/goals/:id" component={GoalView} />
-            <Route path="/rewards" component={RewardPage} />
-            <Route path="/analytics" component={AnalyticsPage} />
-            <Route path="/profile" component={ProfilePage} />
-          </Switch>
-        </motion.main>
-      </AnimatePresence>
-    </div>
+    <SidebarProvider defaultOpen>
+      <div className="min-h-screen bg-sidebar">
+        <Header className="z-50" />
+        <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
+          <Sidebar variant="inset" collapsible="icon" className="bg-transparent">
+            <SidebarContent>
+              <SidebarGroup>
+                <SidebarGroupLabel>Your Goals</SidebarGroupLabel>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton>Goal 1</SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton>Goal 2</SidebarMenuButton>
+                  </SidebarMenuItem>
+                  {/* More goals will be dynamically loaded here */}
+                </SidebarMenu>
+              </SidebarGroup>
+            </SidebarContent>
+          </Sidebar>
+          <SidebarInset className="transition-all duration-200">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.main
+                key={location}
+                initial="initial"
+                animate="enter"
+                exit="exit"
+                variants={pageVariants}
+                className="container py-6 relative"
+              >
+                <Switch>
+                  <Route path="/" component={Dashboard} />
+                  <Route path="/goals/:id" component={GoalView} />
+                  <Route path="/rewards" component={RewardPage} />
+                  <Route path="/analytics" component={AnalyticsPage} />
+                  <Route path="/profile" component={ProfilePage} />
+                </Switch>
+              </motion.main>
+            </AnimatePresence>
+          </SidebarInset>
+        </div>
+      </div>
+    </SidebarProvider>
   );
 }
 
