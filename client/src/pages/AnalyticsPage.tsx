@@ -10,7 +10,7 @@ export default function AnalyticsPage() {
     <div className="flex h-screen">
       <LeftPanel />
       <div className="flex-1 flex flex-col">
-        <div className="h-20 bg-primary w-full" />
+        <PageHeader />
         <div className="flex-1 px-8 bg-white overflow-auto">
           <div className="max-w-4xl mx-auto">
             <div className="flex items-center gap-4 mb-8">
