@@ -9,6 +9,15 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+  }
+}
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+  --primary: 242 21% 15%;
+  --primary-foreground: 0 0% 98%;
+}
 
 @layer utilities {
   .scrollbar-hide {
@@ -17,8 +26,5 @@
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
-  }
-}
-
   }
 }
