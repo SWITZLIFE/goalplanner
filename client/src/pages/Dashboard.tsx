@@ -21,7 +21,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="h-[calc(100vh-3.5rem)] flex pt-8 overflow-hidden">
+    <div className="h-[calc(100vh-3.5rem)] flex overflow-hidden">
       <LeftPanel />
 
       {/* Main Content Area */}
