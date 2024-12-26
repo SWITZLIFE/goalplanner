@@ -7,6 +7,7 @@ import { Link } from "wouter";
 import { CreateGoalDialog } from "@/components/goals/CreateGoalDialog";
 import { GoalCard } from "@/components/goals/GoalCard";
 import { useGoals } from "@/hooks/use-goals";
+import { LeftPanel } from "@/components/LeftPanel";
 
 export default function RewardPage() {
   const { goals } = useGoals();
