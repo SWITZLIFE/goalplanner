@@ -34,9 +34,9 @@ export function LeftPanel() {
         </Link>
       </div>
 
-      <div className="mt-6">
+      <div className="mt-8">
         <h2 className="text-sm font-medium text-white mb-4">Your Goals</h2>
-        <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-18rem)] scrollbar-hide">
+        <div className="space-y-6 overflow-y-auto max-h-[calc(100vh-20rem)] scrollbar-hide">
           {goals.map((goal) => (
             <GoalCard key={goal.id} goal={goal} />
           ))}
