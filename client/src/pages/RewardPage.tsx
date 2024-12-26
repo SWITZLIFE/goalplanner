@@ -6,8 +6,8 @@ import { Link } from "wouter";
 
 export default function RewardPage() {
   return (
-    <div className="p-8 bg-background">
-      <div className="max-w-4xl mx-auto">
+    <div className="p-8 bg-background h-[calc(100vh-4rem)]">
+      <div className="max-w-4xl mx-auto h-full">
         <div className="flex justify-between items-center mb-8 mt-8">
           <Link href="/">
             <Button variant="ghost" size="sm">
