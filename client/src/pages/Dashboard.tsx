@@ -1,5 +1,6 @@
 import { CreateGoalDialog } from "@/components/goals/CreateGoalDialog";
 import { VisionBoard } from "@/components/vision-board/VisionBoard";
+import { LeftPanel } from "@/components/LeftPanel";
 import { GoalCard } from "@/components/goals/GoalCard";
 import { CoinBalance } from "@/components/rewards/CoinBalance";
 import { useGoals } from "@/hooks/use-goals";
