@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Gift, BarChart2 } from "lucide-react";
 import { Link } from "wouter";
@@ -5,9 +6,6 @@ import { CoinBalance } from "@/components/rewards/CoinBalance";
 import { CreateGoalDialog } from "@/components/goals/CreateGoalDialog";
 import { GoalCard } from "@/components/goals/GoalCard";
 import { useGoals } from "@/hooks/use-goals";
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogBody } from "@/components/ui/dialog";
-import { PlusCircle } from "lucide-react";
-
 
 export function LeftPanel() {
   const { goals } = useGoals();
@@ -19,26 +17,7 @@ export function LeftPanel() {
         <CoinBalance />
       </div>
 
-      <Dialog>
-        <DialogTrigger asChild>
-          <Button variant="subtle" className="w-full">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Create New Goal
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create New Goal</DialogTitle>
-          </DialogHeader>
-          <DialogBody>
-            {/* Add your create goal form here */}
-          </DialogBody>
-          <DialogFooter>
-            <Button type="submit">Create</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
+      <CreateGoalDialog />
 
       <div className="mt-6">
         <Link href="/rewards">
