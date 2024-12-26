@@ -11,7 +11,7 @@ export function LeftPanel() {
   const { goals } = useGoals();
 
   return (
-    <div className="w-96 border-r p-6 bg-purple-100">
+    <div className="w-96 border-r p-6 bg-primary">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-l font-semibold">Coin balance</h1>
         <CoinBalance />
@@ -35,7 +35,7 @@ export function LeftPanel() {
       </div>
 
       <div className="mt-8 space-y-6">
-        <h2 className="text-sm font-medium text-gray-600 mb-4">Your Goals</h2>
+        <h2 className="text-sm font-medium text-white mb-4">Your Goals</h2>
         {goals.map((goal) => (
           <GoalCard key={goal.id} goal={goal} />
         ))}
