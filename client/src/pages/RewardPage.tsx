@@ -19,7 +19,7 @@ export default function RewardPage() {
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.5 }}
         >
-          <div className="h-full overflow-auto scrollbar-hide p-8">
+          <div className="h-full overflow-auto scrollbar-hide p-16">
             <div className="max-w-8xl mx-auto">
               <Link href="/">
                 <Button variant="ghost" size="sm" className="mb-8">
