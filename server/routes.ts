@@ -967,6 +967,94 @@ Remember to:
   // Future Message API
   // Notes API
   // Vision Board API
+  app.get("/api/goals/:goalId/notes", requireAuth, async (req, res) => {
+    try {
+      const { goalId } = req.params;
+      const userId = req.user!.id;
+
+      // Verify the goal belongs to the user
+      const goal = await db.query.goals.findFirst({
+        where: and(
+          eq(goals.id, parseInt(goalId)),
+          eq(goals.userId, userId)
+        )
+      });
+
+      if (!goal) {
+        return res.status(404).json({ error: "Goal not found or unauthorized" });
+      }
+
+      // Fetch notes for this goal
+      const goalNotes = await db.select()
+        .from(notes)
+        .where(and(
+          eq(notes.goalId, parseInt(goalId)),
+          eq(notes.userId, userId)
+        ))
+        .orderBy(desc(notes.createdAt));
+
+      res.json(goalNotes);
+    } catch (error) {
+      console.error("Failed to fetch notes:", error);
+      res.status(500).json({ error: "Failed to fetch notes" });
+    }
+  });
+
+  app.post("/api/goals/:goalId/notes", requireAuth, async (req, res) => {
+    try {
+      const { goalId } = req.params;
+      const { content, taskId } = req.body;
+      const userId = req.user!.id;
+
+      // Validate input
+      if (!content) {
+        return res.status(400).json({ error: "Note content is required" });
+      }
+
+      // Verify the goal belongs to the user
+      const goal = await db.query.goals.findFirst({
+        where: and(
+          eq(goals.id, parseInt(goalId)),
+          eq(goals.userId, userId)
+        )
+      });
+
+      if (!goal) {
+        return res.status(404).json({ error: "Goal not found or unauthorized" });
+      }
+
+      // If taskId is provided, verify it belongs to this goal and user
+      if (taskId) {
+        const task = await db.query.tasks.findFirst({
+          where: and(
+            eq(tasks.id, parseInt(taskId)),
+            eq(tasks.goalId, parseInt(goalId)),
+            eq(tasks.userId, userId)
+          )
+        });
+
+        if (!task) {
+          return res.status(404).json({ error: "Task not found or unauthorized" });
+        }
+      }
+
+      // Create the note
+      const [newNote] = await db.insert(notes)
+        .values({
+          userId,
+          goalId: parseInt(goalId),
+          taskId: taskId ? parseInt(taskId) : null,
+          content,
+        })
+        .returning();
+
+      res.json(newNote);
+    } catch (error) {
+      console.error("Failed to create note:", error);
+      res.status(500).json({ error: "Failed to create note" });
+    }
+  });
+
   app.get("/api/vision-board", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
