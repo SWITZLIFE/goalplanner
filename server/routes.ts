@@ -1073,6 +1073,38 @@ Remember to:
     }
   });
 
+  app.delete("/api/goals/:goalId/notes/:noteId", requireAuth, async (req, res) => {
+    try {
+      const { goalId, noteId } = req.params;
+      const userId = req.user!.id;
+
+      // Verify the note exists and belongs to the user
+      const note = await db.query.notes.findFirst({
+        where: and(
+          eq(notes.id, parseInt(noteId)),
+          eq(notes.goalId, parseInt(goalId)),
+          eq(notes.userId, userId)
+        ),
+      });
+
+      if (!note) {
+        return res.status(404).json({ error: "Note not found or unauthorized" });
+      }
+
+      // Delete the note
+      await db.delete(notes)
+        .where(and(
+          eq(notes.id, parseInt(noteId)),
+          eq(notes.userId, userId)
+        ));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete note:", error);
+      res.status(500).json({ error: "Failed to delete note" });
+    }
+  });
+
   app.get("/api/vision-board", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
