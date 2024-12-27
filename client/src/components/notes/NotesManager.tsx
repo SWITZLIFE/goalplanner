@@ -41,16 +41,25 @@ export function NotesManager({ goalId }: NotesManagerProps) {
     },
   });
 
-  // Filter notes based on current goalId
+  // Filter notes strictly based on goalId match
   const visibleNotes = notes.filter(note => {
+    // Debug logging to check note filtering
+    console.log('Filtering note:', {
+      noteId: note.id,
+      noteGoalId: note.goalId,
+      currentGoalId: goalId,
+      shouldShow: !goalId || (note.goalId === null || Number(note.goalId) === Number(goalId))
+    });
+
     if (!goalId) {
-      // In the main notes view, show all notes
+      // In main notes view, show all notes
       return true;
     }
-    // In a goal view, only show notes that:
-    // 1. Have matching goalId, OR
-    // 2. Have no goalId (null)
-    return note.goalId === goalId || note.goalId === null;
+
+    // In a goal view, strictly show only:
+    // 1. Notes that have no goalId (null)
+    // 2. Notes that have exactly matching goalId (using strict equality with number conversion)
+    return note.goalId === null || Number(note.goalId) === Number(goalId);
   });
 
   // Create note mutation
@@ -59,7 +68,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
       const payload = {
         title: note.title,
         content: note.content,
-        goalId: goalId // Include current goalId in the payload
+        goalId: goalId || null // Explicitly set goalId to null if not provided
       };
 
       console.log('Creating note with payload:', payload);
@@ -108,7 +117,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ ...note, goalId }),
+        body: JSON.stringify({ ...note, goalId: goalId || null }), // Explicitly set goalId to null if not provided
       });
 
       if (!response.ok) {
