@@ -1006,6 +1006,8 @@ Remember to:
       const { title, content, taskId } = req.body;
       const userId = req.user!.id;
 
+      console.log('Creating note:', { goalId, title, content, taskId, userId });
+
       // Verify the goal belongs to the user
       const goal = await db.query.goals.findFirst({
         where: and(
@@ -1022,7 +1024,7 @@ Remember to:
       if (taskId) {
         const task = await db.query.tasks.findFirst({
           where: and(
-            eq(tasks.id, parseInt(taskId)),
+            eq(tasks.id, taskId),
             eq(tasks.userId, userId),
             eq(tasks.goalId, parseInt(goalId))
           )
@@ -1038,16 +1040,36 @@ Remember to:
         .values({
           userId,
           goalId: parseInt(goalId),
-          taskId: taskId ? parseInt(taskId) : null,
+          taskId: taskId || null,
           title,
           content,
         })
         .returning();
 
-      res.json(newNote);
+      if (!newNote) {
+        throw new Error("Failed to create note");
+      }
+
+      // Verify the note was created
+      const createdNote = await db.query.notes.findFirst({
+        where: and(
+          eq(notes.id, newNote.id),
+          eq(notes.userId, userId)
+        )
+      });
+
+      if (!createdNote) {
+        throw new Error("Note verification failed");
+      }
+
+      console.log('Note created successfully:', createdNote);
+      res.json(createdNote);
     } catch (error) {
       console.error("Failed to create note:", error);
-      res.status(500).json({ error: "Failed to create note" });
+      res.status(500).json({ 
+        error: "Failed to create note",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
@@ -1193,7 +1215,6 @@ Remember to:
       res.status(500).json({ error: "Failed to fetch purchased rewards" });
     }
   });
-
 
   app.post("/api/rewards/purchase/:itemId", requireAuth, async (req, res) => {
     try {
