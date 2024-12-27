@@ -21,7 +21,7 @@ export function GoalCard({ goal }: GoalCardProps) {
         isActive && "bg-primary/5 border-primary/20 [&_.progress-bar]:bg-white"
       )}>
         <CardHeader className="pb-2">
-          <h3 className="font-medium text-lg">{goal.title}</h3>
+          <h3 className="font-medium text-mg">{goal.title}</h3>
           <div className="flex items-center gap-1.5 text-muted-foreground text-sm">
             <CalendarIcon className="h-3.5 w-3.5" /> 
             {format(new Date(goal.targetDate), "MMM d, yyyy")}
