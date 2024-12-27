@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, X, Bold, Italic, Link, Quote, List, ListOrdered, ChevronDown } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -10,9 +10,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import type { Task } from "@db/schema";
-import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import TextStyle from '@tiptap/extension-text-style';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 
@@ -36,34 +35,28 @@ interface NoteListProps {
   tasks: Task[];
 }
 
-const fontSizes = [
-  { value: '10px', label: '10px' },
-  { value: '12px', label: '12px' },
-  { value: '14px', label: '14px' },
-  { value: '16px', label: '16px' },
-  { value: '18px', label: '18px' },
-  { value: '20px', label: '20px' },
+const modules = {
+  toolbar: [
+    [{ 'size': ['12px', '14px', '16px', '18px', '20px'] }],
+    ['bold', 'italic', 'underline', 'strike'],
+    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+    ['blockquote', 'link'],
+    ['clean']
+  ]
+};
+
+const formats = [
+  'size',
+  'bold', 'italic', 'underline', 'strike',
+  'list', 'bullet',
+  'blockquote', 'link'
 ];
 
 export function NoteList({ goalId, tasks }: NoteListProps) {
   const [isCreating, setIsCreating] = useState(false);
+  const [editorContent, setEditorContent] = useState('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
-
-  // Initialize TipTap editor
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      TextStyle,
-    ],
-    content: '',
-    editorProps: {
-      attributes: {
-        class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl focus:outline-none min-h-[300px] p-4',
-        style: 'font-size: 12px',
-      },
-    },
-  });
 
   // Only show incomplete tasks in the dropdown
   const incompleteTasks = tasks.filter(task => !task.completed);
@@ -101,7 +94,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
       queryClient.invalidateQueries({ queryKey: [`/api/goals/${goalId}/notes`] });
       setIsCreating(false);
       form.reset();
-      editor?.commands.setContent('');
+      setEditorContent('');
       toast({
         title: "Note created",
         description: "Your note has been created successfully.",
@@ -117,8 +110,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
   });
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    const content = editor?.getHTML() || '';
-    if (!content.trim()) {
+    if (!editorContent.trim()) {
       toast({
         title: "Error",
         description: "Note content is required",
@@ -128,7 +120,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
     }
     createNoteMutation.mutate({
       ...values,
-      content,
+      content: editorContent,
     });
   };
 
@@ -194,7 +186,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
               onClick={() => {
                 setIsCreating(false);
                 form.reset();
-                editor?.commands.setContent('');
+                setEditorContent('');
               }}
             >
               <X className="h-4 w-4" />
@@ -218,80 +210,16 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
 
               <FormItem>
                 <FormLabel>Content</FormLabel>
-                {editor && (
-                  <div className="border rounded-lg overflow-hidden bg-white">
-                    <div className="border-b p-2 flex gap-2 flex-wrap">
-                      <Select
-                        defaultValue="12px"
-                        onValueChange={(value) => {
-                          if (editor) {
-                            const element = editor.view.dom as HTMLElement;
-                            element.style.fontSize = value;
-                          }
-                        }}
-                      >
-                        <SelectTrigger className="w-[80px]">
-                          <SelectValue placeholder="12px" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {fontSizes.map((size) => (
-                            <SelectItem key={size.value} value={size.value}>
-                              {size.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => editor.chain().focus().toggleBold().run()}
-                        className={cn(editor.isActive('bold') && 'bg-muted')}
-                      >
-                        <Bold className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => editor.chain().focus().toggleItalic().run()}
-                        className={cn(editor.isActive('italic') && 'bg-muted')}
-                      >
-                        <Italic className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => editor.chain().focus().toggleBulletList().run()}
-                        className={cn(editor.isActive('bulletList') && 'bg-muted')}
-                      >
-                        <List className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => editor.chain().focus().toggleOrderedList().run()}
-                        className={cn(editor.isActive('orderedList') && 'bg-muted')}
-                      >
-                        <ListOrdered className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => editor.chain().focus().toggleBlockquote().run()}
-                        className={cn(editor.isActive('blockquote') && 'bg-muted')}
-                      >
-                        <Quote className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="max-h-[calc(100vh-400px)] overflow-y-auto">
-                      <EditorContent editor={editor} className="min-h-[300px]" />
-                    </div>
-                  </div>
-                )}
+                <div className="border rounded-lg overflow-hidden">
+                  <ReactQuill
+                    theme="snow"
+                    value={editorContent}
+                    onChange={setEditorContent}
+                    modules={modules}
+                    formats={formats}
+                    className="bg-white"
+                  />
+                </div>
               </FormItem>
 
               {incompleteTasks.length > 0 && (
