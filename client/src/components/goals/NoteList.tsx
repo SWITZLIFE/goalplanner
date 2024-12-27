@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
+import { queryClient } from "@/lib/queryClient";
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -172,6 +173,37 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
     },
   });
 
+  const deleteNoteMutation = useMutation({
+    mutationFn: async (noteId: number) => {
+      const response = await fetch(`/api/goals/${goalId}/notes/${noteId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to delete note");
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      refetch();
+      toast({
+        title: "Note deleted",
+        description: "Your note has been deleted successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      console.error("Failed to delete note:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete note. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       await createNoteMutation.mutateAsync(values);
@@ -196,7 +228,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
         </div>
 
         {/* Notes List */}
-        <div className="space-y-4">
+        <div className="space-y-2">
           {notes.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">
               No notes yet. Create one to get started!
@@ -205,26 +237,32 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
             notes.map((note) => (
               <div
                 key={note.id}
-                className="border rounded-lg p-4 space-y-2"
+                className="group border rounded-lg p-4 hover:bg-accent/50 transition-colors"
               >
                 <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-medium text-sm line-clamp-2">{note.title}</h3>
-                    <div 
-                      className="prose prose-sm mt-2"
-                      dangerouslySetInnerHTML={{ __html: note.content }}
-                    />
+                  <div className="flex-1">
+                    <h3 className="font-medium text-sm">{note.title}</h3>
+                    {note.taskId && (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Associated Task:{" "}
+                        {tasks.find(t => t.id === note.taskId)?.title}
+                      </div>
+                    )}
                   </div>
-                  <span className="text-sm text-muted-foreground ml-4">
-                    {format(new Date(note.createdAt), "MMM d, yyyy")}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {format(new Date(note.createdAt), "MMM d, yyyy")}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6"
+                      onClick={() => deleteNoteMutation.mutate(note.id)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                {note.taskId && (
-                  <div className="text-sm text-muted-foreground mt-2">
-                    Associated Task:{" "}
-                    {tasks.find(t => t.id === note.taskId)?.title}
-                  </div>
-                )}
               </div>
             ))
           )}
