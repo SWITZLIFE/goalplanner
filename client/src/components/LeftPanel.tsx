@@ -65,30 +65,17 @@ export function LeftPanel() {
         </div>
       </div>
 
-      <Collapsible
-        open={isGoalsOpen}
-        onOpenChange={setIsGoalsOpen}
-        className="px-6 flex flex-col h-[calc(90vh-280px)]"
-      >
-        <CollapsibleTrigger className="flex items-center justify-between w-full mb-2">
-          <h2 className="text-mm font-medium text-white">Your Goals</h2>
-          {isGoalsOpen ? (
-            <ChevronDown className="h-4 w-4 text-white" />
-          ) : (
-            <ChevronRight className="h-4 w-4 text-white" />
-          )}
-        </CollapsibleTrigger>
-        <CollapsibleContent className={cn(
-          "max-h-[300px] overflow-y-auto pt-2 pb-2 space-y-3",
-          "data-[state=open]:animate-collapsible-down",
-          "data-[state=closed]:animate-collapsible-up",
+      <div className="px-6 flex flex-col">
+        <h2 className="text-mm font-medium text-white mb-2">Your Goals</h2>
+        <div className={cn(
+          "h-[300px] overflow-y-auto pt-2 pb-2 space-y-3",
           "scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-transparent"
         )}>
           {goals.map((goal) => (
             <GoalCard key={goal.id} goal={goal} />
           ))}
-        </CollapsibleContent>
-      </Collapsible>
+        </div>
+      </div>
 
     </div>
   );
