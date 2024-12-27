@@ -27,7 +27,7 @@ export default function Dashboard() {
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.5 }}
         >
-          <div className="h-full overflow-auto scrollbar-hide p-8">
+          <div className="h-full overflow-auto scrollbar-hide p-16">
             <div className="max-w-8xl mx-auto">
               <VisionBoard />
             </div>
