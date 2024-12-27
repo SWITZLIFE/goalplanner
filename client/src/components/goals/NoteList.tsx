@@ -13,14 +13,17 @@ import type { Task } from "@db/schema";
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 
 const formSchema = z.object({
+  title: z.string().min(1, "Title is required"),
   content: z.string().min(1, "Note content is required"),
   taskId: z.string().optional(),
 });
 
 interface Note {
   id: number;
+  title: string;
   content: string;
   taskId: number | null;
   createdAt: string;
@@ -43,7 +46,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
     content: '',
     editorProps: {
       attributes: {
-        class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl focus:outline-none',
+        class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl focus:outline-none min-h-[300px] p-4',
       },
     },
   });
@@ -59,6 +62,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      title: "",
       content: "",
       taskId: undefined,
     },
@@ -142,16 +146,19 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
                 className="border rounded-lg p-4 space-y-2"
               >
                 <div className="flex justify-between items-start">
-                  <div 
-                    className="prose prose-sm"
-                    dangerouslySetInnerHTML={{ __html: note.content }}
-                  />
+                  <div>
+                    <h4 className="font-medium">{note.title}</h4>
+                    <div 
+                      className="prose prose-sm mt-2"
+                      dangerouslySetInnerHTML={{ __html: note.content }}
+                    />
+                  </div>
                   <span className="text-sm text-muted-foreground ml-4">
                     {format(new Date(note.createdAt), "MMM d, yyyy")}
                   </span>
                 </div>
                 {note.taskId && (
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-sm text-muted-foreground mt-2">
                     Associated Task:{" "}
                     {tasks.find(t => t.id === note.taskId)?.title}
                   </div>
@@ -182,9 +189,25 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <div className="border rounded-lg p-4">
-                <EditorContent editor={editor} className="min-h-[300px]" />
-              </div>
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Title</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Note title..." {...field} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormItem>
+                <FormLabel>Content</FormLabel>
+                <div className="border rounded-lg overflow-hidden bg-white">
+                  <EditorContent editor={editor} className="min-h-[300px]" />
+                </div>
+              </FormItem>
 
               {incompleteTasks.length > 0 && (
                 <FormField

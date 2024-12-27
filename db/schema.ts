@@ -64,6 +64,7 @@ export const notes = pgTable("notes", {
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   goalId: integer("goal_id").notNull().references(() => goals.id, { onDelete: "cascade" }),
   taskId: integer("task_id").references(() => tasks.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
