@@ -58,7 +58,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
 
     // In a goal view, strictly show only:
     // 1. Notes that have no goalId (null)
-    // 2. Notes that have exactly matching goalId (using strict equality with number conversion)
+    // 2. Notes that have exactly matching goalId (using strict equality)
     return note.goalId === null || Number(note.goalId) === Number(goalId);
   });
 
@@ -117,6 +117,8 @@ export function NotesManager({ goalId }: NotesManagerProps) {
         ...note,
         goalId: goalId || null // Explicitly set goalId to null if not provided
       };
+
+      console.log('Updating note with payload:', { id, ...payload });
 
       const response = await fetch(`/api/notes/${id}`, {
         method: "PATCH",
