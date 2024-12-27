@@ -54,7 +54,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
   const editor = useEditor({
     extensions: [
       StarterKit,
-      TextStyle.configure({ types: ['textStyle'] }),
+      TextStyle,
     ],
     content: '',
     editorProps: {
@@ -222,9 +222,12 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
                   <div className="border rounded-lg overflow-hidden bg-white">
                     <div className="border-b p-2 flex gap-2 flex-wrap">
                       <Select
-                        value={editor.getAttributes('textStyle').fontSize || '12px'}
+                        defaultValue="12px"
                         onValueChange={(value) => {
-                          editor.chain().focus().updateAttributes('textStyle', { fontSize: value }).run();
+                          if (editor) {
+                            const element = editor.view.dom as HTMLElement;
+                            element.style.fontSize = value;
+                          }
                         }}
                       >
                         <SelectTrigger className="w-[80px]">
