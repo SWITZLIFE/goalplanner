@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Gift, BarChart2, ChevronDown, ChevronRight } from "lucide-react";
+import { Gift, BarChart2, ChevronDown, ChevronRight, Calendar, Facebook, Instagram, Linkedin } from "lucide-react";
 import { Link } from "wouter";
 import { CoinBalance } from "@/components/rewards/CoinBalance";
 import { CreateGoalDialog } from "@/components/goals/CreateGoalDialog";
@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 export function LeftPanel() {
   const { goals } = useGoals();
   const [isGoalsOpen, setIsGoalsOpen] = useState(true);
+  const user = { profilePhotoUrl: 'https://github.com/shadcn.png', email: 'user@example.com' }; //Example User Data
 
   return (
     <div className="w-96 bg-primary h-screen overflow-hidden">
@@ -20,6 +21,29 @@ export function LeftPanel() {
         <CoinBalance />
       </div>
       <div className="p-6 pt-0">
+        <div className="p-6 pb-0 mt-10">
+          <div className="flex flex-col items-center mb-8">
+            <div className="w-20 h-20 rounded-full overflow-hidden mb-3">
+              <img src={user?.profilePhotoUrl || 'https://github.com/shadcn.png'} alt="Profile" className="w-full h-full object-cover" />
+            </div>
+            <h2 className="text-white font-medium text-lg">{user?.email?.split('@')[0] || 'User'}</h2>
+            <p className="text-gray-400 text-sm">Product Designer</p>
+            <div className="flex gap-4 mt-4">
+              <a href="https://calendar.google.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">
+                <Calendar className="h-4 w-4" />
+              </a>
+              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">
+                <Facebook className="h-4 w-4" />
+              </a>
+              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">
+                <Instagram className="h-4 w-4" />
+              </a>
+              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">
+                <Linkedin className="h-4 w-4" />
+              </a>
+            </div>
+          </div>
+        </div>
         <CreateGoalDialog />
 
         <div className="mt-4">
