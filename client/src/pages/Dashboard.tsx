@@ -1,4 +1,3 @@
-
 import { VisionBoard } from "@/components/vision-board/VisionBoard";
 import { LeftPanel } from "@/components/LeftPanel";
 import { PageHeader } from "@/components/PageHeader";
@@ -18,20 +17,22 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen bg-primary">
       <LeftPanel />
       <div className="flex-1 flex flex-col">
         <PageHeader />
-        <div className="flex-1 px-8 bg-white overflow-auto">
-          <motion.div
-            initial={{ x: 50, opacity: 1 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ duration: 1.5 }}
-            className="max-w-8xl mx-auto ml-4"
-          >
-            <VisionBoard />
-          </motion.div>
-        </div>
+        <motion.div 
+          className="flex-1 m-4 bg-background rounded-[30px] overflow-hidden"
+          initial={{ x: 50, opacity: 1 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          <div className="h-full overflow-auto p-8">
+            <div className="max-w-8xl mx-auto">
+              <VisionBoard />
+            </div>
+          </div>
+        </motion.div>
       </div>
     </div>
   );

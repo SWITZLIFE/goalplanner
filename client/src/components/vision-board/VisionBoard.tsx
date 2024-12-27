@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { ImagePlus, X } from "lucide-react";
+import { ImagePlus, X, ChevronDown, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
 
 interface VisionBoardImage {
   id: number;
@@ -16,6 +18,7 @@ export function VisionBoard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
+  const [isVisionBoardOpen, setIsVisionBoardOpen] = useState(true);
 
   const { data: images = [], isLoading } = useQuery<VisionBoardImage[]>({
     queryKey: ["/api/vision-board"],
@@ -25,7 +28,7 @@ export function VisionBoard() {
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.append("image", file);
-      
+
       const response = await fetch("/api/vision-board/upload", {
         method: "POST",
         body: formData,
@@ -124,56 +127,76 @@ export function VisionBoard() {
     <div className="space-y-8">
       <FutureMessage />
       <div className="h-px bg-border" />
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Vision Board</h2>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={images.length >= 12 || uploading}
-          onClick={() => document.getElementById("image-upload")?.click()}
-        >
-          <ImagePlus className="w-4 h-4 mr-2" />
-          {uploading ? "Uploading..." : "Add Image"}
-        </Button>
-        <input
-          id="image-upload"
-          type="file"
-          className="hidden"
-          accept="image/*"
-          onChange={handleFileSelect}
-        />
-      </div>
-
-      <div className="grid grid-cols-4 gap-4">
-        {slots.map((image, index) => (
-          <div
-            key={index}
-            className="aspect-square relative bg-gray-100 rounded-lg overflow-hidden group"
-          >
-            {image ? (
-              <>
-                <img
-                  src={image.imageUrl}
-                  alt={`Vision board image ${index + 1}`}
-                  className="w-full h-full object-cover"
-                />
-                <Button
-                  variant="secondary"
-                  size="icon"
-                  className="absolute top-2 right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground"
-                  onClick={() => deleteMutation.mutate(image.id)}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              </>
+      <Collapsible
+        open={isVisionBoardOpen}
+        onOpenChange={setIsVisionBoardOpen}
+        className="space-y-4"
+      >
+        <div className="flex justify-between items-center">
+          <CollapsibleTrigger className="flex items-center gap-2">
+            <h2 className="text-xl font-semibold">Vision Board</h2>
+            {isVisionBoardOpen ? (
+              <ChevronDown className="h-4 w-4" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-400">
-                Empty Slot
-              </div>
+              <ChevronRight className="h-4 w-4" />
             )}
+          </CollapsibleTrigger>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={images.length >= 12 || uploading}
+            onClick={() => document.getElementById("image-upload")?.click()}
+          >
+            <ImagePlus className="w-4 h-4 mr-2" />
+            {uploading ? "Uploading..." : "Add Image"}
+          </Button>
+          <input
+            id="image-upload"
+            type="file"
+            className="hidden"
+            accept="image/*"
+            onChange={handleFileSelect}
+          />
+        </div>
+
+        <CollapsibleContent
+          className={cn(
+            "data-[state=open]:animate-collapsible-down",
+            "data-[state=closed]:animate-collapsible-up"
+          )}
+        >
+          <div className="grid grid-cols-4 gap-4">
+            {slots.map((image, index) => (
+              <div
+                key={index}
+                className="aspect-square relative bg-gray-100 rounded-lg overflow-hidden group"
+              >
+                {image ? (
+                  <>
+                    <img
+                      src={image.imageUrl}
+                      alt={`Vision board image ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="absolute top-2 right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground"
+                      onClick={() => deleteMutation.mutate(image.id)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-400">
+                    Empty Slot
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }

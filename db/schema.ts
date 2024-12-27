@@ -261,9 +261,9 @@ export const userTokens = pgTable("user_tokens", {
   provider: text("provider").notNull(), // e.g. "google"
   accessToken: text("access_token"), // store in text or encrypted column
   refreshToken: text("refresh_token"),
+  expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
-
 
 export const userTokensRelations = relations(userTokens, ({ one }) => ({
   user: one(users, { fields: [userTokens.userId], references: [users.id] }),
