@@ -521,8 +521,8 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                     <div
                       key={i}
                       className={cn(
-                        "min-h-[100px] p-2",
-                        !isCurrentMonth && "bg-gray-50 text-gray-400",
+                        "min-h-[100px] p-2 bg-white",
+                        !isCurrentMonth && "text-gray-400",
                         isToday && "bg-primary/5"
                       )}
                     >
