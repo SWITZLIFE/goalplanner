@@ -27,17 +27,25 @@ interface Task {
   goalId: number;
   isTaskList?: boolean;
   dayTasks?: Task[];
+  isSubtask?: boolean;
+  parentTaskId?: number;
 }
 
 interface TaskDialogProps {
   task: Task;
   onClose: () => void;
   onUpdateDate: (date: Date | undefined) => void;
-  onToggleComplete: (completed: boolean) => void;
+  onToggleComplete: (completed: boolean, subtaskId?: number) => void;
+  initialTasks: Task[];
 }
 
-function TaskDialog({ task, onClose, onUpdateDate, onToggleComplete }: TaskDialogProps) {
+function TaskDialog({ task, onClose, onUpdateDate, onToggleComplete, initialTasks }: TaskDialogProps) {
   const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // Get subtasks directly from the task list
+  const subtasks = task.isTaskList && task.dayTasks
+    ? task.dayTasks
+    : initialTasks.filter(t => t.parentTaskId === task.id && t.isSubtask);
 
   return (
     <Dialog open={true} onOpenChange={() => onClose()}>
@@ -76,27 +84,29 @@ function TaskDialog({ task, onClose, onUpdateDate, onToggleComplete }: TaskDialo
             </Button>
           </div>
 
-          {/* Task List Section (for day tasks) */}
-          {task.isTaskList && task.dayTasks && (
+          {/* Subtasks Section */}
+          {subtasks.length > 0 && (
             <div className="border-t pt-4 mt-4">
-              <h3 className="text-sm font-medium mb-2">Tasks for this day</h3>
+              <h3 className="text-sm font-medium mb-2">
+                {task.isTaskList ? "Tasks" : "Subtasks"}
+              </h3>
               <div className="space-y-2">
-                {task.dayTasks.map(dayTask => (
+                {subtasks.map(subtask => (
                   <div
-                    key={dayTask.id}
+                    key={subtask.id}
                     className="flex items-center gap-2 p-2 rounded-md hover:bg-accent/50"
                   >
                     <Checkbox
-                      checked={dayTask.completed}
+                      checked={subtask.completed}
                       onCheckedChange={(checked) =>
-                        onToggleComplete(checked as boolean)
+                        onToggleComplete(checked as boolean, subtask.id)
                       }
                     />
                     <span className={cn(
                       "text-sm",
-                      dayTask.completed && "line-through text-muted-foreground"
+                      subtask.completed && "line-through text-muted-foreground"
                     )}>
-                      {dayTask.title}
+                      {subtask.title}
                     </span>
                   </div>
                 ))}
@@ -185,12 +195,31 @@ export function VisionBoard() {
     );
   };
 
-  const handleToggleComplete = async (task: Task, completed: boolean) => {
+  const handleToggleComplete = async (task: Task, completed: boolean, subtaskId?: number) => {
     try {
+      const taskToUpdate = subtaskId
+        ? allTasks.find(t => t.id === subtaskId)
+        : task;
+
+      if (!taskToUpdate) return;
+
       await updateTask({
-        taskId: task.id,
+        taskId: taskToUpdate.id,
         completed
       });
+
+      // If completing a main task, complete all its subtasks
+      if (!taskToUpdate.isSubtask && completed) {
+        const subtasks = allTasks.filter(t => t.parentTaskId === taskToUpdate.id);
+        await Promise.all(
+          subtasks.map(subtask =>
+            updateTask({
+              taskId: subtask.id,
+              completed: true
+            })
+          )
+        );
+      }
 
       queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
 
@@ -568,10 +597,11 @@ export function VisionBoard() {
             handleUpdateTaskDate(selectedTask.id, date);
             setSelectedTask(null);
           }}
-          onToggleComplete={(completed) => {
-            handleToggleComplete(selectedTask, completed);
+          onToggleComplete={(completed, subtaskId) => {
+            handleToggleComplete(selectedTask, completed, subtaskId);
             setSelectedTask(null);
           }}
+          initialTasks={allTasks}
         />
       )}
     </div>
