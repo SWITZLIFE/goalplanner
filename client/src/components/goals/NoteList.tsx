@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
   content: z.string().min(1, "Note content is required"),
-  taskId: z.string().optional(),
+  taskId: z.number().optional(), // Changed to number
 });
 
 interface Note {
@@ -80,12 +80,17 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
       const response = await fetch(`/api/goals/${goalId}/notes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify({
+          ...values,
+          content: editorContent,
+          taskId: values.taskId ? parseInt(values.taskId.toString(),10) : null //Convert taskId to number
+        }),
         credentials: "include",
       });
 
       if (!response.ok) {
-        throw new Error("Failed to create note");
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to create note");
       }
 
       return response.json();
@@ -100,28 +105,34 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
         description: "Your note has been created successfully.",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
+      console.error("Failed to create note:", error);
       toast({
         title: "Error",
-        description: "Failed to create note. Please try again.",
+        description: error.message || "Failed to create note. Please try again.",
         variant: "destructive",
       });
     },
   });
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    if (!editorContent.trim()) {
-      toast({
-        title: "Error",
-        description: "Note content is required",
-        variant: "destructive",
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    try {
+      if (!editorContent.trim()) {
+        toast({
+          title: "Error",
+          description: "Note content is required",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await createNoteMutation.mutateAsync({
+        ...values,
+        content: editorContent,
       });
-      return;
+    } catch (error) {
+      console.error("Form submission error:", error);
     }
-    createNoteMutation.mutate({
-      ...values,
-      content: editorContent,
-    });
   };
 
   if (isLoading) {
@@ -286,7 +297,11 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
                 />
               )}
 
-              <Button type="submit" className="w-full">
+              <Button 
+                type="submit" 
+                className="w-full"
+                disabled={createNoteMutation.isPending}
+              >
                 {createNoteMutation.isPending ? (
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                 ) : (
