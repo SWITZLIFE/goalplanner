@@ -17,14 +17,11 @@ export function LeftPanel() {
 
   return (
     <div className="w-96 bg-primary h-screen overflow-hidden">
-      <div className="flex justify-between items-center p-6 pb-0 mt-10 mb-10">
-        <h1 className="text-l font-semibold text-white">Coin balance</h1>
-        <CoinBalance />
-      </div>
+      
       <div className="p-6 pt-0">
         <div className="p-6 pb-0 mt-10">
           <div className="flex flex-col items-center mb-8">
-            <div className="w-20 h-20 rounded-full overflow-hidden mb-3">
+            <div className="w-40 h-40 rounded-full overflow-hidden mb-3">
               <img src={user?.profilePhotoUrl || 'https://github.com/shadcn.png'} alt="Profile" className="w-full h-full object-cover" />
             </div>
             <h2 className="text-white font-medium text-lg">{user?.email?.split('@')[0] || 'User'}</h2>
@@ -44,6 +41,11 @@ export function LeftPanel() {
               </a>
             </div>
           </div>
+        </div>
+
+        <div className="flex justify-between items-center p-6 pb-0 mb-10">
+          <h1 className="text-l font-semibold text-white">Coin balance</h1>
+          <CoinBalance />
         </div>
         <CreateGoalDialog />
 
