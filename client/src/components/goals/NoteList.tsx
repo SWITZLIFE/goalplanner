@@ -6,19 +6,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import type { Task } from "@db/schema";
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
-import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
   content: z.string().min(1, "Note content is required"),
-  taskId: z.number().optional(), // Changed to number
+  taskId: z.number().optional(),
 });
 
 interface Note {
@@ -56,7 +55,6 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [editorContent, setEditorContent] = useState('');
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   // Only show incomplete tasks in the dropdown
   const incompleteTasks = tasks.filter(task => !task.completed);
@@ -83,7 +81,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
         body: JSON.stringify({
           ...values,
           content: editorContent,
-          taskId: values.taskId ? parseInt(values.taskId.toString(),10) : null //Convert taskId to number
+          taskId: values.taskId || null,
         }),
         credentials: "include",
       });
@@ -96,7 +94,6 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/goals/${goalId}/notes`] });
       setIsCreating(false);
       form.reset();
       setEditorContent('');
@@ -276,8 +273,8 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
                     <FormItem>
                       <FormLabel>Associate with Task (Optional)</FormLabel>
                       <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        onValueChange={(value) => field.onChange(parseInt(value))}
+                        value={field.value?.toString()}
                       >
                         <FormControl>
                           <SelectTrigger>
