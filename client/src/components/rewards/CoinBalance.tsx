@@ -33,7 +33,7 @@ export function CoinBalance() {
   }, [rewards?.coins]);
 
   return (
-    <div className="flex items-center gap-2" style={{ color: '#D8F275' }} relative">
+    <div className="flex items-center gap-2 relative" style={{ color: '#D8F275' }}>
       <Coins className="h-4 w-4" />
       <span className="font-medium">{isError ? '?' : (rewards?.coins ?? 0)}</span>
       <CoinAnimation 
