@@ -9,12 +9,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Clock, Calendar as CalendarIcon, Quote, X, Plus, ChevronRight } from "lucide-react";
 import { VisionGenerator } from "./VisionGenerator";
 import { OverdueTasksDialog } from "./OverdueTasksDialog";
-import { useQuery } from "@tanstack/react-query"; 
+import { useQuery } from "@tanstack/react-query";
 import { useGoals } from "@/hooks/use-goals";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { Checkbox } from "@/components/ui/checkbox";
+import { NoteList } from "./NoteList";
 
 // Extend the Task type to include properties needed for the task list dialog
 interface Task extends BaseTask {
@@ -354,9 +355,10 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
       )}
 
       <Tabs defaultValue="tasks" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="tasks">Tasks</TabsTrigger>
           <TabsTrigger value="completed">Completed</TabsTrigger>
+          <TabsTrigger value="notes">Notes</TabsTrigger>
           <TabsTrigger value="calendar">Calendar</TabsTrigger>
           <TabsTrigger value="vision">Your Why</TabsTrigger>
         </TabsList>
@@ -375,6 +377,10 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
             goalId={goalId}
             readOnly
           />
+        </TabsContent>
+
+        <TabsContent value="notes">
+          <NoteList goalId={goalId} tasks={initialTasks} />
         </TabsContent>
 
         <TabsContent value="calendar">

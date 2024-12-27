@@ -59,13 +59,23 @@ export const goalDailyQuotes = pgTable("goal_daily_quotes", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Relations
+export const notes = pgTable("notes", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  goalId: integer("goal_id").notNull().references(() => goals.id, { onDelete: "cascade" }),
+  taskId: integer("task_id").references(() => tasks.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const goalsRelations = relations(goals, ({ one, many }) => ({
   user: one(users, {
     fields: [goals.userId],
     references: [users.id],
   }),
   tasks: many(tasks),
+  notes: many(notes),
 }));
 
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
@@ -106,7 +116,21 @@ export const goalDailyQuotesRelations = relations(goalDailyQuotes, ({ one }) => 
   }),
 }));
 
-// Create schema with custom validation
+export const notesRelations = relations(notes, ({ one }) => ({
+  user: one(users, {
+    fields: [notes.userId],
+    references: [users.id],
+  }),
+  goal: one(goals, {
+    fields: [notes.goalId],
+    references: [goals.id],
+  }),
+  task: one(tasks, {
+    fields: [notes.taskId],
+    references: [tasks.id],
+  }),
+}));
+
 const baseSchema = createInsertSchema(users);
 
 export const insertUserSchema = baseSchema.extend({
@@ -123,7 +147,6 @@ export const forgotPasswordSchema = z.object({
   email: z.string().email("Invalid email format"),
 });
 
-// Type definitions and schemas
 export const insertGoalSchema = createInsertSchema(goals);
 export const selectGoalSchema = createSelectSchema(goals);
 export const insertTaskSchema = createInsertSchema(tasks);
@@ -174,7 +197,6 @@ export const purchasedRewards = pgTable("purchased_rewards", {
   purchasedAt: timestamp("purchased_at").defaultNow().notNull(),
 });
 
-
 export const timeTracking = pgTable("time_tracking", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -194,7 +216,6 @@ export const visionBoardImages = pgTable("vision_board_images", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Relations for remaining tables
 export const rewardItemsRelations = relations(rewardItems, ({ many }) => ({
   purchases: many(purchasedRewards),
 }));
@@ -231,8 +252,8 @@ export const visionBoardRelations = relations(visionBoardImages, ({ one }) => ({
 export const userTokens = pgTable("user_tokens", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  provider: text("provider").notNull(), // e.g. "google"
-  accessToken: text("access_token"), // store in text or encrypted column
+  provider: text("provider").notNull(),
+  accessToken: text("access_token"),
   refreshToken: text("refresh_token"),
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -241,3 +262,8 @@ export const userTokens = pgTable("user_tokens", {
 export const userTokensRelations = relations(userTokens, ({ one }) => ({
   user: one(users, { fields: [userTokens.userId], references: [users.id] }),
 }));
+
+export const insertNoteSchema = createInsertSchema(notes);
+export const selectNoteSchema = createSelectSchema(notes);
+export type Note = typeof notes.$inferSelect;
+export type NewNote = typeof notes.$inferInsert;
