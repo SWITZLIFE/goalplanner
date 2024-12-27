@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, X } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -81,19 +81,31 @@ const MenuBar = ({ editor }: { editor: any }) => {
 export function NoteList({ goalId, tasks }: NoteListProps) {
   const [isCreating, setIsCreating] = useState(false);
   const { toast } = useToast();
+  const [editor, setEditor] = useState<any>(null);
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Link,
-    ],
-    content: '',
-    editorProps: {
-      attributes: {
-        class: 'prose prose-sm focus:outline-none p-4 min-h-[200px] max-h-[50vh] overflow-y-auto',
-      },
-    },
-  });
+  useEffect(() => {
+    if (isCreating) {
+      const newEditor = useEditor({
+        extensions: [
+          StarterKit,
+          Link,
+        ],
+        content: '',
+        editorProps: {
+          attributes: {
+            class: 'prose prose-sm focus:outline-none p-4 min-h-[200px] max-h-[50vh] overflow-y-auto',
+          },
+        },
+      });
+      setEditor(newEditor);
+    }
+
+    return () => {
+      if (editor) {
+        editor.destroy();
+      }
+    };
+  }, [isCreating]);
 
   // Only show incomplete tasks in the dropdown
   const incompleteTasks = tasks.filter(task => !task.completed);
@@ -256,8 +268,12 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
               <FormItem>
                 <FormLabel>Content</FormLabel>
                 <div className="border rounded-lg overflow-hidden">
-                  <MenuBar editor={editor} />
-                  <EditorContent editor={editor} />
+                  {editor && (
+                    <>
+                      <MenuBar editor={editor} />
+                      <EditorContent editor={editor} />
+                    </>
+                  )}
                 </div>
               </FormItem>
 
