@@ -63,34 +63,45 @@ export function setupAuth(app: Express) {
   app.use(passport.session());
 
   passport.use(
-    new LocalStrategy(async (username, password, done) => {
-      try {
-        console.log('Attempting login for username:', username);
-        const result = await db
-          .select()
-          .from(users)
-          .where(eq(users.username, username))
-          .limit(1);
+    new LocalStrategy(
+      {
+        usernameField: 'email',
+        passwordField: 'password'
+      },
+      async (email, password, done) => {
+        try {
+          console.log('Attempting login with email:', email);
+          if (!email || !password) {
+            console.log('Missing credentials');
+            return done(null, false, { message: "Email and password are required." });
+          }
 
-        const user = result[0];
-        if (!user) {
-          console.log('User not found');
-          return done(null, false, { message: "Incorrect username." });
+          const result = await db
+            .select()
+            .from(users)
+            .where(eq(users.username, email))
+            .limit(1);
+
+          const user = result[0];
+          if (!user) {
+            console.log('User not found');
+            return done(null, false, { message: "Incorrect email." });
+          }
+
+          const isMatch = await crypto.compare(password, user.password);
+          if (!isMatch) {
+            console.log('Password mismatch');
+            return done(null, false, { message: "Incorrect password." });
+          }
+
+          console.log('Login successful');
+          return done(null, user);
+        } catch (err) {
+          console.error('Login error:', err);
+          return done(err);
         }
-
-        const isMatch = await crypto.compare(password, user.password);
-        if (!isMatch) {
-          console.log('Password mismatch');
-          return done(null, false, { message: "Incorrect password." });
-        }
-
-        console.log('Login successful');
-        return done(null, user);
-      } catch (err) {
-        console.error('Login error:', err);
-        return done(err);
       }
-    })
+    )
   );
 
   passport.serializeUser((user, done) => {
@@ -123,26 +134,22 @@ export function setupAuth(app: Express) {
   app.post("/api/register", async (req, res, next) => {
     try {
       console.log('Registration attempt:', req.body);
-      const result = insertUserSchema.safeParse(req.body);
-      if (!result.success) {
-        console.log('Validation failed:', result.error.issues);
-        return res
-          .status(400)
-          .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
-      }
+      const { email, password } = req.body;
 
-      const { username, password } = result.data;
+      if (!email || !password) {
+        return res.status(400).send("Email and password are required");
+      }
 
       // Check if user already exists
       const existingUser = await db
         .select()
         .from(users)
-        .where(eq(users.username, username))
+        .where(eq(users.username, email))
         .limit(1);
 
       if (existingUser.length > 0) {
-        console.log('Username already exists');
-        return res.status(400).send("Username already exists");
+        console.log('Email already exists');
+        return res.status(400).send("Email already exists");
       }
 
       // Hash the password
@@ -152,7 +159,7 @@ export function setupAuth(app: Express) {
       const [newUser] = await db
         .insert(users)
         .values({
-          username,
+          username: email, // Use email as username
           password: hashedPassword,
         })
         .returning();
@@ -166,7 +173,7 @@ export function setupAuth(app: Express) {
         }
         return res.json({
           message: "Registration successful",
-          user: { id: newUser.id, username: newUser.username },
+          user: { id: newUser.id, email: newUser.username },
         });
       });
     } catch (error) {
@@ -177,6 +184,12 @@ export function setupAuth(app: Express) {
 
   app.post("/api/login", (req, res, next) => {
     console.log('Login attempt:', req.body);
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).send("Email and password are required");
+    }
+
     const cb = (err: any, user: Express.User | false, info: IVerifyOptions) => {
       if (err) {
         console.error('Login error:', err);
@@ -197,7 +210,7 @@ export function setupAuth(app: Express) {
         console.log('Login successful:', user.id);
         return res.json({
           message: "Login successful",
-          user: { id: user.id, username: user.username },
+          user: { id: user.id, email: user.username },
         });
       });
     };
