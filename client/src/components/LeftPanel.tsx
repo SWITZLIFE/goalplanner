@@ -11,7 +11,7 @@ export function LeftPanel() {
 
   return (
     <div className="w-96 bg-primary h-screen overflow-hidden">
-      <div className="flex justify-between items-center p-6 pb-0 mt-10 mb-10">
+      <div className="flex justify-between items-center p-4 pb-0 mt-10 mb-10">
         <h1 className="text-l font-semibold text-white">Coin balance</h1>
         <CoinBalance />
       </div>
@@ -37,15 +37,15 @@ export function LeftPanel() {
       
 
       <div className="px-6 flex flex-col h-[calc(90vh-280px)]">
-        <h2 className="text-mm font-medium text-white mb-4">Your Goals</h2>
-        <div className="space-y-6 overflow-y-auto scrollbar-hide flex-1 pt-4 pb-4">
+        <h2 className="text-mm font-medium text-white mb-2">Your Goals</h2>
+        <div className="overflow-y-auto scrollbar-hide flex-1 pt-4 pb-4">
           {goals.map((goal) => (
             <GoalCard key={goal.id} goal={goal} />
           ))}
         </div>
       </div>
-    <div className="flex items-center">
-      <h2 className="text-mm font-medium text-white pl-6 mt-3">Created with love</h2>
+    <div>
+      <h2 className="text-sm font-small text-white p-6">Created with ❤️</h2>
     </div>
     </div>
   );
