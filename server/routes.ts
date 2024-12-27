@@ -938,7 +938,7 @@ Remember to:
       res.json({
         timer: updatedTimer,
         task: updatedTask,
-        coinsEarned,
+coinsEarned,
       });
     } catch (error) {
       console.error("Failed to stop timer:", error);
@@ -985,16 +985,31 @@ Remember to:
 
   app.post("/api/notes", requireAuth, async (req, res) => {
     try {
-      const { title, content } = req.body;
+      const { title, content, goalId } = req.body;
       const userId = req.user!.id;
 
       if (!title) {
         return res.status(400).json({ error: "Title is required" });
       }
 
+      // If goalId is provided, verify that the goal exists and belongs to the user
+      if (goalId) {
+        const goal = await db.query.goals.findFirst({
+          where: and(
+            eq(goals.id, goalId),
+            eq(goals.userId, userId)
+          ),
+        });
+
+        if (!goal) {
+          return res.status(404).json({ error: "Goal not found or unauthorized" });
+        }
+      }
+
       const [newNote] = await db.insert(notes)
         .values({
           userId,
+          goalId: goalId || null,
           title,
           content: content || "",
           updatedAt: new Date(),
