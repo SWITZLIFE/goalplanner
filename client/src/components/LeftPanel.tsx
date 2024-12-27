@@ -43,7 +43,7 @@ export function LeftPanel() {
           </div>
         </div>
 
-        <div className="flex justify-between items-center p-6 pb-0 mb-10">
+        <div className="flex justify-between items-center pr-2 pl-2 pb-0 mb-4">
           <h1 className="text-l font-semibold text-white">Coin balance</h1>
           <CoinBalance />
         </div>
@@ -68,8 +68,8 @@ export function LeftPanel() {
       <div className="px-6 flex flex-col">
         <h2 className="text-mm font-medium text-white mb-2">Your Goals</h2>
         <div className={cn(
-          "h-[300px] overflow-y-auto pt-2 pb-2 space-y-3",
-          "scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-transparent"
+          "h-[370px] overflow-y-auto pt-2 pb-2 space-y-3",
+          "scrollbar-hide"
         )}>
           {goals.map((goal) => (
             <GoalCard key={goal.id} goal={goal} />
