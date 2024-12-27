@@ -1,6 +1,5 @@
-
 import { Button } from "@/components/ui/button";
-import { Gift, BarChart2 } from "lucide-react";
+import { Gift, BarChart2, PlusCircle } from "lucide-react";
 import { Link } from "wouter";
 import { CoinBalance } from "@/components/rewards/CoinBalance";
 import { CreateGoalDialog } from "@/components/goals/CreateGoalDialog";
