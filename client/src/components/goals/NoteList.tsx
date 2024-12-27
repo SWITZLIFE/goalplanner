@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import type { Task } from "@db/schema";
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import TextStyle from '@tiptap/extension-text-style';
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 
@@ -35,6 +36,15 @@ interface NoteListProps {
   tasks: Task[];
 }
 
+const fontSizes = [
+  { value: '10px', label: '10px' },
+  { value: '12px', label: '12px' },
+  { value: '14px', label: '14px' },
+  { value: '16px', label: '16px' },
+  { value: '18px', label: '18px' },
+  { value: '20px', label: '20px' },
+];
+
 export function NoteList({ goalId, tasks }: NoteListProps) {
   const [isCreating, setIsCreating] = useState(false);
   const { toast } = useToast();
@@ -42,11 +52,15 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
 
   // Initialize TipTap editor
   const editor = useEditor({
-    extensions: [StarterKit],
+    extensions: [
+      StarterKit,
+      TextStyle.configure({ types: ['textStyle'] }),
+    ],
     content: '',
     editorProps: {
       attributes: {
         class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl focus:outline-none min-h-[300px] p-4',
+        style: 'font-size: 10px',
       },
     },
   });
@@ -206,7 +220,24 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
                 <FormLabel>Content</FormLabel>
                 {editor && (
                   <div className="border rounded-lg overflow-hidden bg-white">
-                    <div className="border-b p-2 flex gap-2">
+                    <div className="border-b p-2 flex gap-2 flex-wrap">
+                      <Select
+                        value={editor.getAttributes('textStyle').fontSize || '10px'}
+                        onValueChange={(value) => {
+                          editor.chain().focus().setStyle({ fontSize: value }).run();
+                        }}
+                      >
+                        <SelectTrigger className="w-[80px]">
+                          <SelectValue placeholder="10px" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {fontSizes.map((size) => (
+                            <SelectItem key={size.value} value={size.value}>
+                              {size.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <Button
                         type="button"
                         variant="ghost"
