@@ -314,7 +314,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="space-y-6 bg-white p-4 rounded-md">
         <div className="flex justify-between items-center">
           <Button
             variant="outline"
