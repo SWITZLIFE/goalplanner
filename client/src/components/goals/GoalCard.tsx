@@ -17,8 +17,8 @@ export function GoalCard({ goal }: GoalCardProps) {
   return (
     <Link href={`/goals/${goal.id}`}>
       <Card className={cn(
-        "cursor-pointer hover:shadow-md transition-all duration-200 mb-4",
-        isActive && "bg-primary/5 border-primary/20"
+        "cursor-pointer hover:shadow-md transition-all duration-200 mb-4 border",
+        isActive && "bg-[#D8F275] border-0"
       )}>
         <CardContent className="p-4">
           <div className="flex justify-between items-center">
