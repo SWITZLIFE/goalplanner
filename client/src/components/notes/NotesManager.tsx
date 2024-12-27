@@ -27,7 +27,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Modified query to include goalId parameter if provided
+  // Query to fetch notes - filter by goalId if provided
   const { data: notes = [] } = useQuery<Note[]>({
     queryKey: goalId ? ["/api/notes", goalId] : ["/api/notes"],
     queryFn: async ({ queryKey }) => {
@@ -44,23 +44,29 @@ export function NotesManager({ goalId }: NotesManagerProps) {
     },
   });
 
+  // Create note mutation
   const createNoteMutation = useMutation({
     mutationFn: async (note: { title: string; content: string }) => {
+      const payload = {
+        title: note.title,
+        content: note.content,
+        goalId: goalId // Always include goalId in the payload
+      };
+
+      console.log('Creating note with payload:', payload); // Debug log
+
       const response = await fetch("/api/notes", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json" 
         },
         credentials: "include",
-        body: JSON.stringify({
-          title: note.title,
-          content: note.content,
-          goalId: goalId || null // Explicitly set goalId
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to create note");
+        const error = await response.text();
+        throw new Error(`Failed to create note: ${error}`);
       }
 
       return response.json();
@@ -73,21 +79,34 @@ export function NotesManager({ goalId }: NotesManagerProps) {
         description: `Note created ${goalId ? "for goal" : "successfully"}`
       });
     },
+    onError: (error) => {
+      console.error('Note creation error:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create note"
+      });
+    }
   });
 
+  // Update note mutation
   const updateNoteMutation = useMutation({
     mutationFn: async ({
       id,
       ...note
     }: { id: number; title: string; content: string }) => {
+      const payload = {
+        ...note,
+        goalId // Maintain goalId during updates
+      };
+
+      console.log('Updating note with payload:', payload); // Debug log
+
       const response = await fetch(`/api/notes/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          ...note,
-          goalId: goalId || null // Ensure goalId is maintained during updates
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -118,6 +137,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
         </Button>
       </div>
 
+      {/* Notes List */}
       <div className="grid gap-4">
         {notes.map((note) => (
           <div
@@ -150,50 +170,55 @@ export function NotesManager({ goalId }: NotesManagerProps) {
         )}
       </div>
 
+      {/* Create Note Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Note</DialogTitle>
+          </DialogHeader>
+          <NoteEditor
+            onSave={async (note) => {
+              await createNoteMutation.mutateAsync(note);
+            }}
+            goalId={goalId} // Pass goalId to NoteEditor
+            onCancel={() => setShowCreateDialog(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
       {/* Note Side Panel */}
       <div className={cn(
         "fixed inset-y-0 right-0 w-[600px] bg-background border-l shadow-lg transform transition-transform duration-200 ease-in-out z-50",
-        (showCreateDialog || selectedNote) ? "translate-x-0" : "translate-x-full"
+        selectedNote ? "translate-x-0" : "translate-x-full"
       )}>
-        {(showCreateDialog || selectedNote) && (
+        {selectedNote && (
           <div className="flex flex-col h-full">
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b">
               <div className="flex items-center gap-3">
                 <button 
-                  onClick={() => {
-                    setShowCreateDialog(false);
-                    setSelectedNote(null);
-                  }}
+                  onClick={() => setSelectedNote(null)}
                   className="rounded-full p-2 hover:bg-accent/50"
                 >
                   <X className="h-5 w-5" />
                 </button>
-                <h2 className="text-xl font-semibold">
-                  {showCreateDialog ? "Create New Note" : "Edit Note"}
-                </h2>
+                <h2 className="text-xl font-semibold">Edit Note</h2>
               </div>
             </div>
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6">
               <NoteEditor
-                initialTitle={selectedNote?.title}
-                initialContent={selectedNote?.content}
+                initialTitle={selectedNote.title}
+                initialContent={selectedNote.content}
+                goalId={goalId} // Pass goalId to NoteEditor for updates
                 onSave={async (note) => {
-                  if (selectedNote) {
-                    await updateNoteMutation.mutateAsync({
-                      id: selectedNote.id,
-                      ...note,
-                    });
-                  } else {
-                    await createNoteMutation.mutateAsync(note);
-                  }
+                  await updateNoteMutation.mutateAsync({
+                    id: selectedNote.id,
+                    ...note,
+                  });
                 }}
-                onCancel={() => {
-                  setShowCreateDialog(false);
-                  setSelectedNote(null);
-                }}
+                onCancel={() => setSelectedNote(null)}
               />
             </div>
           </div>

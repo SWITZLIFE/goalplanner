@@ -8,7 +8,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 interface NoteEditorProps {
   initialTitle?: string;
   initialContent?: string;
-  onSave?: (note: { title: string; content: string }) => Promise<void>;
+  goalId?: number;
+  onSave?: (note: { title: string; content: string; goalId?: number }) => Promise<void>;
   onCancel?: () => void;
   readOnly?: boolean;
 }
@@ -16,6 +17,7 @@ interface NoteEditorProps {
 export function NoteEditor({ 
   initialTitle = "", 
   initialContent = "", 
+  goalId,
   onSave,
   onCancel,
   readOnly = false 
@@ -74,7 +76,8 @@ export function NoteEditor({
                 setIsSaving(true);
                 await onSave?.({
                   title: title.trim(),
-                  content: content
+                  content: content,
+                  goalId // Include goalId in the saved note data
                 });
                 toast({
                   title: "Success",

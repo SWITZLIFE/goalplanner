@@ -31,6 +31,7 @@ interface Note {
   content: string;
   createdAt: string;
   updatedAt: string;
+  goalId?: number; // Added goalId to Note interface
 }
 
 interface Goal {
@@ -466,7 +467,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                   <option value={goalId}>{goal.title}</option>
                 </select>
               </div>
-              </div>
+            </div>
 
             <div className="border rounded-lg overflow-hidden">
               <div className="bg-white p-4">
@@ -701,7 +702,10 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                   headers: {
                     'Content-Type': 'application/json',
                   },
-                  body: JSON.stringify(note)
+                  body: JSON.stringify({
+                    ...note,
+                    goalId: goalId // Include the goalId from the current goal view
+                  })
                 });
                 queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
                 toast({
@@ -718,6 +722,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                 });
               }
             }}
+            goalId={goalId} // Pass the goalId to NoteEditor
             onCancel={() => setShowCreateDialog(false)}
           />
         </DialogContent>
