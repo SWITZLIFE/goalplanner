@@ -79,9 +79,10 @@ export function LeftPanel() {
           )}
         </CollapsibleTrigger>
         <CollapsibleContent className={cn(
-          "max-h-[calc(100vh-500px)] overflow-y-auto scrollbar-hide pt-2 pb-2 space-y-3",
+          "max-h-[300px] overflow-y-auto pt-2 pb-2 space-y-3",
           "data-[state=open]:animate-collapsible-down",
-          "data-[state=closed]:animate-collapsible-up"
+          "data-[state=closed]:animate-collapsible-up",
+          "scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-transparent"
         )}>
           {goals.map((goal) => (
             <GoalCard key={goal.id} goal={goal} />
