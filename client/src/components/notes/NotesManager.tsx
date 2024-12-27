@@ -14,7 +14,7 @@ interface Note {
   content: string;
   createdAt: string;
   updatedAt: string;
-  goalId: number | null;
+  goal_id: number | null; 
 }
 
 interface NotesManagerProps {
