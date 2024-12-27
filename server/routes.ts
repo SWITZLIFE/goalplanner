@@ -935,8 +935,7 @@ Remember to:
           .where(eq(rewards.userId, userId));
       }
 
-      res.json({
-        timer: updatedTimer,
+      res.json({timer: updatedTimer,
         task: updatedTask,
         coinsEarned,
       });    } catch (error) {
@@ -970,15 +969,19 @@ Remember to:
   app.get("/api/notes", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
-      const goalId = parseInt(req.query.goalId as string) || null; // Get goalId from query parameters
-      const userNotes = await db.select()
-        .from(notes)
-        .where(
-          goalId === null ? eq(notes.userId, userId) : and(
+      const goalId = req.query.goalId ? parseInt(req.query.goalId as string) : null;
+
+      // Build the where clause based on goalId
+      const whereClause = goalId !== null
+        ? and(
             eq(notes.userId, userId),
             eq(notes.goalId, goalId)
           )
-        )
+        : eq(notes.userId, userId);
+
+      const userNotes = await db.select()
+        .from(notes)
+        .where(whereClause)
         .orderBy(desc(notes.updatedAt));
 
       res.json(userNotes);

@@ -27,9 +27,9 @@ export function NotesManager({ goalId }: NotesManagerProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Fetch all notes
+  // Fetch notes with proper filtering from server
   const { data: notes = [] } = useQuery<Note[]>({
-    queryKey: ['/api/notes', goalId], // Add goalId to queryKey to refetch when it changes
+    queryKey: ['/api/notes', goalId],
     queryFn: async () => {
       const url = goalId ? `/api/notes?goalId=${goalId}` : '/api/notes';
       const response = await fetch(url, {
@@ -42,16 +42,8 @@ export function NotesManager({ goalId }: NotesManagerProps) {
     },
   });
 
-  // Filter notes based on goalId
-  const visibleNotes = notes.filter(note => {
-    // If we're in the main notes view (no goalId), show all notes
-    if (!goalId) {
-      return true;
-    }
-
-    // In a specific goal view, only show notes that belong to this goal
-    return note.goalId === goalId;
-  });
+  // No additional filtering needed as server handles it
+  const visibleNotes = notes;
 
   // Create note mutation
   const createNoteMutation = useMutation({
