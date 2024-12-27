@@ -37,7 +37,7 @@ interface NoteListProps {
 
 const modules = {
   toolbar: [
-    [{ 'size': ['12px', '14px', '16px', '18px', '20px'] }],
+    [{ 'size': ['small', 'normal', 'large', 'huge'] }],
     ['bold', 'italic', 'underline', 'strike'],
     [{ 'list': 'ordered'}, { 'list': 'bullet' }],
     ['blockquote', 'link'],
@@ -229,6 +229,30 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
                   .ql-editor {
                     height: 100%;
                     overflow-y: auto;
+                  }
+                  .ql-snow .ql-picker.ql-size .ql-picker-label::before,
+                  .ql-snow .ql-picker.ql-size .ql-picker-item::before {
+                    content: 'Normal';
+                  }
+                  .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="small"]::before,
+                  .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="small"]::before {
+                    content: 'Small';
+                    font-size: 10px;
+                  }
+                  .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="normal"]::before,
+                  .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="normal"]::before {
+                    content: 'Normal';
+                    font-size: 12px;
+                  }
+                  .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="large"]::before,
+                  .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="large"]::before {
+                    content: 'Large';
+                    font-size: 16px;
+                  }
+                  .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="huge"]::before,
+                  .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="huge"]::before {
+                    content: 'Huge';
+                    font-size: 20px;
                   }
                 `}</style>
               </FormItem>
