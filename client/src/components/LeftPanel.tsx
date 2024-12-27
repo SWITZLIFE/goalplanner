@@ -68,7 +68,7 @@ export function LeftPanel() {
       <div className="px-6 flex flex-col">
         <h2 className="text-mm font-medium text-white mb-2">Your Goals</h2>
         <div className={cn(
-          "h-[370px] overflow-y-auto pt-2 pb-2 space-y-3",
+          "h-[200px] overflow-y-auto pt-2 pb-2 space-y-3",
           "scrollbar-hide"
         )}>
           {goals.map((goal) => (

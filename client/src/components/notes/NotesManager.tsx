@@ -41,12 +41,17 @@ export function NotesManager({ goalId }: NotesManagerProps) {
     },
   });
 
-  // Filter notes to show only those matching the current goalId or without a goalId
-  const filteredNotes = notes.filter(note => 
-    !goalId || // If no goalId is provided, show all notes
-    note.goalId === goalId || // Show notes matching the current goalId
-    note.goalId === null // Show notes without a goalId
-  );
+  // Filter notes based on current goalId
+  const visibleNotes = notes.filter(note => {
+    if (!goalId) {
+      // In the main notes view, show all notes
+      return true;
+    }
+    // In a goal view, only show notes that:
+    // 1. Have matching goalId, OR
+    // 2. Have no goalId (null)
+    return note.goalId === goalId || note.goalId === null;
+  });
 
   // Create note mutation
   const createNoteMutation = useMutation({
@@ -54,7 +59,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
       const payload = {
         title: note.title,
         content: note.content,
-        goalId
+        goalId: goalId // Include current goalId in the payload
       };
 
       console.log('Creating note with payload:', payload);
@@ -99,16 +104,11 @@ export function NotesManager({ goalId }: NotesManagerProps) {
       id,
       ...note
     }: { id: number; title: string; content: string }) => {
-      const payload = {
-        ...note,
-        goalId
-      };
-
       const response = await fetch(`/api/notes/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...note, goalId }),
       });
 
       if (!response.ok) {
@@ -141,7 +141,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
 
       {/* Notes List */}
       <div className="grid gap-4">
-        {filteredNotes.map((note) => (
+        {visibleNotes.map((note) => (
           <div
             key={note.id}
             className={cn(
@@ -163,7 +163,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
           </div>
         ))}
 
-        {filteredNotes.length === 0 && (
+        {visibleNotes.length === 0 && (
           <div className="text-center p-8 text-muted-foreground">
             <FileText className="h-8 w-8 mx-auto mb-4" />
             <p>No notes {goalId ? "for this goal" : ""} yet</p>
