@@ -130,7 +130,7 @@ export function RewardStore() {
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-semibold">Reward Store</h2>
         <div className="text-sm text-muted-foreground">
-          Your balance: <span className="font-medium text-yellow-500">{userRewards?.coins || 0} coins</span>
+          Your balance: <span className="font-medium" style={{ color: '#D8F275' }}>{userRewards?.coins || 0} coins</span>
         </div>
       </div>
 
@@ -153,7 +153,7 @@ export function RewardStore() {
             </CardHeader>
             <CardFooter className="mt-auto border-t pt-4 px-6">
               <div className="flex justify-between items-center w-full">
-                <div className="text-yellow-500 font-medium">{reward.cost} coins</div>
+                <div className="font-medium" style={{ color: '#D8F275' }}>{reward.cost} coins</div>
                 <Dialog open={selectedReward?.id === reward.id} onOpenChange={(open) => !open && setSelectedReward(null)}>
                   <DialogTrigger asChild>
                     <Button 
