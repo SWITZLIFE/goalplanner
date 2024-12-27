@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, X } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -10,9 +10,10 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import type { Task } from "@db/schema";
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
 import { Input } from "@/components/ui/input";
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Link from '@tiptap/extension-link';
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -34,48 +35,65 @@ interface NoteListProps {
   tasks: Task[];
 }
 
-const modules = {
-  toolbar: [
-    [{ header: [1, 2, 3, 4, 5, 6, false] }],
-    [{ size: ['small', false, 'large', 'huge'] }],
-    ['bold', 'italic', 'underline', 'strike'],
-    [{ list: 'ordered'}, { list: 'bullet' }],
-    ['blockquote', 'code-block'],
-    ['link'],
-    ['clean']
-  ],
-  clipboard: {
-    matchVisual: false
+const MenuBar = ({ editor }: { editor: any }) => {
+  if (!editor) {
+    return null;
   }
-};
 
-const formats = [
-  'header',
-  'size',
-  'bold', 'italic', 'underline', 'strike',
-  'list', 'bullet',
-  'blockquote', 'code-block',
-  'link'
-];
-
-const quillStyles = {
-  container: {
-    height: 'calc(50vh - 42px)',
-    fontSize: '14px',
-    fontFamily: 'inherit',
-  },
-  editor: {
-    height: '100%',
-    overflowY: 'auto',
-    padding: '1rem',
-  }
+  return (
+    <div className="border-b p-2 flex gap-2 flex-wrap">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => editor.chain().focus().toggleBold().run()}
+        data-active={editor.isActive('bold')}
+      >
+        Bold
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => editor.chain().focus().toggleItalic().run()}
+        data-active={editor.isActive('italic')}
+      >
+        Italic
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => editor.chain().focus().toggleBulletList().run()}
+        data-active={editor.isActive('bulletList')}
+      >
+        Bullet List
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        data-active={editor.isActive('orderedList')}
+      >
+        Numbered List
+      </Button>
+    </div>
+  );
 };
 
 export function NoteList({ goalId, tasks }: NoteListProps) {
   const [isCreating, setIsCreating] = useState(false);
-  const [editorContent, setEditorContent] = useState('');
   const { toast } = useToast();
-  const quillRef = useRef<ReactQuill>(null);
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Link,
+    ],
+    content: '',
+    editorProps: {
+      attributes: {
+        class: 'prose prose-sm focus:outline-none p-4 min-h-[200px] max-h-[50vh] overflow-y-auto',
+      },
+    },
+  });
 
   // Only show incomplete tasks in the dropdown
   const incompleteTasks = tasks.filter(task => !task.completed);
@@ -94,13 +112,6 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
     },
   });
 
-  useEffect(() => {
-    if (isCreating && quillRef.current) {
-      const editor = quillRef.current.getEditor();
-      editor.focus();
-    }
-  }, [isCreating]);
-
   const createNoteMutation = useMutation({
     mutationFn: async (values: z.infer<typeof formSchema>) => {
       const response = await fetch(`/api/goals/${goalId}/notes`, {
@@ -108,7 +119,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...values,
-          content: editorContent,
+          content: editor?.getHTML() || '',
           taskId: values.taskId || null,
         }),
         credentials: "include",
@@ -124,7 +135,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
     onSuccess: () => {
       setIsCreating(false);
       form.reset();
-      setEditorContent('');
+      editor?.commands.setContent('');
       refetch();
       toast({
         title: "Note created",
@@ -143,7 +154,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      if (!editorContent.trim()) {
+      if (!editor?.getHTML().trim()) {
         toast({
           title: "Error",
           description: "Note content is required",
@@ -152,10 +163,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
         return;
       }
 
-      await createNoteMutation.mutateAsync({
-        ...values,
-        content: editorContent,
-      });
+      await createNoteMutation.mutateAsync(values);
     } catch (error) {
       console.error("Form submission error:", error);
     }
@@ -223,7 +231,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
               onClick={() => {
                 setIsCreating(false);
                 form.reset();
-                setEditorContent('');
+                editor?.commands.setContent('');
               }}
             >
               <X className="h-4 w-4" />
@@ -248,16 +256,8 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
               <FormItem>
                 <FormLabel>Content</FormLabel>
                 <div className="border rounded-lg overflow-hidden">
-                  <ReactQuill
-                    ref={quillRef}
-                    theme="snow"
-                    value={editorContent}
-                    onChange={setEditorContent}
-                    modules={modules}
-                    formats={formats}
-                    className="bg-white"
-                    style={quillStyles.container}
-                  />
+                  <MenuBar editor={editor} />
+                  <EditorContent editor={editor} />
                 </div>
               </FormItem>
 
