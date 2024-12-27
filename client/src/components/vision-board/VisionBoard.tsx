@@ -7,6 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
+import { useGoals } from "@/hooks/use-goals";
 
 interface VisionBoardImage {
   id: number;
@@ -16,6 +17,14 @@ interface VisionBoardImage {
 
 import { FutureMessage } from "./FutureMessage";
 
+interface Task {
+  id: number;
+  title: string;
+  completed: boolean;
+  plannedDate: string | null;
+  goalId: number;
+}
+
 export function VisionBoard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -24,10 +33,54 @@ export function VisionBoard() {
   const [isCalendarOpen, setIsCalendarOpen] = useState(true);
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [taskFilter, setTaskFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [goalFilter, setGoalFilter] = useState<number | 'all'>('all');
+
+  const { goals } = useGoals();
 
   const { data: images = [], isLoading } = useQuery<VisionBoardImage[]>({
     queryKey: ["/api/vision-board"],
   });
+
+  // Get all tasks from all goals
+  const allTasks = goals.reduce<Task[]>((acc, g) => {
+    if (g.tasks) {
+      return [...acc, ...g.tasks];
+    }
+    return acc;
+  }, []);
+
+  // Get filtered tasks based on selected filters
+  const getFilteredTasks = () => {
+    // Start with all available tasks
+    let filtered = allTasks;
+
+    // First apply goal filter
+    if (goalFilter !== 'all') {
+      filtered = filtered.filter(task => task.goalId === Number(goalFilter));
+    }
+
+    // Then apply task status filter
+    if (taskFilter === 'active') {
+      filtered = filtered.filter(task => !task.completed);
+    } else if (taskFilter === 'completed') {
+      filtered = filtered.filter(task => task.completed);
+    }
+
+    // Filter out tasks without planned dates for calendar view
+    filtered = filtered.filter(task => task.plannedDate !== null);
+
+    return filtered;
+  };
+
+  // Get tasks for selected date
+  const tasksForDate = (date: Date) => {
+    const filtered = getFilteredTasks();
+    return filtered.filter(task =>
+      task.plannedDate &&
+      format(new Date(task.plannedDate), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
+    );
+  };
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -231,77 +284,118 @@ export function VisionBoard() {
             "data-[state=closed]:animate-collapsible-up"
           )}
         >
-          <div className="border rounded-lg overflow-hidden">
-            <div className="bg-primary/5 p-4">
-              <h2 className="text-xl font-semibold">Task Calendar</h2>
-              <div className="flex justify-between items-center mt-2">
-                <button
-                  className="p-1 hover:bg-gray-200 rounded"
-                  onClick={() => {
-                    const newDate = new Date(currentMonth);
-                    newDate.setMonth(newDate.getMonth() - 1);
-                    setCurrentMonth(newDate);
-                  }}
-                >
-                  ←
-                </button>
-                <span className="font-medium">
-                  {format(currentMonth, 'MMMM yyyy')}
-                </span>
-                <button
-                  className="p-1 hover:bg-gray-200 rounded"
-                  onClick={() => {
-                    const newDate = new Date(currentMonth);
-                    newDate.setMonth(newDate.getMonth() + 1);
-                    setCurrentMonth(newDate);
-                  }}
-                >
-                  →
-                </button>
-              </div>
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <select
+                className="border rounded-md p-2"
+                value={taskFilter}
+                onChange={(e) => setTaskFilter(e.target.value as 'all' | 'active' | 'completed')}
+              >
+                <option value="all">All Tasks</option>
+                <option value="active">Active Tasks</option>
+                <option value="completed">Completed Tasks</option>
+              </select>
+              <select
+                className="border rounded-md p-2"
+                value={goalFilter}
+                onChange={(e) => setGoalFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+              >
+                <option value="all">All Goals</option>
+                {goals.map(goal => (
+                  <option key={goal.id} value={goal.id}>{goal.title}</option>
+                ))}
+              </select>
             </div>
 
-            <div className="grid grid-cols-7 text-center border-b">
-              {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(day => (
-                <div key={day} className="p-2 font-medium border-r last:border-r-0">
-                  {day}
-                </div>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-7 divide-x divide-y">
-              {Array.from({ length: 35 }, (_, i) => {
-                const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-                const startDay = startOfMonth.getDay(); // 0 = Sunday
-                // Convert Sunday = 0 to Monday = 0 by shifting the days
-                const mondayStartDay = startDay === 0 ? 6 : startDay - 1;
-                const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), i - mondayStartDay + 1);
-                const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
-                const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
-
-                return (
-                  <div
-                    key={i}
-                    className={cn(
-                      "min-h-[100px] p-2",
-                      !isCurrentMonth && "bg-gray-50 text-gray-400",
-                      isToday && "bg-primary/5"
-                    )}
+            <div className="border rounded-lg overflow-hidden">
+              <div className="bg-primary/5 p-4">
+                <h2 className="text-xl font-semibold">Task Calendar</h2>
+                <div className="flex justify-between items-center mt-2">
+                  <button
+                    className="p-1 hover:bg-gray-200 rounded"
+                    onClick={() => {
+                      const newDate = new Date(currentMonth);
+                      newDate.setMonth(newDate.getMonth() - 1);
+                      setCurrentMonth(newDate);
+                    }}
                   >
-                    <div className="font-medium mb-2">
-                      {format(date, 'd')}
-                    </div>
-                    <div className="space-y-1">
-                      {/* Task placeholders for demo */}
-                      {isCurrentMonth && Math.random() > 0.7 && (
-                        <div className="text-xs p-1 rounded truncate cursor-pointer hover:opacity-80 bg-blue-100">
-                          Sample Task
-                        </div>
-                      )}
-                    </div>
+                    ←
+                  </button>
+                  <span className="font-medium">
+                    {format(currentMonth, 'MMMM yyyy')}
+                  </span>
+                  <button
+                    className="p-1 hover:bg-gray-200 rounded"
+                    onClick={() => {
+                      const newDate = new Date(currentMonth);
+                      newDate.setMonth(newDate.getMonth() + 1);
+                      setCurrentMonth(newDate);
+                    }}
+                  >
+                    →
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-7 text-center border-b">
+                {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(day => (
+                  <div key={day} className="p-2 font-medium border-r last:border-r-0">
+                    {day}
                   </div>
-                );
-              })}
+                ))}
+              </div>
+
+              <div className="grid grid-cols-7 divide-x divide-y">
+                {Array.from({ length: 35 }, (_, i) => {
+                  const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+                  const startDay = startOfMonth.getDay(); // 0 = Sunday
+                  // Convert Sunday = 0 to Monday = 0 by shifting the days
+                  const mondayStartDay = startDay === 0 ? 6 : startDay - 1;
+                  const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), i - mondayStartDay + 1);
+                  const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+                  const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
+                  const dayTasks = tasksForDate(date);
+
+                  return (
+                    <div
+                      key={i}
+                      className={cn(
+                        "min-h-[100px] p-2",
+                        !isCurrentMonth && "bg-gray-50 text-gray-400",
+                        isToday && "bg-primary/5"
+                      )}
+                    >
+                      <div className="font-medium mb-2">
+                        {format(date, 'd')}
+                      </div>
+                      <div className="space-y-1">
+                        {dayTasks
+                          .sort((a, b) => (a.completed === b.completed ? 0 : a.completed ? 1 : -1))
+                          .slice(0, 3)
+                          .map(task => (
+                            <div
+                              key={task.id}
+                              className={cn(
+                                "text-xs p-1 rounded truncate cursor-pointer hover:opacity-80",
+                                task.completed ? "bg-orange-100" : "bg-blue-100"
+                              )}
+                              title={task.title}
+                            >
+                              {task.title}
+                            </div>
+                          ))}
+                        {dayTasks.length > 3 && (
+                          <button
+                            className="text-xs text-primary hover:text-primary/80 font-medium"
+                          >
+                            + {dayTasks.length - 3} more
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </CollapsibleContent>
