@@ -147,7 +147,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
               >
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className="font-medium">{note.title}</h4>
+                    <h3 className="font-medium text-sm line-clamp-2">{note.title}</h3>
                     <div 
                       className="prose prose-sm mt-2"
                       dangerouslySetInnerHTML={{ __html: note.content }}
@@ -204,9 +204,51 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
 
               <FormItem>
                 <FormLabel>Content</FormLabel>
-                <div className="border rounded-lg overflow-hidden bg-white">
-                  <EditorContent editor={editor} className="min-h-[300px]" />
-                </div>
+                {editor && (
+                  <div className="border rounded-lg overflow-hidden bg-white">
+                    <div className="border-b p-2 flex gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => editor.chain().focus().toggleBold().run()}
+                        className={cn(editor.isActive('bold') && 'bg-muted')}
+                      >
+                        Bold
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => editor.chain().focus().toggleItalic().run()}
+                        className={cn(editor.isActive('italic') && 'bg-muted')}
+                      >
+                        Italic
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => editor.chain().focus().toggleBulletList().run()}
+                        className={cn(editor.isActive('bulletList') && 'bg-muted')}
+                      >
+                        Bullet List
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+                        className={cn(editor.isActive('orderedList') && 'bg-muted')}
+                      >
+                        Numbered List
+                      </Button>
+                    </div>
+                    <div className="max-h-[calc(100vh-400px)] overflow-y-auto">
+                      <EditorContent editor={editor} className="min-h-[300px]" />
+                    </div>
+                  </div>
+                )}
               </FormItem>
 
               {incompleteTasks.length > 0 && (
