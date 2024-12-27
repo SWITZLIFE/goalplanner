@@ -469,7 +469,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
               </div>
 
             <div className="border rounded-lg overflow-hidden">
-              <div className="bg-primary/5 p-4">
+              <div className="bg-white p-4">
                 <h2 className="text-xl font-semibold">Task Calendar</h2>
                 <div className="flex justify-between items-center mt-2">
                   <button
