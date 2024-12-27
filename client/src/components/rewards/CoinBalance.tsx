@@ -33,7 +33,7 @@ export function CoinBalance() {
   }, [rewards?.coins]);
 
   return (
-    <div className="flex items-center gap-2 text-yellow-500 relative">
+    <div className="flex items-center gap-2 text-[#D8F275] relative">
       <Coins className="h-4 w-4" />
       <span className="font-medium">{isError ? '?' : (rewards?.coins ?? 0)}</span>
       <CoinAnimation 
