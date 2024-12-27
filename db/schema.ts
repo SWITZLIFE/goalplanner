@@ -38,7 +38,6 @@ export const tasks = pgTable("tasks", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   parentTaskId: integer("parent_task_id").references(() => tasks.id),
   isSubtask: boolean("is_subtask").default(false).notNull(),
-  notes: text("notes"),
   isAiGenerated: boolean("is_ai_generated").default(false).notNull(),
   order: integer("order"),
 });
@@ -194,7 +193,6 @@ export const visionBoardImages = pgTable("vision_board_images", {
   position: integer("position").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
-
 
 // Relations for remaining tables
 export const rewardItemsRelations = relations(rewardItems, ({ many }) => ({
