@@ -165,7 +165,7 @@ export function setupAuth(app: Express) {
       email: z.string().email("Invalid email format"),
       password: z.string()
     });
-    
+
     const result = loginSchema.safeParse(req.body);
     if (!result.success) {
       return res
@@ -202,14 +202,14 @@ export function setupAuth(app: Express) {
       if (err) {
         return res.status(500).send("Logout failed");
       }
-      
+
       // Then destroy the session
       req.session.destroy((err) => {
         if (err) {
           console.error("Session destruction failed:", err);
           return res.status(500).send("Logout partially failed");
         }
-        
+
         // Clear session cookie
         res.clearCookie('connect.sid');
         res.json({ message: "Logout successful" });
