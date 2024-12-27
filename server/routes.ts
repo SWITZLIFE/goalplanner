@@ -1,18 +1,12 @@
 import type { Express, Request, Response, NextFunction } from "express";
-import { createServer, type Server } from "http";
-import { eq, and, desc, sql } from "drizzle-orm";
-import { db } from "@db";
-import { 
-  users, 
-  notes, 
-  goals, 
-  tasks, 
-  timeTracking, 
-  rewards, 
-  rewardItems, 
-  purchasedRewards
-} from "@db/schema";
+import { eq, and, desc } from "drizzle-orm";
+import { notes } from "@db/schema";
 import { getTodayMessage, markMessageAsRead, generateDailyMessage } from "./future-message";
+import { createServer, type Server } from "http";
+import { db } from "@db";
+import { eq, desc, and, isNull, sql } from "drizzle-orm";
+import { rewards, rewardItems, purchasedRewards, users } from "@db/schema";
+import { goals, tasks, timeTracking, visionBoardImages } from "@db/schema";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -21,7 +15,7 @@ import { getCoachingAdvice } from "./coaching";
 import { setupAuth } from "./auth";
 import { openai } from "./openai";
 import { uploadFileToSupabase } from './supabase';
-import { getTodayQuote, markQuoteAsRead } from "./goal-quotes";
+import { getTodayQuote, markQuoteAsRead } from "./goal-quotes"; // Import from the correct file
 
 // Configure multer for handling file uploads
 const upload = multer({
@@ -938,7 +932,7 @@ Remember to:
             coins: sql`${rewards.coins} + ${coinsEarned}`,
             lastUpdated: new Date(),
           })
-          .where(eq(rewards.userId, userId));
+                    .where(eq(rewards.userId, userId));
       }
 
       res.json({
@@ -977,22 +971,11 @@ Remember to:
   app.get("/api/notes", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
-      const { goalId } = req.query;
+      const userNotes = await db.select()
+        .from(notes)
+        .where(eq(notes.userId, userId))
+        .orderBy(desc(notes.updatedAt));
 
-      const query = goalId 
-        ? db.select()
-            .from(notes)
-            .where(and(
-              eq(notes.userId, userId),
-              eq(notes.goalId, parseInt(goalId as string))
-            ))
-            .orderBy(desc(notes.updatedAt))
-        : db.select()
-            .from(notes)
-            .where(eq(notes.userId, userId))
-            .orderBy(desc(notes.updatedAt));
-
-      const userNotes = await query;
       res.json(userNotes);
     } catch (error) {
       console.error("Failed to fetch notes:", error);
@@ -1002,33 +985,16 @@ Remember to:
 
   app.post("/api/notes", requireAuth, async (req, res) => {
     try {
-      const { title, content, goalId } = req.body;
+      const { title, content } = req.body;
       const userId = req.user!.id;
 
-      // Input validation
       if (!title) {
         return res.status(400).json({ error: "Title is required" });
-      }
-
-      // If goalId is provided, verify the goal exists and belongs to the user
-      if (goalId) {
-        const goal = await db.select()
-          .from(goals)
-          .where(and(
-            eq(goals.id, goalId),
-            eq(goals.userId, userId)
-          ))
-          .limit(1);
-
-        if (!goal.length) {
-          return res.status(404).json({ error: "Goal not found or unauthorized" });
-        }
       }
 
       const [newNote] = await db.insert(notes)
         .values({
           userId,
-          goalId: goalId || null,
           title,
           content: content || "",
           updatedAt: new Date(),
@@ -1042,33 +1008,32 @@ Remember to:
     }
   });
 
-  app.patch("/api/notes/:noteId", requireAuth, async (req, res) => {
+  app.patch("/api/notes/:id", requireAuth, async (req, res) => {
     try {
-      const { noteId } = req.params;
+      const { id } = req.params;
       const { title, content } = req.body;
       const userId = req.user!.id;
 
-      // Verify note exists and belongs to user
-      const [existingNote] = await db.select()
-        .from(notes)
-        .where(and(
-          eq(notes.id, parseInt(noteId)),
+      // Verify note ownership
+      const note = await db.query.notes.findFirst({
+        where: and(
+          eq(notes.id, parseInt(id)),
           eq(notes.userId, userId)
-        ))
-        .limit(1);
+        ),
+      });
 
-      if (!existingNote) {
+      if (!note) {
         return res.status(404).json({ error: "Note not found or unauthorized" });
       }
 
       const [updatedNote] = await db.update(notes)
         .set({
-          title: title || existingNote.title,
-          content: content || existingNote.content,
+          title: title || note.title,
+          content: content || note.content,
           updatedAt: new Date(),
         })
         .where(and(
-          eq(notes.id, parseInt(noteId)),
+          eq(notes.id, parseInt(id)),
           eq(notes.userId, userId)
         ))
         .returning();
@@ -1136,17 +1101,101 @@ Remember to:
     }
   });
 
-  // Vision Board API - temporarily removed as schema changed
+
+  // Vision Board API
   app.get("/api/vision-board", requireAuth, async (req, res) => {
-    res.status(501).json({ error: "Vision board feature is currently unavailable" });
+    try {
+      const userId = req.user!.id;
+      const images = await db.select()
+        .from(visionBoardImages)
+        .where(eq(visionBoardImages.userId, userId))
+        .orderBy(visionBoardImages.position);
+      res.json(images);
+    } catch (error) {
+      console.error("Failed to fetch vision board images:", error);
+      res.status(500).json({ error: "Failed to fetch vision board images" });
+    }
   });
 
   app.post("/api/vision-board/upload", requireAuth, upload.single('image'), async (req, res) => {
-    res.status(501).json({ error: "Vision board feature is currently unavailable" });
+    try {
+      console.log('Processing image upload request');
+      const userId = req.user!.id;
+
+      // Check if user already has 12 images
+      const imageCount = await db.select({ count: sql<number>`count(*)` })
+        .from(visionBoardImages)
+        .where(eq(visionBoardImages.userId, userId));
+
+      console.log('Current image count:', imageCount[0].count);
+
+      if (imageCount[0].count >= 12) {
+        return res.status(400).json({ error: "Maximum number of images (12) reached" });
+      }
+
+      // Find the next available position
+      const existingPositions = await db.select({ position: visionBoardImages.position })
+        .from(visionBoardImages)
+        .where(eq(visionBoardImages.userId, userId));
+
+      const usedPositions = existingPositions.map(img => img.position);
+      let nextPosition = 0;
+      while (usedPositions.includes(nextPosition)) {
+        nextPosition++;
+      }
+
+      console.log('Using position:', nextPosition);
+
+      if (!req.file) {
+        console.error('No file uploaded');
+        return res.status(400).json({ error: "No image file provided" });
+      }
+
+      // Upload file to Supabase Storage
+      const imageUrl = await uploadFileToSupabase(req.file);
+      console.log('Supabase Image URL:', imageUrl);
+
+      const [newImage] = await db.insert(visionBoardImages)
+        .values({
+          userId,
+          imageUrl,
+          position: nextPosition,
+        })
+        .returning();
+
+      res.json(newImage);
+    } catch (error) {
+      console.error("Failed to upload image:", error);
+      res.status(500).json({ 
+        error: "Failed to upload image",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
   });
 
-  app.delete("/api/vision-board/:imageId", requireAuth, async (req, res) => {
-    res.status(501).json({ error: "Vision board feature is currently unavailable" });
+  app.delete("/api/vision-board/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const imageId = parseInt(req.params.id);
+
+      const [deletedImage] = await db.delete(visionBoardImages)
+        .where(
+          and(
+            eq(visionBoardImages.id, imageId),
+            eq(visionBoardImages.userId, userId)
+          )
+        )
+        .returning();
+
+      if (!deletedImage) {
+        return res.status(404).json({ error: "Image not found" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete image:", error);
+      res.status(500).json({ error: "Failed to delete image" });
+    }
   });
 
   // Rewards API
@@ -1196,6 +1245,7 @@ Remember to:
       res.status(500).json({ error: "Failed to fetch purchased rewards" });
     }
   });
+
 
   app.post("/api/rewards/purchase/:itemId", requireAuth, async (req, res) => {
     try {

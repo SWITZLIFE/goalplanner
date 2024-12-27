@@ -14,35 +14,16 @@ interface Note {
   content: string;
   createdAt: string;
   updatedAt: string;
-  goalId?: number | null;
 }
 
-interface NotesManagerProps {
-  goalId?: number;
-}
-
-export function NotesManager({ goalId }: NotesManagerProps) {
+export function NotesManager() {
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Query notes filtered by goalId if provided
   const { data: notes = [] } = useQuery<Note[]>({
-    queryKey: ["/api/notes", goalId],
-    queryFn: async ({ queryKey }) => {
-      const [endpoint, currentGoalId] = queryKey;
-      const url = currentGoalId 
-        ? `${endpoint.toString()}?goalId=${currentGoalId}`
-        : endpoint.toString();
-      const response = await fetch(url, {
-        credentials: "include",
-      });
-      if (!response.ok) {
-        throw new Error("Failed to fetch notes");
-      }
-      return response.json();
-    },
+    queryKey: ["/api/notes"],
   });
 
   const createNoteMutation = useMutation({
@@ -51,10 +32,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          ...note,
-          goalId: goalId || null,
-        }),
+        body: JSON.stringify(note),
       });
 
       if (!response.ok) {
@@ -64,7 +42,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notes", goalId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
       setShowCreateDialog(false);
     },
   });
@@ -88,7 +66,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notes", goalId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
       setSelectedNote(null);
     },
   });
