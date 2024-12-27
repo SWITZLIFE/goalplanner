@@ -14,16 +14,34 @@ interface Note {
   content: string;
   createdAt: string;
   updatedAt: string;
+  goalId?: number | null;
 }
 
-export function NotesManager() {
+interface NotesManagerProps {
+  goalId?: number;
+}
+
+export function NotesManager({ goalId }: NotesManagerProps) {
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  // Modified query to include goalId parameter if provided
   const { data: notes = [] } = useQuery<Note[]>({
-    queryKey: ["/api/notes"],
+    queryKey: goalId ? ["/api/notes", goalId] : ["/api/notes"],
+    queryFn: async ({ queryKey }) => {
+      const url = goalId 
+        ? `/api/notes?goalId=${goalId}`
+        : '/api/notes';
+      const response = await fetch(url, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch notes");
+      }
+      return response.json();
+    },
   });
 
   const createNoteMutation = useMutation({
@@ -32,7 +50,10 @@ export function NotesManager() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(note),
+        body: JSON.stringify({
+          ...note,
+          goalId: goalId || null, // Include goalId in the request if provided
+        }),
       });
 
       if (!response.ok) {
@@ -42,7 +63,7 @@ export function NotesManager() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notes", goalId] });
       setShowCreateDialog(false);
     },
   });
@@ -66,7 +87,7 @@ export function NotesManager() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notes", goalId] });
       setSelectedNote(null);
     },
   });
@@ -74,7 +95,9 @@ export function NotesManager() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-lg font-medium">Your Notes</h2>
+        <h2 className="text-lg font-medium">
+          {goalId ? "Goal Notes" : "All Notes"}
+        </h2>
         <Button onClick={() => setShowCreateDialog(true)}>
           <Plus className="h-4 w-4 mr-2" />
           New Note
