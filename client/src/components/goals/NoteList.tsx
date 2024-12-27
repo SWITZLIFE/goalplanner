@@ -36,19 +36,26 @@ interface NoteListProps {
 
 const modules = {
   toolbar: [
-    [{ 'size': ['small', 'normal', 'large', 'huge'] }],
+    [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+    [{ 'size': ['small', false, 'large', 'huge'] }],
     ['bold', 'italic', 'underline', 'strike'],
     [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-    ['blockquote', 'link'],
+    ['blockquote', 'code-block'],
+    ['link'],
     ['clean']
-  ]
+  ],
+  clipboard: {
+    matchVisual: false
+  }
 };
 
 const formats = [
+  'header',
   'size',
   'bold', 'italic', 'underline', 'strike',
   'list', 'bullet',
-  'blockquote', 'link'
+  'blockquote', 'code-block',
+  'link'
 ];
 
 export function NoteList({ goalId, tasks }: NoteListProps) {
@@ -60,7 +67,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
   const incompleteTasks = tasks.filter(task => !task.completed);
 
   // Fetch notes for this goal
-  const { data: notes = [], isLoading } = useQuery<Note[]>({
+  const { data: notes = [], isLoading, refetch } = useQuery<Note[]>({
     queryKey: [`/api/goals/${goalId}/notes`],
   });
 
@@ -97,6 +104,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
       setIsCreating(false);
       form.reset();
       setEditorContent('');
+      refetch(); // Refresh the notes list
       toast({
         title: "Note created",
         description: "Your note has been created successfully.",
@@ -227,42 +235,9 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
                     formats={formats}
                     className="bg-white"
                     style={{ height: '50vh' }}
+                    preserveWhitespace={true}
                   />
                 </div>
-                <style jsx global>{`
-                  .ql-container {
-                    height: calc(50vh - 42px) !important;
-                    font-size: 12px;
-                  }
-                  .ql-editor {
-                    height: 100%;
-                    overflow-y: auto;
-                  }
-                  .ql-snow .ql-picker.ql-size .ql-picker-label::before,
-                  .ql-snow .ql-picker.ql-size .ql-picker-item::before {
-                    content: 'Normal';
-                  }
-                  .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="small"]::before,
-                  .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="small"]::before {
-                    content: 'Small';
-                    font-size: 10px;
-                  }
-                  .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="normal"]::before,
-                  .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="normal"]::before {
-                    content: 'Normal';
-                    font-size: 12px;
-                  }
-                  .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="large"]::before,
-                  .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="large"]::before {
-                    content: 'Large';
-                    font-size: 16px;
-                  }
-                  .ql-snow .ql-picker.ql-size .ql-picker-label[data-value="huge"]::before,
-                  .ql-snow .ql-picker.ql-size .ql-picker-item[data-value="huge"]::before {
-                    content: 'Huge';
-                    font-size: 20px;
-                  }
-                `}</style>
               </FormItem>
 
               {incompleteTasks.length > 0 && (
@@ -307,6 +282,19 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
               </Button>
             </form>
           </Form>
+
+          <style jsx global>{`
+            .ql-container {
+              height: calc(50vh - 42px) !important;
+              font-size: 14px;
+              font-family: inherit;
+            }
+            .ql-editor {
+              height: 100%;
+              overflow-y: auto;
+              padding: 1rem;
+            }
+          `}</style>
         </div>
       )}
     </div>
