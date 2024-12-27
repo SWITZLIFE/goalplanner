@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { NoteEditor } from "@/components/notes/NoteEditor";
 import { Checkbox } from "@/components/ui/checkbox";
+import {NotesManager} from "@/components/notes/NotesManager"; //Assuming this is where NotesManager is located
 
 // Extend the Task type to include properties needed for the task list dialog
 interface Task extends BaseTask {
@@ -397,50 +398,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
 
         <TabsContent value="notes">
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-medium">All Notes</h2>
-              <Button onClick={() => setShowCreateDialog(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                New Note
-              </Button>
-            </div>
-            <div className="space-y-2">
-              {[...initialTasks.filter(task => task.notes), ...standaloneNotes]
-                .sort((a, b) => {
-                  const dateA = new Date(a.updatedAt || a.createdAt);
-                  const dateB = new Date(b.updatedAt || b.createdAt);
-                  return dateB.getTime() - dateA.getTime();
-                })
-                .map(note => (
-                  <div
-                    key={note.id}
-                    className={cn(
-                      "flex items-center justify-between p-4 border rounded-md hover:bg-accent/50 cursor-pointer",
-                      "transition-colors duration-200"
-                    )}
-                    onClick={() => setSelectedNote(note)}
-                  >
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      {'goalId' in note ? (
-                        <Link2 className="h-4 w-4 text-muted-foreground shrink-0" />
-                      ) : (
-                        <Quote className="h-4 w-4 text-muted-foreground shrink-0" />
-                      )}
-                      <h3 className="font-medium truncate">{note.title}</h3>
-                    </div>
-                    <div className="text-xs text-muted-foreground shrink-0 ml-4">
-                      {format(new Date(note.updatedAt || note.createdAt), 'MMM d')}
-                    </div>
-                  </div>
-                ))}
-              {initialTasks.filter(task => task.notes).length === 0 && standaloneNotes.length === 0 && (
-                <div className="text-center p-8 text-muted-foreground">
-                  <Quote className="h-8 w-8 text-muted-foreground/50 mx-auto mb-4" />
-                  <p>No notes found.</p>
-                  <p className="text-sm mt-2">Create a new note or add notes to tasks.</p>
-                </div>
-              )}
-            </div>
+            <NotesManager goalId={goalId} />
           </div>
         </TabsContent>
 
@@ -466,7 +424,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                   <option value={goalId}>{goal.title}</option>
                 </select>
               </div>
-              </div>
+            </div>
 
             <div className="border rounded-lg overflow-hidden">
               <div className="bg-white p-4">

@@ -1,12 +1,9 @@
 import type { Express, Request, Response, NextFunction } from "express";
-import { eq, and, desc } from "drizzle-orm";
-import { notes } from "@db/schema";
-import { getTodayMessage, markMessageAsRead, generateDailyMessage } from "./future-message";
 import { createServer, type Server } from "http";
+import { eq, and, desc } from "drizzle-orm";
 import { db } from "@db";
-import { eq, desc, and, isNull, sql } from "drizzle-orm";
-import { rewards, rewardItems, purchasedRewards, users } from "@db/schema";
-import { goals, tasks, timeTracking, visionBoardImages } from "@db/schema";
+import { users, notes, goals } from "@db/schema";
+import { getTodayMessage, markMessageAsRead, generateDailyMessage } from "./future-message";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -932,7 +929,7 @@ Remember to:
             coins: sql`${rewards.coins} + ${coinsEarned}`,
             lastUpdated: new Date(),
           })
-                    .where(eq(rewards.userId, userId));
+          .where(eq(rewards.userId, userId));
       }
 
       res.json({
@@ -971,11 +968,22 @@ Remember to:
   app.get("/api/notes", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
-      const userNotes = await db.select()
-        .from(notes)
-        .where(eq(notes.userId, userId))
-        .orderBy(desc(notes.updatedAt));
+      const { goalId } = req.query;
 
+      const query = goalId 
+        ? db.select()
+            .from(notes)
+            .where(and(
+              eq(notes.userId, userId),
+              eq(notes.goalId, parseInt(goalId as string))
+            ))
+            .orderBy(desc(notes.updatedAt))
+        : db.select()
+            .from(notes)
+            .where(eq(notes.userId, userId))
+            .orderBy(desc(notes.updatedAt));
+
+      const userNotes = await query;
       res.json(userNotes);
     } catch (error) {
       console.error("Failed to fetch notes:", error);
@@ -985,16 +993,33 @@ Remember to:
 
   app.post("/api/notes", requireAuth, async (req, res) => {
     try {
-      const { title, content } = req.body;
+      const { title, content, goalId } = req.body;
       const userId = req.user!.id;
 
+      // Input validation
       if (!title) {
         return res.status(400).json({ error: "Title is required" });
+      }
+
+      // If goalId is provided, verify the goal exists and belongs to the user
+      if (goalId) {
+        const goal = await db.select()
+          .from(goals)
+          .where(and(
+            eq(goals.id, goalId),
+            eq(goals.userId, userId)
+          ))
+          .limit(1);
+
+        if (!goal.length) {
+          return res.status(404).json({ error: "Goal not found or unauthorized" });
+        }
       }
 
       const [newNote] = await db.insert(notes)
         .values({
           userId,
+          goalId: goalId || null,
           title,
           content: content || "",
           updatedAt: new Date(),
@@ -1008,32 +1033,33 @@ Remember to:
     }
   });
 
-  app.patch("/api/notes/:id", requireAuth, async (req, res) => {
+  app.patch("/api/notes/:noteId", requireAuth, async (req, res) => {
     try {
-      const { id } = req.params;
+      const { noteId } = req.params;
       const { title, content } = req.body;
       const userId = req.user!.id;
 
-      // Verify note ownership
-      const note = await db.query.notes.findFirst({
-        where: and(
-          eq(notes.id, parseInt(id)),
+      // Verify note exists and belongs to user
+      const [existingNote] = await db.select()
+        .from(notes)
+        .where(and(
+          eq(notes.id, parseInt(noteId)),
           eq(notes.userId, userId)
-        ),
-      });
+        ))
+        .limit(1);
 
-      if (!note) {
+      if (!existingNote) {
         return res.status(404).json({ error: "Note not found or unauthorized" });
       }
 
       const [updatedNote] = await db.update(notes)
         .set({
-          title: title || note.title,
-          content: content || note.content,
+          title: title || existingNote.title,
+          content: content || existingNote.content,
           updatedAt: new Date(),
         })
         .where(and(
-          eq(notes.id, parseInt(id)),
+          eq(notes.id, parseInt(noteId)),
           eq(notes.userId, userId)
         ))
         .returning();
@@ -1245,7 +1271,6 @@ Remember to:
       res.status(500).json({ error: "Failed to fetch purchased rewards" });
     }
   });
-
 
   app.post("/api/rewards/purchase/:itemId", requireAuth, async (req, res) => {
     try {

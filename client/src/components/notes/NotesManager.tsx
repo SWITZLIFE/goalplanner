@@ -14,16 +14,35 @@ interface Note {
   content: string;
   createdAt: string;
   updatedAt: string;
+  goalId?: number | null;
 }
 
-export function NotesManager() {
+interface NotesManagerProps {
+  goalId?: number;
+}
+
+export function NotesManager({ goalId }: NotesManagerProps) {
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  // Query notes filtered by goalId if provided
   const { data: notes = [] } = useQuery<Note[]>({
-    queryKey: ["/api/notes"],
+    queryKey: ["/api/notes", goalId],
+    queryFn: async ({ queryKey }) => {
+      const [endpoint, currentGoalId] = queryKey;
+      const url = currentGoalId 
+        ? `${endpoint.toString()}?goalId=${currentGoalId}`
+        : endpoint.toString();
+      const response = await fetch(url, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch notes");
+      }
+      return response.json();
+    },
   });
 
   const createNoteMutation = useMutation({
@@ -32,7 +51,10 @@ export function NotesManager() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(note),
+        body: JSON.stringify({
+          ...note,
+          goalId: goalId || null,
+        }),
       });
 
       if (!response.ok) {
@@ -42,7 +64,7 @@ export function NotesManager() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notes", goalId] });
       setShowCreateDialog(false);
     },
   });
@@ -66,7 +88,7 @@ export function NotesManager() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notes", goalId] });
       setSelectedNote(null);
     },
   });
