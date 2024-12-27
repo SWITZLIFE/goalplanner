@@ -36,10 +36,10 @@ interface NoteListProps {
 
 const modules = {
   toolbar: [
-    [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-    [{ 'size': ['small', false, 'large', 'huge'] }],
+    [{ header: [1, 2, 3, 4, 5, 6, false] }],
+    [{ size: ['small', false, 'large', 'huge'] }],
     ['bold', 'italic', 'underline', 'strike'],
-    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+    [{ list: 'ordered'}, { list: 'bullet' }],
     ['blockquote', 'code-block'],
     ['link'],
     ['clean']
@@ -57,6 +57,19 @@ const formats = [
   'blockquote', 'code-block',
   'link'
 ];
+
+const quillStyles = {
+  container: {
+    height: 'calc(50vh - 42px)',
+    fontSize: '14px',
+    fontFamily: 'inherit',
+  },
+  editor: {
+    height: '100%',
+    overflowY: 'auto',
+    padding: '1rem',
+  }
+};
 
 export function NoteList({ goalId, tasks }: NoteListProps) {
   const [isCreating, setIsCreating] = useState(false);
@@ -104,7 +117,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
       setIsCreating(false);
       form.reset();
       setEditorContent('');
-      refetch(); // Refresh the notes list
+      refetch();
       toast({
         title: "Note created",
         description: "Your note has been created successfully.",
@@ -234,8 +247,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
                     modules={modules}
                     formats={formats}
                     className="bg-white"
-                    style={{ height: '50vh' }}
-                    preserveWhitespace={true}
+                    style={{ ...quillStyles.container }}
                   />
                 </div>
               </FormItem>
@@ -282,19 +294,6 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
               </Button>
             </form>
           </Form>
-
-          <style jsx global>{`
-            .ql-container {
-              height: calc(50vh - 42px) !important;
-              font-size: 14px;
-              font-family: inherit;
-            }
-            .ql-editor {
-              height: 100%;
-              overflow-y: auto;
-              padding: 1rem;
-            }
-          `}</style>
         </div>
       )}
     </div>
