@@ -18,7 +18,7 @@ export function LeftPanel() {
       <div className="p-6 pt-0">
         <CreateGoalDialog />
 
-        <div className="mt-6">
+        <div className="mt-4">
           <Link href="/rewards">
             <Button variant="subtle" className="w-full">
               <Gift className="mr-2 h-4 w-4" />
