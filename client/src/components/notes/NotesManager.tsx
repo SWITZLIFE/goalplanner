@@ -14,7 +14,7 @@ interface Note {
   content: string;
   createdAt: string;
   updatedAt: string;
-  goalId?: number | null;
+  goalId: number | null;
 }
 
 interface NotesManagerProps {
@@ -27,10 +27,11 @@ export function NotesManager({ goalId }: NotesManagerProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Query to fetch notes - filter by goalId if provided
+  // Query to fetch notes - use goalId in the query key and URL
+  const queryKey = goalId ? [`/api/notes?goalId=${goalId}`] : ['/api/notes'];
   const { data: notes = [] } = useQuery<Note[]>({
-    queryKey: goalId ? ["/api/notes", goalId] : ["/api/notes"],
-    queryFn: async ({ queryKey }) => {
+    queryKey,
+    queryFn: async () => {
       const url = goalId 
         ? `/api/notes?goalId=${goalId}`
         : '/api/notes';
@@ -44,10 +45,6 @@ export function NotesManager({ goalId }: NotesManagerProps) {
     },
   });
 
-  // Filter notes based on goalId
-  const filteredNotes = goalId 
-    ? notes.filter(note => note.goalId === goalId)
-    : notes;
 
   // Create note mutation
   const createNoteMutation = useMutation({
@@ -55,7 +52,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
       const payload = {
         title: note.title,
         content: note.content,
-        goalId // Always include goalId in the payload
+        goalId // Include goalId in the payload
       };
 
       console.log('Creating note with payload:', payload); // Debug log
@@ -77,7 +74,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notes", goalId] });
+      queryClient.invalidateQueries({ queryKey }); // Use the same queryKey for invalidation
       setShowCreateDialog(false);
       toast({
         title: "Success",
@@ -121,7 +118,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/notes", goalId] });
+      queryClient.invalidateQueries({ queryKey }); // Use the same queryKey for invalidation
       setSelectedNote(null);
       toast({
         title: "Success",
@@ -144,7 +141,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
 
       {/* Notes List */}
       <div className="grid gap-4">
-        {filteredNotes.map((note) => (
+        {notes.map((note) => (
           <div
             key={note.id}
             className={cn(
@@ -166,7 +163,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
           </div>
         ))}
 
-        {filteredNotes.length === 0 && (
+        {notes.length === 0 && (
           <div className="text-center p-8 text-muted-foreground">
             <FileText className="h-8 w-8 mx-auto mb-4" />
             <p>No notes {goalId ? "for this goal" : ""} yet</p>
@@ -185,7 +182,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
             onSave={async (note) => {
               await createNoteMutation.mutateAsync(note);
             }}
-            goalId={goalId} // Pass goalId to NoteEditor
+            goalId={goalId}
             onCancel={() => setShowCreateDialog(false)}
           />
         </DialogContent>
@@ -216,7 +213,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
               <NoteEditor
                 initialTitle={selectedNote.title}
                 initialContent={selectedNote.content}
-                goalId={goalId} // Pass goalId to NoteEditor for updates
+                goalId={goalId}
                 onSave={async (note) => {
                   await updateNoteMutation.mutateAsync({
                     id: selectedNote.id,
