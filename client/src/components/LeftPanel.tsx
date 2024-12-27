@@ -19,7 +19,7 @@ export function LeftPanel() {
     <div className="w-96 bg-primary h-screen overflow-hidden">
       
       <div className="p-6 pt-0">
-        <div className="p-6 pb-0 mt-10">
+        <div className="p-6 pb-0 mt-16">
           <div className="flex flex-col items-center mb-8">
             <div className="w-40 h-40 rounded-full overflow-hidden mb-3">
               <img src={user?.profilePhotoUrl || 'https://github.com/shadcn.png'} alt="Profile" className="w-full h-full object-cover" />
