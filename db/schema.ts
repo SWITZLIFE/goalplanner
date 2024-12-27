@@ -5,7 +5,7 @@ import { z } from "zod";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  email: text("email").unique().notNull(),
+  username: text("username").unique().notNull(),
   password: text("password").notNull(),
   profilePhotoUrl: text("profile_photo_url"),
   resetToken: text("reset_token"),
@@ -169,7 +169,10 @@ export const purchasedRewardsRelations = relations(purchasedRewards, ({ one }) =
 }));
 
 // Schemas
-export const insertUserSchema = createInsertSchema(users);
+export const insertUserSchema = createInsertSchema(users, {
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
 export const selectUserSchema = createSelectSchema(users);
 export const insertGoalSchema = createInsertSchema(goals);
 export const selectGoalSchema = createSelectSchema(goals);

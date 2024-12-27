@@ -8,7 +8,6 @@ import { promisify } from "util";
 import { users, insertUserSchema, type SelectUser } from "@db/schema";
 import { db } from "@db";
 import { eq } from "drizzle-orm";
-import { z } from "zod";
 
 const scryptAsync = promisify(scrypt);
 const crypto = {
@@ -49,7 +48,6 @@ export function setupAuth(app: Express) {
     },
     store: new MemoryStore({
       checkPeriod: 86400000, // prune expired entries every 24h
-      stale: false, // Don't serve stale sessions
     }),
   };
 
@@ -65,71 +63,86 @@ export function setupAuth(app: Express) {
   app.use(passport.session());
 
   passport.use(
-    new LocalStrategy(
-      {
-        usernameField: 'email',
-        passwordField: 'password'
-      },
-      async (email, password, done) => {
-        try {
-          const [user] = await db
-            .select()
-            .from(users)
-            .where(eq(users.email, email))
-            .limit(1);
+    new LocalStrategy(async (username, password, done) => {
+      try {
+        console.log('Attempting login for username:', username);
+        const result = await db
+          .select()
+          .from(users)
+          .where(eq(users.username, username))
+          .limit(1);
 
-          if (!user) {
-            return done(null, false, { message: "Incorrect email." });
-          }
-          const isMatch = await crypto.compare(password, user.password);
-          if (!isMatch) {
-            return done(null, false, { message: "Incorrect password." });
-          }
-          return done(null, user);
-        } catch (err) {
-          return done(err);
+        const user = result[0];
+        if (!user) {
+          console.log('User not found');
+          return done(null, false, { message: "Incorrect username." });
         }
+
+        const isMatch = await crypto.compare(password, user.password);
+        if (!isMatch) {
+          console.log('Password mismatch');
+          return done(null, false, { message: "Incorrect password." });
+        }
+
+        console.log('Login successful');
+        return done(null, user);
+      } catch (err) {
+        console.error('Login error:', err);
+        return done(err);
       }
-    )
+    })
   );
 
   passport.serializeUser((user, done) => {
+    console.log('Serializing user:', user.id);
     done(null, user.id);
   });
 
   passport.deserializeUser(async (id: number, done) => {
     try {
-      const [user] = await db
+      console.log('Deserializing user:', id);
+      const result = await db
         .select()
         .from(users)
         .where(eq(users.id, id))
         .limit(1);
+
+      const user = result[0];
+      if (!user) {
+        console.log('User not found during deserialization');
+        return done(null, false);
+      }
+
       done(null, user);
     } catch (err) {
+      console.error('Deserialization error:', err);
       done(err);
     }
   });
 
   app.post("/api/register", async (req, res, next) => {
     try {
+      console.log('Registration attempt:', req.body);
       const result = insertUserSchema.safeParse(req.body);
       if (!result.success) {
+        console.log('Validation failed:', result.error.issues);
         return res
           .status(400)
           .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
       }
 
-      const { email, password } = result.data;
+      const { username, password } = result.data;
 
       // Check if user already exists
-      const [existingUser] = await db
+      const existingUser = await db
         .select()
         .from(users)
-        .where(eq(users.email, email))
+        .where(eq(users.username, username))
         .limit(1);
 
-      if (existingUser) {
-        return res.status(400).send("Email already registered");
+      if (existingUser.length > 0) {
+        console.log('Username already exists');
+        return res.status(400).send("Username already exists");
       }
 
       // Hash the password
@@ -139,10 +152,12 @@ export function setupAuth(app: Express) {
       const [newUser] = await db
         .insert(users)
         .values({
-          email,
+          username,
           password: hashedPassword,
         })
         .returning();
+
+      console.log('User registered successfully:', newUser.id);
 
       // Log the user in after registration
       req.login(newUser, (err) => {
@@ -151,66 +166,63 @@ export function setupAuth(app: Express) {
         }
         return res.json({
           message: "Registration successful",
-          user: { id: newUser.id, email: newUser.email },
+          user: { id: newUser.id, username: newUser.username },
         });
       });
     } catch (error) {
+      console.error('Registration error:', error);
       next(error);
     }
   });
 
   app.post("/api/login", (req, res, next) => {
-    // Use a simpler schema for login that only validates email format
-    const loginSchema = z.object({
-      email: z.string().email("Invalid email format"),
-      password: z.string()
-    });
-    
-    const result = loginSchema.safeParse(req.body);
-    if (!result.success) {
-      return res
-        .status(400)
-        .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
-    }
-
-    const cb = (err: any, user: Express.User, info: IVerifyOptions) => {
+    console.log('Login attempt:', req.body);
+    const cb = (err: any, user: Express.User | false, info: IVerifyOptions) => {
       if (err) {
+        console.error('Login error:', err);
         return next(err);
       }
 
       if (!user) {
+        console.log('Login failed:', info.message);
         return res.status(400).send(info.message ?? "Login failed");
       }
 
       req.logIn(user, (err) => {
         if (err) {
+          console.error('Login error:', err);
           return next(err);
         }
 
+        console.log('Login successful:', user.id);
         return res.json({
           message: "Login successful",
-          user: { id: user.id, email: user.email },
+          user: { id: user.id, username: user.username },
         });
       });
     };
+
     passport.authenticate("local", cb)(req, res, next);
   });
 
   app.post("/api/logout", (req, res) => {
-    // First logout the user
+    const userId = req.user?.id;
+    console.log('Logout request for user:', userId);
+
     req.logout((err) => {
       if (err) {
+        console.error('Logout error:', err);
         return res.status(500).send("Logout failed");
       }
-      
-      // Then destroy the session
+
+      // Destroy the session
       req.session.destroy((err) => {
         if (err) {
-          console.error("Session destruction failed:", err);
+          console.error('Session destruction failed:', err);
           return res.status(500).send("Logout partially failed");
         }
-        
-        // Clear session cookie
+
+        console.log('Logout successful for user:', userId);
         res.clearCookie('connect.sid');
         res.json({ message: "Logout successful" });
       });
@@ -219,89 +231,11 @@ export function setupAuth(app: Express) {
 
   app.get("/api/user", (req, res) => {
     if (req.isAuthenticated()) {
+      console.log('Current user:', req.user?.id);
       return res.json(req.user);
     }
 
+    console.log('No authenticated user');
     res.status(401).send("Not logged in");
-  });
-
-  app.post("/api/forgot-password", async (req, res) => {
-    try {
-      const { email } = req.body;
-      
-      // Find user
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.email, email))
-        .limit(1);
-
-      if (!user) {
-        return res.status(404).send("User not found");
-      }
-
-      // Generate reset token (a random string)
-      const resetToken = randomBytes(32).toString("hex");
-      const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour from now
-
-      // Save to database
-      await db
-        .update(users)
-        .set({
-          resetToken,
-          resetTokenExpiry,
-        })
-        .where(eq(users.id, user.id));
-
-      // In a real app, you would send this via email
-      // For demo purposes, we'll return it in the response
-      res.json({
-        message: "Password reset token generated",
-        resetToken,
-      });
-    } catch (error) {
-      console.error("Failed to generate reset token:", error);
-      res.status(500).send("Failed to generate reset token");
-    }
-  });
-
-  app.post("/api/reset-password", async (req, res) => {
-    try {
-      const { token, newPassword } = req.body;
-
-      // Find user with this token
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.resetToken, token))
-        .limit(1);
-
-      if (!user) {
-        return res.status(400).send("Invalid or expired reset token");
-      }
-
-      // Check if token is expired
-      if (!user.resetTokenExpiry || user.resetTokenExpiry < new Date()) {
-        return res.status(400).send("Reset token has expired");
-      }
-
-      // Hash the new password
-      const hashedPassword = await crypto.hash(newPassword);
-
-      // Update the password and clear the reset token
-      await db
-        .update(users)
-        .set({
-          password: hashedPassword,
-          resetToken: null,
-          resetTokenExpiry: null,
-        })
-        .where(eq(users.id, user.id));
-
-      res.json({ message: "Password has been reset successfully" });
-    } catch (error) {
-      console.error("Failed to reset password:", error);
-      res.status(500).send("Failed to reset password");
-    }
   });
 }
