@@ -86,7 +86,7 @@ export function NotesManager() {
           <div
             key={note.id}
             className={cn(
-              "flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50",
+              "flex items-center justify-between p-4 border rounded-lg bg-white hover:bg-accent/50",
               "cursor-pointer transition-colors duration-200"
             )}
             onClick={() => setSelectedNote(note)}
