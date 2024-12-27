@@ -48,11 +48,14 @@ export function NotesManager({ goalId }: NotesManagerProps) {
     mutationFn: async (note: { title: string; content: string }) => {
       const response = await fetch("/api/notes", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json" 
+        },
         credentials: "include",
         body: JSON.stringify({
-          ...note,
-          goalId: goalId || null, // Include goalId in the request if provided
+          title: note.title,
+          content: note.content,
+          goalId: goalId || null // Explicitly set goalId
         }),
       });
 
@@ -65,6 +68,10 @@ export function NotesManager({ goalId }: NotesManagerProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/notes", goalId] });
       setShowCreateDialog(false);
+      toast({
+        title: "Success",
+        description: `Note created ${goalId ? "for goal" : "successfully"}`
+      });
     },
   });
 
@@ -77,7 +84,10 @@ export function NotesManager({ goalId }: NotesManagerProps) {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(note),
+        body: JSON.stringify({
+          ...note,
+          goalId: goalId || null // Ensure goalId is maintained during updates
+        }),
       });
 
       if (!response.ok) {
@@ -89,6 +99,10 @@ export function NotesManager({ goalId }: NotesManagerProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/notes", goalId] });
       setSelectedNote(null);
+      toast({
+        title: "Success",
+        description: "Note updated successfully"
+      });
     },
   });
 
