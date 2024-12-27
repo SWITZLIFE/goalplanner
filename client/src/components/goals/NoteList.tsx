@@ -79,13 +79,13 @@ const MenuBar = ({ editor }: { editor: any }) => {
   );
 };
 
-const NoteEditor = ({ onSubmit }: { onSubmit: (html: string) => void }) => {
+const NoteEditor = ({ onSubmit, initialContent = '' }: { onSubmit: (html: string) => void, initialContent?: string }) => {
   const editor = useEditor({
     extensions: [
       StarterKit,
       Link,
     ],
-    content: '',
+    content: initialContent,
     editorProps: {
       attributes: {
         class: 'prose prose-sm focus:outline-none p-4 min-h-[200px] max-h-[50vh] overflow-y-auto',
@@ -95,6 +95,12 @@ const NoteEditor = ({ onSubmit }: { onSubmit: (html: string) => void }) => {
       onSubmit(editor.getHTML());
     },
   });
+
+  useEffect(() => {
+    if (editor && initialContent) {
+      editor.commands.setContent(initialContent);
+    }
+  }, [editor, initialContent]);
 
   useEffect(() => {
     return () => {
@@ -114,6 +120,7 @@ const NoteEditor = ({ onSubmit }: { onSubmit: (html: string) => void }) => {
 
 export function NoteList({ goalId, tasks }: NoteListProps) {
   const [isCreating, setIsCreating] = useState(false);
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const { toast } = useToast();
 
   // Only show incomplete tasks in the dropdown
@@ -122,8 +129,8 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
   // Fetch notes for this goal
   const { data: notes = [], isLoading, refetch } = useQuery<Note[]>({
     queryKey: [`/api/goals/${goalId}/notes`],
-    refetchInterval: 0, // Disable automatic refetching
-    refetchOnWindowFocus: false, // Disable refetch on window focus
+    refetchInterval: 0,
+    refetchOnWindowFocus: false,
   });
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -134,6 +141,16 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
       taskId: undefined,
     },
   });
+
+  useEffect(() => {
+    if (selectedNote) {
+      form.reset({
+        title: selectedNote.title,
+        content: selectedNote.content,
+        taskId: selectedNote.taskId || undefined,
+      });
+    }
+  }, [selectedNote, form]);
 
   const createNoteMutation = useMutation({
     mutationFn: async (values: z.infer<typeof formSchema>) => {
@@ -173,6 +190,45 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
     },
   });
 
+  const updateNoteMutation = useMutation({
+    mutationFn: async (values: z.infer<typeof formSchema> & { noteId: number }) => {
+      const { noteId, ...noteData } = values;
+      const response = await fetch(`/api/goals/${goalId}/notes/${noteId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...noteData,
+          taskId: noteData.taskId || null,
+        }),
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to update note");
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      setSelectedNote(null);
+      form.reset();
+      refetch();
+      toast({
+        title: "Note updated",
+        description: "Your note has been updated successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      console.error("Failed to update note:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update note. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const deleteNoteMutation = useMutation({
     mutationFn: async (noteId: number) => {
       const response = await fetch(`/api/goals/${goalId}/notes/${noteId}`, {
@@ -189,6 +245,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
     },
     onSuccess: () => {
       refetch();
+      if (selectedNote) setSelectedNote(null);
       toast({
         title: "Note deleted",
         description: "Your note has been deleted successfully.",
@@ -206,10 +263,25 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      await createNoteMutation.mutateAsync(values);
+      if (selectedNote) {
+        await updateNoteMutation.mutateAsync({ ...values, noteId: selectedNote.id });
+      } else {
+        await createNoteMutation.mutateAsync(values);
+      }
     } catch (error) {
       console.error("Form submission error:", error);
     }
+  };
+
+  const handleNoteClick = (note: Note) => {
+    setIsCreating(false);
+    setSelectedNote(note);
+  };
+
+  const closeSidePanel = () => {
+    setIsCreating(false);
+    setSelectedNote(null);
+    form.reset();
   };
 
   if (isLoading) {
@@ -221,7 +293,10 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-medium">Notes</h3>
-          <Button onClick={() => setIsCreating(true)}>
+          <Button onClick={() => {
+            setSelectedNote(null);
+            setIsCreating(true);
+          }}>
             <Plus className="w-4 h-4 mr-2" />
             Create Note
           </Button>
@@ -237,7 +312,8 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
             notes.map((note) => (
               <div
                 key={note.id}
-                className="group border rounded-lg p-4 hover:bg-accent/50 transition-colors"
+                className="group border rounded-lg p-4 hover:bg-accent/50 transition-colors cursor-pointer"
+                onClick={() => handleNoteClick(note)}
               >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
@@ -257,7 +333,10 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
                       variant="ghost"
                       size="icon"
                       className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6"
-                      onClick={() => deleteNoteMutation.mutate(note.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteNoteMutation.mutate(note.id);
+                      }}
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -269,18 +348,17 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
         </div>
       </div>
 
-      {/* Right Panel for Note Creation */}
-      {isCreating && (
+      {/* Right Panel for Note Creation/Editing */}
+      {(isCreating || selectedNote) && (
         <div className="fixed inset-y-0 right-0 w-[600px] bg-background border-l shadow-xl p-6 space-y-4 overflow-y-auto">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">Create New Note</h3>
+            <h3 className="text-lg font-semibold">
+              {selectedNote ? "Edit Note" : "Create New Note"}
+            </h3>
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => {
-                setIsCreating(false);
-                form.reset();
-              }}
+              onClick={closeSidePanel}
             >
               <X className="h-4 w-4" />
             </Button>
@@ -308,7 +386,10 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
                   <FormItem>
                     <FormLabel>Content</FormLabel>
                     <FormControl>
-                      <NoteEditor onSubmit={field.onChange} />
+                      <NoteEditor 
+                        onSubmit={field.onChange}
+                        initialContent={selectedNote?.content}
+                      />
                     </FormControl>
                   </FormItem>
                 )}
@@ -346,12 +427,12 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
               <Button 
                 type="submit" 
                 className="w-full"
-                disabled={createNoteMutation.isPending}
+                disabled={createNoteMutation.isPending || updateNoteMutation.isPending}
               >
-                {createNoteMutation.isPending ? (
+                {(createNoteMutation.isPending || updateNoteMutation.isPending) ? (
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                 ) : (
-                  "Create Note"
+                  selectedNote ? "Update Note" : "Create Note"
                 )}
               </Button>
             </form>

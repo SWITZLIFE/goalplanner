@@ -1,11 +1,9 @@
 import type { Express, Request, Response, NextFunction } from "express";
-import { eq, and, desc } from "drizzle-orm";
-import { notes } from "@db/schema";
+import { eq, and, desc, isNull, sql } from "drizzle-orm";
+import { notes, users, rewards, rewardItems, purchasedRewards } from "@db/schema";
 import { getTodayMessage, markMessageAsRead, generateDailyMessage } from "./future-message";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { eq, desc, and, isNull, sql } from "drizzle-orm";
-import { rewards, rewardItems, purchasedRewards, users } from "@db/schema";
 import { goals, tasks, timeTracking, visionBoardImages } from "@db/schema";
 import multer from "multer";
 import path from "path";
@@ -15,7 +13,7 @@ import { getCoachingAdvice } from "./coaching";
 import { setupAuth } from "./auth";
 import { openai } from "./openai";
 import { uploadFileToSupabase } from './supabase';
-import { getTodayQuote, markQuoteAsRead } from "./goal-quotes"; // Import from the correct file
+import { getTodayQuote, markQuoteAsRead } from "./goal-quotes";
 
 // Configure multer for handling file uploads
 const upload = multer({
@@ -81,7 +79,7 @@ export function registerRoutes(app: Express): Server {
   // Configure CORS headers for Supabase Storage URLs
   app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', process.env.SUPABASE_URL);
-    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH');
     res.header('Access-Control-Allow-Headers', 'Content-Type');
     next();
   });
@@ -935,38 +933,52 @@ Remember to:
           .where(eq(rewards.userId, userId));
       }
 
-      res.json({timer: updatedTimer,
+      res.json({
+        timer: updatedTimer,
         task: updatedTask,
         coinsEarned,
-      });    } catch (error) {
+      });
+    } catch (error) {
       console.error("Failed to stop timer:", error);
       res.status(500).json({ error: "Failed to stop timer" });
     }
   });
 
-  app.get("/api/timer/current", requireAuth, async (req, res) => {
+  // Future Message API
+  app.get("/api/future-message", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
-
-      const activeTimer = await db.query.timeTracking.findFirst({
-        where: and(
-          eq(timeTracking.userId, userId),
-          eq(timeTracking.isActive, true)
-        ),
-        with: {
-          task: true,
-        },
-      });
-
-      res.json(activeTimer || null);
+      const message = await getTodayMessage(userId);
+      res.json(message);
     } catch (error) {
-      console.error("Failed to fetch current timer:", error);
-      res.status(500).json({ error: "Failed to fetch current timer" });
+      console.error("Failed to fetch future message:", error);
+      res.status(500).json({ error: "Failed to fetch future message" });
     }
   });
-  // Future Message API
+
+  app.post("/api/future-message/read", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      await markMessageAsRead(userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to mark message as read:", error);
+      res.status(500).json({ error: "Failed to mark message as read" });
+    }
+  });
+
+  app.get("/api/future-message/generate", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const message = await generateDailyMessage(userId);
+      res.json(message);
+    } catch (error) {
+      console.error("Failed to generate future message:", error);
+      res.status(500).json({ error: "Failed to generate future message" });
+    }
+  });
+
   // Notes API
-  // Vision Board API
   app.get("/api/goals/:goalId/notes", requireAuth, async (req, res) => {
     try {
       const { goalId } = req.params;
@@ -1105,6 +1117,47 @@ Remember to:
     }
   });
 
+  app.patch("/api/goals/:goalId/notes/:noteId", requireAuth, async (req, res) => {
+    try {
+      const { goalId, noteId } = req.params;
+      const { title, content, taskId } = req.body;
+      const userId = req.user!.id;
+
+      // Verify the note exists and belongs to the user
+      const note = await db.query.notes.findFirst({
+        where: and(
+          eq(notes.id, parseInt(noteId)),
+          eq(notes.goalId, parseInt(goalId)),
+          eq(notes.userId, userId)
+        ),
+      });
+
+      if (!note) {
+        return res.status(404).json({ error: "Note not found or unauthorized" });
+      }
+
+      // Update the note
+      const [updatedNote] = await db.update(notes)
+        .set({
+          title,
+          content,
+          taskId: taskId || null,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(notes.id, parseInt(noteId)),
+          eq(notes.userId, userId)
+        ))
+        .returning();
+
+      res.json(updatedNote);
+    } catch (error) {
+      console.error("Failed to update note:", error);
+      res.status(500).json({ error: "Failed to update note" });
+    }
+  });
+
+  // Vision Board API
   app.get("/api/vision-board", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
