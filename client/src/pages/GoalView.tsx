@@ -113,7 +113,6 @@ export default function GoalView() {
                 </div>
 
                 <div className="space-y-4 w-full">
-                  <h2 className="text-lg font-medium mb-4">Tasks</h2>
                   <TaskViews tasks={goal.tasks || []} goalId={goal.id} goal={goal} />
                 </div>
 
