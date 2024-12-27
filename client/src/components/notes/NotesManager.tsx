@@ -44,13 +44,18 @@ export function NotesManager({ goalId }: NotesManagerProps) {
     },
   });
 
+  // Filter notes based on goalId
+  const filteredNotes = goalId 
+    ? notes.filter(note => note.goalId === goalId)
+    : notes;
+
   // Create note mutation
   const createNoteMutation = useMutation({
     mutationFn: async (note: { title: string; content: string }) => {
       const payload = {
         title: note.title,
         content: note.content,
-        goalId: goalId // Always include goalId in the payload
+        goalId // Always include goalId in the payload
       };
 
       console.log('Creating note with payload:', payload); // Debug log
@@ -139,7 +144,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
 
       {/* Notes List */}
       <div className="grid gap-4">
-        {notes.map((note) => (
+        {filteredNotes.map((note) => (
           <div
             key={note.id}
             className={cn(
@@ -161,10 +166,10 @@ export function NotesManager({ goalId }: NotesManagerProps) {
           </div>
         ))}
 
-        {notes.length === 0 && (
+        {filteredNotes.length === 0 && (
           <div className="text-center p-8 text-muted-foreground">
             <FileText className="h-8 w-8 mx-auto mb-4" />
-            <p>No notes yet</p>
+            <p>No notes {goalId ? "for this goal" : ""} yet</p>
             <p className="text-sm mt-2">Click the "New Note" button to create one</p>
           </div>
         )}

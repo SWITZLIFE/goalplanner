@@ -932,15 +932,14 @@ Remember to:
             coins: sql`${rewards.coins} + ${coinsEarned}`,
             lastUpdated: new Date(),
           })
-                    .where(eq(rewards.userId, userId));
+          .where(eq(rewards.userId, userId));
       }
 
       res.json({
         timer: updatedTimer,
         task: updatedTask,
-coinsEarned,
-      });
-    } catch (error) {
+        coinsEarned,
+      });    } catch (error) {
       console.error("Failed to stop timer:", error);
       res.status(500).json({ error: "Failed to stop timer" });
     }
@@ -971,9 +970,15 @@ coinsEarned,
   app.get("/api/notes", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
+      const goalId = parseInt(req.query.goalId as string) || null; // Get goalId from query parameters
       const userNotes = await db.select()
         .from(notes)
-        .where(eq(notes.userId, userId))
+        .where(
+          goalId === null ? eq(notes.userId, userId) : and(
+            eq(notes.userId, userId),
+            eq(notes.goalId, goalId)
+          )
+        )
         .orderBy(desc(notes.updatedAt));
 
       res.json(userNotes);
@@ -992,13 +997,15 @@ coinsEarned,
         return res.status(400).json({ error: "Title is required" });
       }
 
+      console.log('Creating note with goalId:', goalId); // Debug log
+
       // If goalId is provided, verify that the goal exists and belongs to the user
       if (goalId) {
         const goal = await db.query.goals.findFirst({
           where: and(
             eq(goals.id, goalId),
             eq(goals.userId, userId)
-          ),
+          )
         });
 
         if (!goal) {
@@ -1006,13 +1013,15 @@ coinsEarned,
         }
       }
 
+      // Create the note with goalId
       const [newNote] = await db.insert(notes)
         .values({
           userId,
-          goalId: goalId || null,
           title,
-          content: content || "",
-          updatedAt: new Date(),
+          content,
+          goalId: goalId || null,
+          createdAt: new Date(),
+          updatedAt: new Date()
         })
         .returning();
 
@@ -1115,7 +1124,6 @@ coinsEarned,
       res.status(500).json({ error: "Failed to mark message as read" });
     }
   });
-
 
   // Vision Board API
   app.get("/api/vision-board", requireAuth, async (req, res) => {
