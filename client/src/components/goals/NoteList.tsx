@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Bold, Italic, Link, Quote, List, ListOrdered, ChevronDown } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -245,7 +245,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
                         onClick={() => editor.chain().focus().toggleBold().run()}
                         className={cn(editor.isActive('bold') && 'bg-muted')}
                       >
-                        Bold
+                        <Bold className="h-4 w-4" />
                       </Button>
                       <Button
                         type="button"
@@ -254,7 +254,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
                         onClick={() => editor.chain().focus().toggleItalic().run()}
                         className={cn(editor.isActive('italic') && 'bg-muted')}
                       >
-                        Italic
+                        <Italic className="h-4 w-4" />
                       </Button>
                       <Button
                         type="button"
@@ -263,7 +263,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
                         onClick={() => editor.chain().focus().toggleBulletList().run()}
                         className={cn(editor.isActive('bulletList') && 'bg-muted')}
                       >
-                        Bullet List
+                        <List className="h-4 w-4" />
                       </Button>
                       <Button
                         type="button"
@@ -272,7 +272,16 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
                         onClick={() => editor.chain().focus().toggleOrderedList().run()}
                         className={cn(editor.isActive('orderedList') && 'bg-muted')}
                       >
-                        Numbered List
+                        <ListOrdered className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => editor.chain().focus().toggleBlockquote().run()}
+                        className={cn(editor.isActive('blockquote') && 'bg-muted')}
+                      >
+                        <Quote className="h-4 w-4" />
                       </Button>
                     </div>
                     <div className="max-h-[calc(100vh-400px)] overflow-y-auto">
