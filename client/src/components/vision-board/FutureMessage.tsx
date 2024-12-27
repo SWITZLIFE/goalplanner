@@ -87,7 +87,7 @@ export function FutureMessage() {
 
   if (!message) {
     return (
-      <div className="mb-8 bg-primary/5 rounded-lg p-6">
+      <div className="mb-8 bg-white rounded-lg p-6">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold">Message from Your Future Self</h2>
         </div>
@@ -99,7 +99,7 @@ export function FutureMessage() {
   }
 
   return (
-    <div className="mb-8 bg-primary/5 rounded-lg p-6">
+    <div className="mb-8 bg-white rounded-lg p-6">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Message from Your Future Self</h2>
         {!message.message && !message.isRead && (
