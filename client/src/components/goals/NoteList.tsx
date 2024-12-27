@@ -60,7 +60,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
     editorProps: {
       attributes: {
         class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl focus:outline-none min-h-[300px] p-4',
-        style: 'font-size: 10px',
+        style: 'font-size: 12px',
       },
     },
   });
@@ -222,13 +222,13 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
                   <div className="border rounded-lg overflow-hidden bg-white">
                     <div className="border-b p-2 flex gap-2 flex-wrap">
                       <Select
-                        value={editor.getAttributes('textStyle').fontSize || '10px'}
+                        value={editor.getAttributes('textStyle').fontSize || '12px'}
                         onValueChange={(value) => {
-                          editor.chain().focus().setStyle({ fontSize: value }).run();
+                          editor.chain().focus().updateAttributes('textStyle', { fontSize: value }).run();
                         }}
                       >
                         <SelectTrigger className="w-[80px]">
-                          <SelectValue placeholder="10px" />
+                          <SelectValue placeholder="12px" />
                         </SelectTrigger>
                         <SelectContent>
                           {fontSizes.map((size) => (
