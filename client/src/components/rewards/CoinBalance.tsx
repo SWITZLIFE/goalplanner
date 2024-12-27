@@ -16,10 +16,9 @@ export function CoinBalance() {
 
   const { data: rewards, isError } = useQuery<Rewards>({
     queryKey: ["/api/rewards"],
-    staleTime: 0, // Always fetch fresh data
-    gcTime: 1000 * 60, // Cache for 1 minute
-    refetchOnMount: true,
-    refetchInterval: 1000, // Poll every second while the component is mounted
+    refetchInterval: 5000, // Poll every 5 seconds instead of every second
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchIntervalInBackground: false, // Don't poll when tab is in background
   });
 
   useEffect(() => {

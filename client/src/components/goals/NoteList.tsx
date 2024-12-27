@@ -121,6 +121,8 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
   // Fetch notes for this goal
   const { data: notes = [], isLoading, refetch } = useQuery<Note[]>({
     queryKey: [`/api/goals/${goalId}/notes`],
+    refetchInterval: 0, // Disable automatic refetching
+    refetchOnWindowFocus: false, // Disable refetch on window focus
   });
 
   const form = useForm<z.infer<typeof formSchema>>({
