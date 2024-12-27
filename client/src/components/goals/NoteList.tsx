@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus, X } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -75,6 +75,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [editorContent, setEditorContent] = useState('');
   const { toast } = useToast();
+  const quillRef = useRef<ReactQuill>(null);
 
   // Only show incomplete tasks in the dropdown
   const incompleteTasks = tasks.filter(task => !task.completed);
@@ -92,6 +93,13 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
       taskId: undefined,
     },
   });
+
+  useEffect(() => {
+    if (isCreating && quillRef.current) {
+      const editor = quillRef.current.getEditor();
+      editor.focus();
+    }
+  }, [isCreating]);
 
   const createNoteMutation = useMutation({
     mutationFn: async (values: z.infer<typeof formSchema>) => {
@@ -241,13 +249,14 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
                 <FormLabel>Content</FormLabel>
                 <div className="border rounded-lg overflow-hidden">
                   <ReactQuill
+                    ref={quillRef}
                     theme="snow"
                     value={editorContent}
                     onChange={setEditorContent}
                     modules={modules}
                     formats={formats}
                     className="bg-white"
-                    style={{ ...quillStyles.container }}
+                    style={quillStyles.container}
                   />
                 </div>
               </FormItem>
