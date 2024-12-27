@@ -2,25 +2,15 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useGoals } from "@/hooks/use-goals";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import type { Task } from "@db/schema";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { StickyNote, Clock, Calendar as CalendarIcon, X } from "lucide-react";
+import { Clock, Calendar as CalendarIcon, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-
-const NOTE_TEMPLATES = {
-  default: "",
-  research: `## Research Notes\n\n### Key Questions\n- \n\n### Resources\n- \n\n### Findings\n- \n\n### Next Steps\n- `,
-  meeting: `## Meeting Notes\n\n### Attendees\n- \n\n### Discussion Points\n- \n\n### Action Items\n- \n\n### Follow-up\n- `,
-  bug: `## Bug Report\n\n### Description\n\n### Steps to Reproduce\n1. \n2. \n3. \n\n### Expected Behavior\n\n### Actual Behavior\n\n### Solution\n`,
-  feature: `## Feature Implementation\n\n### Requirements\n- \n\n### Technical Design\n- \n\n### Testing Plan\n- \n\n### Deployment Notes\n- `,
-  documentation: `## Documentation\n\n### Overview\n\n### Usage\n\n### Examples\n\n### Notes\n- `,
-};
 
 interface TaskEditorProps {
   task: Task;
@@ -30,7 +20,6 @@ interface TaskEditorProps {
 
 export function TaskEditor({ task, open, onOpenChange }: TaskEditorProps) {
   const [title, setTitle] = useState(task?.title ?? "");
-  const [notes, setNotes] = useState(task?.notes ?? "");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const { updateTask, deleteTask } = useGoals();
@@ -49,15 +38,14 @@ export function TaskEditor({ task, open, onOpenChange }: TaskEditorProps) {
 
       await updateTask({ 
         taskId: task.id, 
-        title: title.trim(),
-        notes: notes.trim() || null,
+        title: title.trim()
       });
-      
+
       toast({
         title: "Success",
         description: "Task updated successfully"
       });
-      
+
       onOpenChange(false);
     } catch (error) {
       console.error('Failed to save task:', error);
@@ -109,7 +97,7 @@ export function TaskEditor({ task, open, onOpenChange }: TaskEditorProps) {
                   placeholder="Enter task title"
                 />
               </div>
-              
+
               {/* Task metadata */}
               <div className="text-sm text-muted-foreground space-y-2">
                 {task.estimatedMinutes && (
@@ -118,7 +106,7 @@ export function TaskEditor({ task, open, onOpenChange }: TaskEditorProps) {
                     <span>Estimated: {task.estimatedMinutes} minutes</span>
                   </div>
                 )}
-                
+
                 {task.plannedDate && (
                   <div className="flex items-center gap-2">
                     <CalendarIcon className="h-4 w-4" />
@@ -129,80 +117,11 @@ export function TaskEditor({ task, open, onOpenChange }: TaskEditorProps) {
                 )}
               </div>
             </div>
-
-            {/* Notes Section - Takes remaining height */}
-            {!task.isSubtask && (
-              <div className="flex-1 flex flex-col min-h-0 p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <StickyNote className="h-4 w-4" />
-                    <Label htmlFor="notes">Notes</Label>
-                  </div>
-                <Select
-                  onValueChange={(value) => {
-                    if (notes && notes.trim()) {
-                      toast({
-                        title: "Template Changed",
-                        description: "Your notes have been updated with the new template."
-                      });
-                    }
-                    setNotes(NOTE_TEMPLATES[value as keyof typeof NOTE_TEMPLATES]);
-                  }}
-                >
-                  <SelectTrigger className="w-[200px]">
-                    <SelectValue placeholder="Select template" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="research">Research Template</SelectItem>
-                    <SelectItem value="meeting">Meeting Template</SelectItem>
-                    <SelectItem value="bug">Bug Report Template</SelectItem>
-                    <SelectItem value="feature">Feature Template</SelectItem>
-                    <SelectItem value="documentation">Documentation Template</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Textarea
-                id="notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Add notes about this task..."
-                className="flex-1 resize-none h-full min-h-[200px] font-mono"
-              />
-              </div>
-            )}
           </div>
 
           <div className="p-4 border-t bg-muted/40">
             <div className="flex flex-col gap-2">
               <div className="flex justify-between gap-2">
-                <Button
-                  variant="outline"
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      await updateTask({
-                        taskId: task.id,
-                        notes: null
-                      });
-                      setNotes("");
-                      toast({
-                        title: "Success",
-                        description: "Note deleted successfully"
-                      });
-                      onOpenChange(false);
-                    } catch (error) {
-                      console.error('Failed to delete note:', error);
-                      toast({
-                        variant: "destructive",
-                        title: "Error",
-                        description: "Failed to delete note"
-                      });
-                    }
-                  }}
-                  className="w-full"
-                >
-                  Clear Note
-                </Button>
                 <Button
                   type="submit"
                   onClick={async () => {

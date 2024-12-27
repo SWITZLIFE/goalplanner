@@ -175,36 +175,6 @@ export const purchasedRewards = pgTable("purchased_rewards", {
   purchasedAt: timestamp("purchased_at").defaultNow().notNull(),
 });
 
-export const notes = pgTable("notes", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  goalId: integer("goal_id").references(() => goals.id, { onDelete: "cascade" }),
-  title: text("title").notNull(),
-  content: text("content"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-export const notesRelations = relations(notes, ({ one }) => ({
-  user: one(users, {
-    fields: [notes.userId],
-    references: [users.id],
-  }),
-  goal: one(goals, {
-    fields: [notes.goalId],
-    references: [goals.id],
-  }),
-}));
-
-export type Note = typeof notes.$inferSelect;
-export type NewNote = typeof notes.$inferInsert;
-
-export const insertNoteSchema = createInsertSchema(notes);
-export const selectNoteSchema = createSelectSchema(notes);
-export const updateNoteSchema = selectNoteSchema.partial().extend({
-  title: z.string().optional(),
-  content: z.string().optional(),
-});
 
 export const timeTracking = pgTable("time_tracking", {
   id: serial("id").primaryKey(),

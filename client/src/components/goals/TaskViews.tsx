@@ -6,7 +6,7 @@ import { format } from "date-fns";
 import type { Task as BaseTask } from "@db/schema";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Clock, Calendar as CalendarIcon, Quote, X, Link2, Plus, ChevronRight } from "lucide-react";
+import { Clock, Calendar as CalendarIcon, Quote, X, Plus, ChevronRight } from "lucide-react";
 import { VisionGenerator } from "./VisionGenerator";
 import { OverdueTasksDialog } from "./OverdueTasksDialog";
 import { useQuery } from "@tanstack/react-query"; 
@@ -14,7 +14,6 @@ import { useGoals } from "@/hooks/use-goals";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import { NoteEditor } from "@/components/notes/NoteEditor";
 import { Checkbox } from "@/components/ui/checkbox";
 
 // Extend the Task type to include properties needed for the task list dialog
@@ -22,16 +21,6 @@ interface Task extends BaseTask {
   isTaskList?: boolean;
   dayTasks?: Task[];
   updatedAt?: string;
-}
-
-// Add Note type definition
-interface Note {
-  id: number;
-  title: string;
-  content: string;
-  createdAt: string;
-  updatedAt: string;
-  goalId?: number; // Added goalId to Note interface
 }
 
 interface Goal {
@@ -146,7 +135,7 @@ function TaskDialog({ task, onClose, onUpdateDate, onToggleComplete, initialTask
 
         {/* Date Picker Dialog */}
         <Dialog open={showDatePicker} onOpenChange={setShowDatePicker}>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="max-w-[min-content]">
             <DialogHeader>
               <DialogTitle>Select New Date</DialogTitle>
             </DialogHeader>
@@ -177,13 +166,6 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
   const [showOverdueTasks, setShowOverdueTasks] = useState(true);
   const { updateTask, createTask, updateGoal, goals } = useGoals();
   const { toast } = useToast();
-  const [selectedNote, setSelectedNote] = useState<(Task | Note) | null>(null);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-
-  // Fetch standalone notes
-  const { data: standaloneNotes = [] } = useQuery<Note[]>({
-    queryKey: ["/api/notes"],
-  });
 
   // Get overdue tasks
   const overdueTasks = initialTasks.filter(task => {
@@ -372,10 +354,9 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
       )}
 
       <Tabs defaultValue="tasks" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="tasks">Tasks</TabsTrigger>
           <TabsTrigger value="completed">Completed</TabsTrigger>
-          <TabsTrigger value="notes">Notes</TabsTrigger>
           <TabsTrigger value="calendar">Calendar</TabsTrigger>
           <TabsTrigger value="vision">Your Why</TabsTrigger>
         </TabsList>
@@ -394,55 +375,6 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
             goalId={goalId}
             readOnly
           />
-        </TabsContent>
-
-        <TabsContent value="notes">
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-medium">All Notes</h2>
-              <Button onClick={() => setShowCreateDialog(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                New Note
-              </Button>
-            </div>
-            <div className="space-y-2">
-              {[...initialTasks.filter(task => task.notes), ...standaloneNotes]
-                .sort((a, b) => {
-                  const dateA = new Date(a.updatedAt || a.createdAt);
-                  const dateB = new Date(b.updatedAt || b.createdAt);
-                  return dateB.getTime() - dateA.getTime();
-                })
-                .map(note => (
-                  <div
-                    key={note.id}
-                    className={cn(
-                      "flex items-center justify-between p-4 border rounded-md hover:bg-accent/50 cursor-pointer",
-                      "transition-colors duration-200"
-                    )}
-                    onClick={() => setSelectedNote(note)}
-                  >
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      {'goalId' in note ? (
-                        <Link2 className="h-4 w-4 text-muted-foreground shrink-0" />
-                      ) : (
-                        <Quote className="h-4 w-4 text-muted-foreground shrink-0" />
-                      )}
-                      <h3 className="font-medium truncate">{note.title}</h3>
-                    </div>
-                    <div className="text-xs text-muted-foreground shrink-0 ml-4">
-                      {format(new Date(note.updatedAt || note.createdAt), 'MMM d')}
-                    </div>
-                  </div>
-                ))}
-              {initialTasks.filter(task => task.notes).length === 0 && standaloneNotes.length === 0 && (
-                <div className="text-center p-8 text-muted-foreground">
-                  <Quote className="h-8 w-8 text-muted-foreground/50 mx-auto mb-4" />
-                  <p>No notes found.</p>
-                  <p className="text-sm mt-2">Create a new note or add notes to tasks.</p>
-                </div>
-              )}
-            </div>
-          </div>
         </TabsContent>
 
         <TabsContent value="calendar">
@@ -644,25 +576,6 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
         </TabsContent>
       </Tabs>
 
-
-      {selectedTask && (
-        <TaskDialog
-          task={selectedTask}
-          onClose={() => setSelectedTask(null)}
-          onUpdateDate={(date) => {
-            if (selectedTask) {
-              handleUpdateTaskDate(selectedTask.id, date);
-            }
-          }}
-          onToggleComplete={(completed, subtaskId) => {
-            if (selectedTask) {
-              handleToggleComplete(selectedTask, completed, subtaskId);
-            }
-          }}
-          initialTasks={initialTasks}
-        />
-      )}
-
       {/* Date Picker Dialog */}
       <Dialog
         open={showDatePicker !== null}
@@ -688,108 +601,23 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
         </DialogContent>
       </Dialog>
 
-      {/* Note Editor Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create New Note</DialogTitle>
-          </DialogHeader>
-          <NoteEditor
-            onSave={async (note) => {
-              try {
-                await fetch('/api/notes', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    ...note,
-                    goalId: goalId // Include the goalId from the current goal view
-                  })
-                });
-                queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
-                toast({
-                  title: "Success",
-                  description: "Note created successfully"
-                });
-                setShowCreateDialog(false);
-              } catch (error) {
-                console.error('Failed to create note:', error);
-                toast({
-                  variant: "destructive",
-                  title: "Error",
-                  description: "Failed to create note"
-                });
-              }
-            }}
-            goalId={goalId} // Pass the goalId to NoteEditor
-            onCancel={() => setShowCreateDialog(false)}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Note Editor Side Panel */}
-      <div className={cn(
-        "fixed inset-y-0 right-0 w-[600px] bg-background border-l shadow-lg transform transition-transform duration-200 ease-in-out z-50",
-        selectedNote ? "translate-x-0" : "translate-x-full"
-      )}>
-        {selectedNote && (
-          <div className="flex flex-col h-full">
-            {/* Fixed Header */}
-            <div className="flex items-center justify-between p-4 border-b shrink-0">
-              <h2 className="text-lg font-semibold">Edit Note</h2>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSelectedNote(null)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            {/* Scrollable Content Area */}
-            <div className="flex-1 min-h-0 overflow-y-auto p-4">
-              <NoteEditor
-                initialTitle={selectedNote.title}
-                initialContent={'notes' in selectedNote ? selectedNote.notes : selectedNote.content}
-                onSave={async (note) => {
-                  try {
-                    if ('notes' in selectedNote) {
-                      // Update task note
-                      await updateTask({
-                        taskId: selectedNote.id,
-                        notes: note.content
-                      });
-                    } else {
-                      // Update standalone note
-                      await fetch(`/api/notes/${selectedNote.id}`, {
-                        method: 'PATCH',
-                        headers: {
-                          'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(note)
-                      });
-                      queryClient.invalidateQueries({ queryKey: ["/api/notes"] });
-                    }
-                    toast({
-                      title: "Success",
-                      description: "Note updated successfully"
-                    });
-                    setSelectedNote(null);
-                  } catch (error) {
-                    console.error('Failed to update note:', error);
-                    toast({
-                      variant: "destructive",
-                      title: "Error",
-                      description: "Failed to update note"
-                    });
-                  }
-                }}
-                onCancel={() => setSelectedNote(null)}
-              />
-            </div>
-          </div>
-        )}
-      </div>
+      {selectedTask && (
+        <TaskDialog
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onUpdateDate={(date) => {
+            if (selectedTask) {
+              handleUpdateTaskDate(selectedTask.id, date);
+            }
+          }}
+          onToggleComplete={(completed, subtaskId) => {
+            if (selectedTask) {
+              handleToggleComplete(selectedTask, completed, subtaskId);
+            }
+          }}
+          initialTasks={initialTasks}
+        />
+      )}
     </>
   );
 }
