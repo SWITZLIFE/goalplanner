@@ -108,7 +108,7 @@ export default function GoalView() {
                 <DailyQuote goalId={goal.id} />
 
                 <div className="space-y-2">
-                  <GoalProgress progress={goal.progress} />
+                  <GoalProgress progress={goal.progress} variant="linear" />
                   <p className="text-sm text-muted-foreground">{goal.progress}% completed</p>
                 </div>
 

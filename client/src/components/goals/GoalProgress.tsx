@@ -1,12 +1,22 @@
 import * as React from "react";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
 interface GoalProgressProps {
   progress: number;
+  variant?: "linear" | "circular";
   size?: "sm" | "md" | "lg";
 }
 
-export function GoalProgress({ progress, size = "sm" }: GoalProgressProps) {
+export function GoalProgress({ progress, variant = "linear", size = "sm" }: GoalProgressProps) {
+  if (variant === "linear") {
+    return (
+      <div className="space-y-2">
+        <Progress value={progress} className="h-2" />
+      </div>
+    );
+  }
+
   const strokeWidth = size === "sm" ? 4 : size === "md" ? 6 : 8;
   const radius = size === "sm" ? 16 : size === "md" ? 24 : 32;
   const circumference = 2 * Math.PI * radius;

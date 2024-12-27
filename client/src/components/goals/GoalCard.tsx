@@ -29,7 +29,7 @@ export function GoalCard({ goal }: GoalCardProps) {
                 {format(new Date(goal.targetDate), "MMM d, yyyy")}
               </div>
             </div>
-            <GoalProgress progress={goal.progress} size="sm" />
+            <GoalProgress progress={goal.progress} variant="circular" size="sm" />
           </div>
         </CardContent>
       </Card>
