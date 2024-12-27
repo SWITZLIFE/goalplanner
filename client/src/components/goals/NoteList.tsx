@@ -90,6 +90,9 @@ const NoteEditor = ({ onSubmit }: { onSubmit: (html: string) => void }) => {
         class: 'prose prose-sm focus:outline-none p-4 min-h-[200px] max-h-[50vh] overflow-y-auto',
       },
     },
+    onUpdate: ({ editor }) => {
+      onSubmit(editor.getHTML());
+    },
   });
 
   useEffect(() => {
@@ -134,7 +137,10 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
       const response = await fetch(`/api/goals/${goalId}/notes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify({
+          ...values,
+          taskId: values.taskId || null,
+        }),
         credentials: "include",
       });
 
@@ -255,10 +261,18 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
                 )}
               />
 
-              <FormItem>
-                <FormLabel>Content</FormLabel>
-                <NoteEditor onSubmit={(html) => form.setValue('content', html)} />
-              </FormItem>
+              <FormField
+                control={form.control}
+                name="content"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Content</FormLabel>
+                    <FormControl>
+                      <NoteEditor onSubmit={field.onChange} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
 
               {incompleteTasks.length > 0 && (
                 <FormField
