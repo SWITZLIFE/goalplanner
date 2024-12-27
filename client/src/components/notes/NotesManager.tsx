@@ -27,15 +27,11 @@ export function NotesManager({ goalId }: NotesManagerProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Query to fetch notes - use goalId in the query key and URL
-  const queryKey = goalId ? [`/api/notes?goalId=${goalId}`] : ['/api/notes'];
+  // Fetch all notes
   const { data: notes = [] } = useQuery<Note[]>({
-    queryKey,
+    queryKey: ['/api/notes'],
     queryFn: async () => {
-      const url = goalId 
-        ? `/api/notes?goalId=${goalId}`
-        : '/api/notes';
-      const response = await fetch(url, {
+      const response = await fetch('/api/notes', {
         credentials: "include",
       });
       if (!response.ok) {
@@ -45,6 +41,12 @@ export function NotesManager({ goalId }: NotesManagerProps) {
     },
   });
 
+  // Filter notes to show only those matching the current goalId or without a goalId
+  const filteredNotes = notes.filter(note => 
+    !goalId || // If no goalId is provided, show all notes
+    note.goalId === goalId || // Show notes matching the current goalId
+    note.goalId === null // Show notes without a goalId
+  );
 
   // Create note mutation
   const createNoteMutation = useMutation({
@@ -52,10 +54,10 @@ export function NotesManager({ goalId }: NotesManagerProps) {
       const payload = {
         title: note.title,
         content: note.content,
-        goalId // Include goalId in the payload
+        goalId
       };
 
-      console.log('Creating note with payload:', payload); // Debug log
+      console.log('Creating note with payload:', payload);
 
       const response = await fetch("/api/notes", {
         method: "POST",
@@ -74,7 +76,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey }); // Use the same queryKey for invalidation
+      queryClient.invalidateQueries({ queryKey: ['/api/notes'] });
       setShowCreateDialog(false);
       toast({
         title: "Success",
@@ -99,10 +101,8 @@ export function NotesManager({ goalId }: NotesManagerProps) {
     }: { id: number; title: string; content: string }) => {
       const payload = {
         ...note,
-        goalId // Maintain goalId during updates
+        goalId
       };
-
-      console.log('Updating note with payload:', payload); // Debug log
 
       const response = await fetch(`/api/notes/${id}`, {
         method: "PATCH",
@@ -118,7 +118,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey }); // Use the same queryKey for invalidation
+      queryClient.invalidateQueries({ queryKey: ['/api/notes'] });
       setSelectedNote(null);
       toast({
         title: "Success",
@@ -141,7 +141,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
 
       {/* Notes List */}
       <div className="grid gap-4">
-        {notes.map((note) => (
+        {filteredNotes.map((note) => (
           <div
             key={note.id}
             className={cn(
@@ -163,7 +163,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
           </div>
         ))}
 
-        {notes.length === 0 && (
+        {filteredNotes.length === 0 && (
           <div className="text-center p-8 text-muted-foreground">
             <FileText className="h-8 w-8 mx-auto mb-4" />
             <p>No notes {goalId ? "for this goal" : ""} yet</p>
