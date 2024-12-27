@@ -86,9 +86,6 @@ export function LeftPanel() {
         </CollapsibleContent>
       </Collapsible>
 
-      <div>
-        <h2 className="text-sm font-small text-white p-6">Created with ❤️</h2>
-      </div>
     </div>
   );
 }
