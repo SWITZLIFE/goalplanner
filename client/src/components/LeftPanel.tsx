@@ -8,11 +8,12 @@ import { useGoals } from "@/hooks/use-goals";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useUser } from "@/hooks/use-user";
 
 export function LeftPanel() {
   const { goals } = useGoals();
+  const { user } = useUser();
   const [isGoalsOpen, setIsGoalsOpen] = useState(true);
-  const user = { profilePhotoUrl: 'https://github.com/shadcn.png', email: 'user@example.com' }; //Example User Data
 
   return (
     <div className="w-96 bg-primary h-screen overflow-hidden">
