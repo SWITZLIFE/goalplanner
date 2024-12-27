@@ -113,11 +113,16 @@ export function NotesManager({ goalId }: NotesManagerProps) {
       id,
       ...note
     }: { id: number; title: string; content: string }) => {
+      const payload = {
+        ...note,
+        goalId: goalId || null // Explicitly set goalId to null if not provided
+      };
+
       const response = await fetch(`/api/notes/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ ...note, goalId: goalId || null }), // Explicitly set goalId to null if not provided
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
