@@ -218,8 +218,19 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
                     modules={modules}
                     formats={formats}
                     className="bg-white"
+                    style={{ height: '50vh' }}
                   />
                 </div>
+                <style jsx global>{`
+                  .ql-container {
+                    height: calc(50vh - 42px) !important;
+                    font-size: 12px;
+                  }
+                  .ql-editor {
+                    height: 100%;
+                    overflow-y: auto;
+                  }
+                `}</style>
               </FormItem>
 
               {incompleteTasks.length > 0 && (
