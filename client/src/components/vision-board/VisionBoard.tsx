@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { useGoals } from "@/hooks/use-goals";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface VisionBoardImage {
   id: number;
@@ -23,6 +25,106 @@ interface Task {
   completed: boolean;
   plannedDate: string | null;
   goalId: number;
+  isTaskList?: boolean;
+  dayTasks?: Task[];
+}
+
+interface TaskDialogProps {
+  task: Task;
+  onClose: () => void;
+  onUpdateDate: (date: Date | undefined) => void;
+  onToggleComplete: (completed: boolean) => void;
+}
+
+function TaskDialog({ task, onClose, onUpdateDate, onToggleComplete }: TaskDialogProps) {
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  return (
+    <Dialog open={true} onOpenChange={() => onClose()}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>
+            <div className="flex items-center gap-3">
+              <Checkbox
+                checked={task.completed}
+                onCheckedChange={(checked) => onToggleComplete(checked as boolean)}
+              />
+              <span className={cn(
+                task.completed && "line-through text-muted-foreground"
+              )}>{task.title}</span>
+            </div>
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          {/* Date Section */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm">
+              <CalendarIcon className="h-4 w-4" />
+              <span>
+                {task.plannedDate
+                  ? format(new Date(task.plannedDate), 'MMMM d, yyyy')
+                  : "No date set"}
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDatePicker(true)}
+            >
+              Change Date
+            </Button>
+          </div>
+
+          {/* Task List Section (for day tasks) */}
+          {task.isTaskList && task.dayTasks && (
+            <div className="border-t pt-4 mt-4">
+              <h3 className="text-sm font-medium mb-2">Tasks for this day</h3>
+              <div className="space-y-2">
+                {task.dayTasks.map(dayTask => (
+                  <div
+                    key={dayTask.id}
+                    className="flex items-center gap-2 p-2 rounded-md hover:bg-accent/50"
+                  >
+                    <Checkbox
+                      checked={dayTask.completed}
+                      onCheckedChange={(checked) =>
+                        onToggleComplete(checked as boolean)
+                      }
+                    />
+                    <span className={cn(
+                      "text-sm",
+                      dayTask.completed && "line-through text-muted-foreground"
+                    )}>
+                      {dayTask.title}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Date Picker Dialog */}
+        <Dialog open={showDatePicker} onOpenChange={setShowDatePicker}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Select New Date</DialogTitle>
+            </DialogHeader>
+            <Calendar
+              mode="single"
+              selected={task.plannedDate ? new Date(task.plannedDate) : undefined}
+              onSelect={(date) => {
+                onUpdateDate(date || undefined);
+                setShowDatePicker(false);
+              }}
+              className="rounded-md border"
+            />
+          </DialogContent>
+        </Dialog>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export function VisionBoard() {
@@ -35,8 +137,9 @@ export function VisionBoard() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [taskFilter, setTaskFilter] = useState<'all' | 'active' | 'completed'>('all');
   const [goalFilter, setGoalFilter] = useState<number | 'all'>('all');
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
-  const { goals } = useGoals();
+  const { goals, updateTask } = useGoals();
 
   const { data: images = [], isLoading } = useQuery<VisionBoardImage[]>({
     queryKey: ["/api/vision-board"],
@@ -80,6 +183,52 @@ export function VisionBoard() {
       task.plannedDate &&
       format(new Date(task.plannedDate), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
     );
+  };
+
+  const handleToggleComplete = async (task: Task, completed: boolean) => {
+    try {
+      await updateTask({
+        taskId: task.id,
+        completed
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+
+      toast({
+        title: "Success",
+        description: completed ? "Task completed!" : "Task reopened"
+      });
+    } catch (error) {
+      console.error('Failed to toggle task completion:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update task status"
+      });
+    }
+  };
+
+  const handleUpdateTaskDate = async (taskId: number, date: Date | undefined) => {
+    try {
+      await updateTask({
+        taskId,
+        plannedDate: date ? format(date, 'yyyy-MM-dd') : null
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["/api/goals"] });
+
+      toast({
+        title: "Success",
+        description: "Task date updated successfully"
+      });
+    } catch (error) {
+      console.error('Failed to update task date:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update task date"
+      });
+    }
   };
 
   const uploadMutation = useMutation({
@@ -380,6 +529,7 @@ export function VisionBoard() {
                                 task.completed ? "bg-orange-100" : "bg-blue-100"
                               )}
                               title={task.title}
+                              onClick={() => setSelectedTask(task)}
                             >
                               {task.title}
                             </div>
@@ -387,6 +537,14 @@ export function VisionBoard() {
                         {dayTasks.length > 3 && (
                           <button
                             className="text-xs text-primary hover:text-primary/80 font-medium"
+                            onClick={() => {
+                              setSelectedTask({
+                                ...dayTasks[0],
+                                title: `Tasks for ${format(date, 'MMMM d, yyyy')}`,
+                                isTaskList: true,
+                                dayTasks: dayTasks
+                              });
+                            }}
                           >
                             + {dayTasks.length - 3} more
                           </button>
@@ -400,6 +558,22 @@ export function VisionBoard() {
           </div>
         </CollapsibleContent>
       </Collapsible>
+
+      {/* Task Dialog */}
+      {selectedTask && (
+        <TaskDialog
+          task={selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onUpdateDate={(date) => {
+            handleUpdateTaskDate(selectedTask.id, date);
+            setSelectedTask(null);
+          }}
+          onToggleComplete={(completed) => {
+            handleToggleComplete(selectedTask, completed);
+            setSelectedTask(null);
+          }}
+        />
+      )}
     </div>
   );
 }
