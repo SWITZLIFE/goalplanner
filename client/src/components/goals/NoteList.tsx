@@ -78,34 +78,39 @@ const MenuBar = ({ editor }: { editor: any }) => {
   );
 };
 
-export function NoteList({ goalId, tasks }: NoteListProps) {
-  const [isCreating, setIsCreating] = useState(false);
-  const { toast } = useToast();
-  const [editor, setEditor] = useState<any>(null);
+const NoteEditor = ({ onSubmit }: { onSubmit: (html: string) => void }) => {
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Link,
+    ],
+    content: '',
+    editorProps: {
+      attributes: {
+        class: 'prose prose-sm focus:outline-none p-4 min-h-[200px] max-h-[50vh] overflow-y-auto',
+      },
+    },
+  });
 
   useEffect(() => {
-    if (isCreating) {
-      const newEditor = useEditor({
-        extensions: [
-          StarterKit,
-          Link,
-        ],
-        content: '',
-        editorProps: {
-          attributes: {
-            class: 'prose prose-sm focus:outline-none p-4 min-h-[200px] max-h-[50vh] overflow-y-auto',
-          },
-        },
-      });
-      setEditor(newEditor);
-    }
-
     return () => {
       if (editor) {
         editor.destroy();
       }
     };
-  }, [isCreating]);
+  }, [editor]);
+
+  return (
+    <div className="border rounded-lg overflow-hidden">
+      <MenuBar editor={editor} />
+      <EditorContent editor={editor} />
+    </div>
+  );
+};
+
+export function NoteList({ goalId, tasks }: NoteListProps) {
+  const [isCreating, setIsCreating] = useState(false);
+  const { toast } = useToast();
 
   // Only show incomplete tasks in the dropdown
   const incompleteTasks = tasks.filter(task => !task.completed);
@@ -129,11 +134,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
       const response = await fetch(`/api/goals/${goalId}/notes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...values,
-          content: editor?.getHTML() || '',
-          taskId: values.taskId || null,
-        }),
+        body: JSON.stringify(values),
         credentials: "include",
       });
 
@@ -147,7 +148,6 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
     onSuccess: () => {
       setIsCreating(false);
       form.reset();
-      editor?.commands.setContent('');
       refetch();
       toast({
         title: "Note created",
@@ -166,15 +166,6 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      if (!editor?.getHTML().trim()) {
-        toast({
-          title: "Error",
-          description: "Note content is required",
-          variant: "destructive",
-        });
-        return;
-      }
-
       await createNoteMutation.mutateAsync(values);
     } catch (error) {
       console.error("Form submission error:", error);
@@ -243,7 +234,6 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
               onClick={() => {
                 setIsCreating(false);
                 form.reset();
-                editor?.commands.setContent('');
               }}
             >
               <X className="h-4 w-4" />
@@ -267,14 +257,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
 
               <FormItem>
                 <FormLabel>Content</FormLabel>
-                <div className="border rounded-lg overflow-hidden">
-                  {editor && (
-                    <>
-                      <MenuBar editor={editor} />
-                      <EditorContent editor={editor} />
-                    </>
-                  )}
-                </div>
+                <NoteEditor onSubmit={(html) => form.setValue('content', html)} />
               </FormItem>
 
               {incompleteTasks.length > 0 && (
