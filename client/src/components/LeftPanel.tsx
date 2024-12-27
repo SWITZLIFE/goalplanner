@@ -1,8 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Gift, BarChart2, ChevronDown, ChevronRight } from "lucide-react";
-
-import { Gift, BarChart2, ChevronDown, ChevronRight, Linkedin as LinkedInIcon, Instagram as InstagramIcon, Twitter as TwitterIcon } from "lucide-react";
-
 import { Link } from "wouter";
 import { CoinBalance } from "@/components/rewards/CoinBalance";
 import { CreateGoalDialog } from "@/components/goals/CreateGoalDialog";
@@ -18,27 +15,7 @@ export function LeftPanel() {
 
   return (
     <div className="w-96 bg-primary h-screen overflow-hidden">
-      <div className="p-6 pb-0 mt-10">
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-20 h-20 rounded-full overflow-hidden mb-3">
-            <img src={user?.profilePhotoUrl} alt="Profile" className="w-full h-full object-cover" />
-          </div>
-          <h2 className="text-white font-medium text-lg">{user?.email.split('@')[0]}</h2>
-          <p className="text-gray-400 text-sm">Product Designer</p>
-          <div className="flex gap-2 mt-2">
-            <a href="#" className="text-gray-400 hover:text-white">
-              <LinkedInIcon className="h-4 w-4" />
-            </a>
-            <a href="#" className="text-gray-400 hover:text-white">
-              <InstagramIcon className="h-4 w-4" />
-            </a>
-            <a href="#" className="text-gray-400 hover:text-white">
-              <TwitterIcon className="h-4 w-4" />
-            </a>
-          </div>
-        </div>
-      </div>
-      <div className="flex justify-between items-center p-6 pb-0 mb-10">
+      <div className="flex justify-between items-center p-6 pb-0 mt-10 mb-10">
         <h1 className="text-l font-semibold text-white">Coin balance</h1>
         <CoinBalance />
       </div>
