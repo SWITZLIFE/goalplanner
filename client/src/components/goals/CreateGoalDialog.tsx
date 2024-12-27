@@ -46,7 +46,7 @@ export function CreateGoalDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="w-full">
+        <Button variant="subtle" className="w-full">
           <PlusCircle className="mr-2 h-4 w-4" />
           Create New Goal
         </Button>
