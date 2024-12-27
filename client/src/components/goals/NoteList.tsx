@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Bold, Italic, Link, Quote, List, ListOrdered, ChevronDown } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -10,7 +10,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import type { Task } from "@db/schema";
-import { Editor } from '@tinymce/tinymce-react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import TextStyle from '@tiptap/extension-text-style';
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 
@@ -34,11 +36,34 @@ interface NoteListProps {
   tasks: Task[];
 }
 
+const fontSizes = [
+  { value: '10px', label: '10px' },
+  { value: '12px', label: '12px' },
+  { value: '14px', label: '14px' },
+  { value: '16px', label: '16px' },
+  { value: '18px', label: '18px' },
+  { value: '20px', label: '20px' },
+];
+
 export function NoteList({ goalId, tasks }: NoteListProps) {
   const [isCreating, setIsCreating] = useState(false);
-  const [editorContent, setEditorContent] = useState('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Initialize TipTap editor
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      TextStyle,
+    ],
+    content: '',
+    editorProps: {
+      attributes: {
+        class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl focus:outline-none min-h-[300px] p-4',
+        style: 'font-size: 12px',
+      },
+    },
+  });
 
   // Only show incomplete tasks in the dropdown
   const incompleteTasks = tasks.filter(task => !task.completed);
@@ -76,7 +101,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
       queryClient.invalidateQueries({ queryKey: [`/api/goals/${goalId}/notes`] });
       setIsCreating(false);
       form.reset();
-      setEditorContent('');
+      editor?.commands.setContent('');
       toast({
         title: "Note created",
         description: "Your note has been created successfully.",
@@ -92,7 +117,8 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
   });
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    if (!editorContent.trim()) {
+    const content = editor?.getHTML() || '';
+    if (!content.trim()) {
       toast({
         title: "Error",
         description: "Note content is required",
@@ -102,7 +128,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
     }
     createNoteMutation.mutate({
       ...values,
-      content: editorContent,
+      content,
     });
   };
 
@@ -168,7 +194,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
               onClick={() => {
                 setIsCreating(false);
                 form.reset();
-                setEditorContent('');
+                editor?.commands.setContent('');
               }}
             >
               <X className="h-4 w-4" />
@@ -192,27 +218,80 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
 
               <FormItem>
                 <FormLabel>Content</FormLabel>
-                <Editor
-                  apiKey="your-tinymce-api-key" // **REPLACE with your actual API key**
-                  onEditorChange={(content, editor) => {
-                    setEditorContent(content);
-                  }}
-                  init={{
-                    height: 500,
-                    menubar: false,
-                    plugins: [
-                      'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
-                      'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-                      'insertdatetime', 'media', 'table', 'help', 'wordcount'
-                    ],
-                    toolbar: 'undo redo | formatselect | ' +
-                      'bold italic backcolor | alignleft aligncenter ' +
-                      'alignright alignjustify | bullist numlist outdent indent | ' +
-                      'removeformat | help',
-                    content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 12px; }',
-                    font_size_formats: '8px 10px 12px 14px 16px 18px 24px 36px',
-                  }}
-                />
+                {editor && (
+                  <div className="border rounded-lg overflow-hidden bg-white">
+                    <div className="border-b p-2 flex gap-2 flex-wrap">
+                      <Select
+                        defaultValue="12px"
+                        onValueChange={(value) => {
+                          if (editor) {
+                            const element = editor.view.dom as HTMLElement;
+                            element.style.fontSize = value;
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-[80px]">
+                          <SelectValue placeholder="12px" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {fontSizes.map((size) => (
+                            <SelectItem key={size.value} value={size.value}>
+                              {size.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => editor.chain().focus().toggleBold().run()}
+                        className={cn(editor.isActive('bold') && 'bg-muted')}
+                      >
+                        <Bold className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => editor.chain().focus().toggleItalic().run()}
+                        className={cn(editor.isActive('italic') && 'bg-muted')}
+                      >
+                        <Italic className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => editor.chain().focus().toggleBulletList().run()}
+                        className={cn(editor.isActive('bulletList') && 'bg-muted')}
+                      >
+                        <List className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+                        className={cn(editor.isActive('orderedList') && 'bg-muted')}
+                      >
+                        <ListOrdered className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => editor.chain().focus().toggleBlockquote().run()}
+                        className={cn(editor.isActive('blockquote') && 'bg-muted')}
+                      >
+                        <Quote className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="max-h-[calc(100vh-400px)] overflow-y-auto">
+                      <EditorContent editor={editor} className="min-h-[300px]" />
+                    </div>
+                  </div>
+                )}
               </FormItem>
 
               {incompleteTasks.length > 0 && (
