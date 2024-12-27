@@ -1,8 +1,17 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { db } from "@db";
-import { users, notes, goals } from "@db/schema";
+import { 
+  users, 
+  notes, 
+  goals, 
+  tasks, 
+  timeTracking, 
+  rewards, 
+  rewardItems, 
+  purchasedRewards
+} from "@db/schema";
 import { getTodayMessage, markMessageAsRead, generateDailyMessage } from "./future-message";
 import multer from "multer";
 import path from "path";
@@ -12,7 +21,7 @@ import { getCoachingAdvice } from "./coaching";
 import { setupAuth } from "./auth";
 import { openai } from "./openai";
 import { uploadFileToSupabase } from './supabase';
-import { getTodayQuote, markQuoteAsRead } from "./goal-quotes"; // Import from the correct file
+import { getTodayQuote, markQuoteAsRead } from "./goal-quotes";
 
 // Configure multer for handling file uploads
 const upload = multer({
@@ -1127,101 +1136,17 @@ Remember to:
     }
   });
 
-
-  // Vision Board API
+  // Vision Board API - temporarily removed as schema changed
   app.get("/api/vision-board", requireAuth, async (req, res) => {
-    try {
-      const userId = req.user!.id;
-      const images = await db.select()
-        .from(visionBoardImages)
-        .where(eq(visionBoardImages.userId, userId))
-        .orderBy(visionBoardImages.position);
-      res.json(images);
-    } catch (error) {
-      console.error("Failed to fetch vision board images:", error);
-      res.status(500).json({ error: "Failed to fetch vision board images" });
-    }
+    res.status(501).json({ error: "Vision board feature is currently unavailable" });
   });
 
   app.post("/api/vision-board/upload", requireAuth, upload.single('image'), async (req, res) => {
-    try {
-      console.log('Processing image upload request');
-      const userId = req.user!.id;
-
-      // Check if user already has 12 images
-      const imageCount = await db.select({ count: sql<number>`count(*)` })
-        .from(visionBoardImages)
-        .where(eq(visionBoardImages.userId, userId));
-
-      console.log('Current image count:', imageCount[0].count);
-
-      if (imageCount[0].count >= 12) {
-        return res.status(400).json({ error: "Maximum number of images (12) reached" });
-      }
-
-      // Find the next available position
-      const existingPositions = await db.select({ position: visionBoardImages.position })
-        .from(visionBoardImages)
-        .where(eq(visionBoardImages.userId, userId));
-
-      const usedPositions = existingPositions.map(img => img.position);
-      let nextPosition = 0;
-      while (usedPositions.includes(nextPosition)) {
-        nextPosition++;
-      }
-
-      console.log('Using position:', nextPosition);
-
-      if (!req.file) {
-        console.error('No file uploaded');
-        return res.status(400).json({ error: "No image file provided" });
-      }
-
-      // Upload file to Supabase Storage
-      const imageUrl = await uploadFileToSupabase(req.file);
-      console.log('Supabase Image URL:', imageUrl);
-
-      const [newImage] = await db.insert(visionBoardImages)
-        .values({
-          userId,
-          imageUrl,
-          position: nextPosition,
-        })
-        .returning();
-
-      res.json(newImage);
-    } catch (error) {
-      console.error("Failed to upload image:", error);
-      res.status(500).json({ 
-        error: "Failed to upload image",
-        details: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
+    res.status(501).json({ error: "Vision board feature is currently unavailable" });
   });
 
-  app.delete("/api/vision-board/:id", requireAuth, async (req, res) => {
-    try {
-      const userId = req.user!.id;
-      const imageId = parseInt(req.params.id);
-
-      const [deletedImage] = await db.delete(visionBoardImages)
-        .where(
-          and(
-            eq(visionBoardImages.id, imageId),
-            eq(visionBoardImages.userId, userId)
-          )
-        )
-        .returning();
-
-      if (!deletedImage) {
-        return res.status(404).json({ error: "Image not found" });
-      }
-
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Failed to delete image:", error);
-      res.status(500).json({ error: "Failed to delete image" });
-    }
+  app.delete("/api/vision-board/:imageId", requireAuth, async (req, res) => {
+    res.status(501).json({ error: "Vision board feature is currently unavailable" });
   });
 
   // Rewards API
