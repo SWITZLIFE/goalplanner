@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { ImagePlus, X, ChevronDown, ChevronRight } from "lucide-react";
+import { ImagePlus, X, ChevronDown, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
 
 interface VisionBoardImage {
   id: number;
@@ -19,6 +21,8 @@ export function VisionBoard() {
   const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
   const [isVisionBoardOpen, setIsVisionBoardOpen] = useState(true);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(true);
+  const [date, setDate] = useState<Date | undefined>(new Date());
 
   const { data: images = [], isLoading } = useQuery<VisionBoardImage[]>({
     queryKey: ["/api/vision-board"],
@@ -127,6 +131,8 @@ export function VisionBoard() {
     <div className="space-y-8">
       <FutureMessage />
       <div className="h-px bg-border" />
+
+      {/* Vision Board Section */}
       <Collapsible
         open={isVisionBoardOpen}
         onOpenChange={setIsVisionBoardOpen}
@@ -194,6 +200,43 @@ export function VisionBoard() {
                 )}
               </div>
             ))}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* Calendar Section */}
+      <Collapsible
+        open={isCalendarOpen}
+        onOpenChange={setIsCalendarOpen}
+        className="space-y-4"
+      >
+        <div className="flex justify-between items-center">
+          <CollapsibleTrigger className="flex items-center gap-2">
+            <h2 className="text-xl font-semibold">Monthly Calendar</h2>
+            {isCalendarOpen ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </CollapsibleTrigger>
+          <div className="text-sm text-muted-foreground">
+            {date ? format(date, 'MMMM yyyy') : 'Select a date'}
+          </div>
+        </div>
+
+        <CollapsibleContent
+          className={cn(
+            "data-[state=open]:animate-collapsible-down",
+            "data-[state=closed]:animate-collapsible-up"
+          )}
+        >
+          <div className="flex justify-center border rounded-lg p-4 bg-background">
+            <Calendar
+              mode="single"
+              selected={date}
+              onSelect={setDate}
+              className="rounded-md border"
+            />
           </div>
         </CollapsibleContent>
       </Collapsible>
