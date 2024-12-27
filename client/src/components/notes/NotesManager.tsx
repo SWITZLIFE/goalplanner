@@ -29,9 +29,10 @@ export function NotesManager({ goalId }: NotesManagerProps) {
 
   // Fetch all notes
   const { data: notes = [] } = useQuery<Note[]>({
-    queryKey: ['/api/notes'],
+    queryKey: ['/api/notes', goalId], // Add goalId to queryKey to refetch when it changes
     queryFn: async () => {
-      const response = await fetch('/api/notes', {
+      const url = goalId ? `/api/notes?goalId=${goalId}` : '/api/notes';
+      const response = await fetch(url, {
         credentials: "include",
       });
       if (!response.ok) {
@@ -41,25 +42,15 @@ export function NotesManager({ goalId }: NotesManagerProps) {
     },
   });
 
-  // Filter notes strictly based on goalId match
+  // Filter notes based on goalId
   const visibleNotes = notes.filter(note => {
-    // Debug logging to check note filtering
-    console.log('Filtering note:', {
-      noteId: note.id,
-      noteGoalId: note.goalId,
-      currentGoalId: goalId,
-      shouldShow: !goalId || (note.goalId === null || Number(note.goalId) === Number(goalId))
-    });
-
+    // If we're in the main notes view (no goalId), show all notes
     if (!goalId) {
-      // In main notes view, show all notes
       return true;
     }
 
-    // In a goal view, strictly show only:
-    // 1. Notes that have no goalId (null)
-    // 2. Notes that have exactly matching goalId (using strict equality)
-    return note.goalId === null || Number(note.goalId) === Number(goalId);
+    // In a specific goal view, only show notes that belong to this goal
+    return note.goalId === goalId;
   });
 
   // Create note mutation
@@ -68,7 +59,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
       const payload = {
         title: note.title,
         content: note.content,
-        goalId: goalId || null // Explicitly set goalId to null if not provided
+        goalId: goalId || null
       };
 
       console.log('Creating note with payload:', payload);
@@ -90,7 +81,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/notes'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/notes', goalId] });
       setShowCreateDialog(false);
       toast({
         title: "Success",
@@ -115,7 +106,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
     }: { id: number; title: string; content: string }) => {
       const payload = {
         ...note,
-        goalId: goalId || null // Explicitly set goalId to null if not provided
+        goalId: goalId || null
       };
 
       console.log('Updating note with payload:', { id, ...payload });
@@ -134,7 +125,7 @@ export function NotesManager({ goalId }: NotesManagerProps) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/notes'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/notes', goalId] });
       setSelectedNote(null);
       toast({
         title: "Success",
