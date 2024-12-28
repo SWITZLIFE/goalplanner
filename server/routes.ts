@@ -925,13 +925,13 @@ Remember to:
         .returning();
 
       // Update user's coins - ensure the rewards record exists first
-      const [userRewards] = awaitdb.select()
+      const [userRewards] = await db.select()
         .from(rewards)
         .where(eq(rewards.userId, userId))
         .limit(1);
 
       if (!userRewards) {
-        // Create initial rewards record if it doesn't exist
+        // Create initial rewards record if itdoesn't exist
         await db.insert(rewards)
           .values({
             userId,
