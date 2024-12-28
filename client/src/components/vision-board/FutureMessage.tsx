@@ -28,18 +28,27 @@ export function FutureMessage() {
 
   const generateMessageMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch("/api/future-message/generate", {
-        method: "POST",
-        credentials: "include",
-      });
+      try {
+        const response = await fetch("/api/future-message/generate", {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
 
-      const data = await response.json();
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: response.statusText }));
+          throw new Error(errorData.message || errorData.error || "Failed to generate message");
+        }
 
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to generate message");
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error("Generate message error:", error);
+        throw error;
       }
-
-      return data;
     },
     onSuccess: (data) => {
       queryClient.setQueryData(["/api/future-message/today"], {
@@ -59,18 +68,27 @@ export function FutureMessage() {
 
   const readMessageMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch("/api/future-message/read", {
-        method: "POST",
-        credentials: "include",
-      });
+      try {
+        const response = await fetch("/api/future-message/read", {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
 
-      const data = await response.json();
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: response.statusText }));
+          throw new Error(errorData.message || errorData.error || "Failed to mark message as read");
+        }
 
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to mark message as read");
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error("Read message error:", error);
+        throw error;
       }
-
-      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/future-message/today"] });

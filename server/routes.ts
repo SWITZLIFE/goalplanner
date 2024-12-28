@@ -925,7 +925,7 @@ Remember to:
         .returning();
 
       // Update user's coins - ensure the rewards record exists first
-      const [userRewards] = await db.select()
+      const [userRewards] = awaitdb.select()
         .from(rewards)
         .where(eq(rewards.userId, userId))
         .limit(1);
@@ -960,7 +960,7 @@ Remember to:
   });
 
   // Future Message API
-  app.get("/api/future-message", requireAuth, async (req, res) => {
+  app.get("/api/future-message/today", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
       const message = await getTodayMessage(userId);
@@ -982,14 +982,17 @@ Remember to:
     }
   });
 
-  app.get("/api/future-message/generate", requireAuth, async (req, res) => {
+  app.post("/api/future-message/generate", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
       const message = await generateDailyMessage(userId);
       res.json(message);
     } catch (error) {
       console.error("Failed to generate future message:", error);
-      res.status(500).json({ error: "Failed to generate future message" });
+      res.status(500).json({ 
+        error: "Failed to generate future message",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
