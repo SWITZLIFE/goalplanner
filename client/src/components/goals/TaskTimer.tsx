@@ -39,14 +39,20 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Query current timer state with reduced polling frequency
-  const { data: activeTimer, isLoading } = useQuery<ActiveTimer | null>({
+  // Query current timer state with reduced polling frequency and proper error handling
+  const { data: activeTimer, isLoading, error } = useQuery<ActiveTimer | null>({
     queryKey: ["/api/timer/current"],
     refetchInterval: 5000, // Poll every 5 seconds instead of every second
     refetchOnWindowFocus: false, // Don't refetch on window focus
     refetchIntervalInBackground: false, // Don't poll when tab is in background
     staleTime: 4000, // Consider data fresh for 4 seconds
-    cacheTime: 1000 * 60 * 5, // Cache for 5 minutes
+    gcTime: 1000 * 60 * 5, // Cache for 5 minutes
+    retry: (failureCount, error: any) => {
+      // Don't retry on 401 errors
+      if (error?.status === 401) return false;
+      return failureCount < 3;
+    },
+    enabled: !!taskId, // Only run query if we have a taskId
   });
 
   // Start timer mutation
@@ -56,7 +62,12 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
         method: "POST",
         credentials: "include",
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        if (res.status === 401) {
+          throw new Error("You must be logged in to start a timer");
+        }
+        throw new Error(await res.text());
+      }
       return res.json() as Promise<ActiveTimer>;
     },
     onSuccess: () => {
@@ -83,7 +94,12 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
         method: "POST",
         credentials: "include",
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        if (res.status === 401) {
+          throw new Error("You must be logged in to stop a timer");
+        }
+        throw new Error(await res.text());
+      }
       const data: TimerResponse = await res.json();
       return data;
     },
@@ -118,7 +134,7 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
 
   // Update elapsed time using local state management
   useEffect(() => {
-    if (activeTimer && activeTimer.taskId === taskId) {
+    if (activeTimer?.taskId === taskId && activeTimer?.isActive) {
       const startTime = new Date(activeTimer.startTime).getTime();
       const updateInterval = setInterval(() => {
         setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
@@ -139,6 +155,10 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
 
   if (isLoading) {
     return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return null; // Don't show timer controls if there's an auth error
   }
 
   const isCurrentTask = activeTimer?.taskId === taskId;

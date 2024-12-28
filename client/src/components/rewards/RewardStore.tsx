@@ -36,29 +36,50 @@ export function RewardStore() {
   const [selectedReward, setSelectedReward] = useState<RewardItem | null>(null);
   const { toast } = useToast();
 
-  // Optimize queries with better caching strategies
-  const { data: rewardItems = [] } = useQuery<RewardItem[]>({
+  // Optimize queries with better caching strategies and error handling
+  const { data: rewardItems = [], isError: rewardItemsError } = useQuery<RewardItem[]>({
     queryKey: ["/api/rewards/items"],
     staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
     cacheTime: 1000 * 60 * 10, // Cache for 10 minutes
     refetchOnWindowFocus: false,
+    retry: (failureCount, error: any) => {
+      if (error?.status === 401) return false;
+      return failureCount < 3;
+    },
   });
 
-  const { data: purchasedItems = [] } = useQuery<PurchasedReward[]>({
+  const { data: purchasedItems = [], isError: purchasedItemsError } = useQuery<PurchasedReward[]>({
     queryKey: ["/api/rewards/purchased"],
     staleTime: 1000 * 60 * 5,
     cacheTime: 1000 * 60 * 10,
     refetchOnWindowFocus: false,
+    retry: (failureCount, error: any) => {
+      if (error?.status === 401) return false;
+      return failureCount < 3;
+    },
   });
 
-  const { data: userRewards } = useQuery<UserRewards>({
+  const { data: userRewards, isError: userRewardsError } = useQuery<UserRewards>({
     queryKey: ["/api/rewards"],
     staleTime: 4000, // Consider data fresh for 4 seconds
     cacheTime: 1000 * 60 * 5, // Cache for 5 minutes
     refetchInterval: 5000, // Poll every 5 seconds
     refetchOnWindowFocus: false,
     refetchIntervalInBackground: false,
+    retry: (failureCount, error: any) => {
+      if (error?.status === 401) return false;
+      return failureCount < 3;
+    },
   });
+
+  // If any of the queries have auth errors, don't show the reward store
+  if (rewardItemsError || purchasedItemsError || userRewardsError) {
+    return (
+      <div className="p-8 text-center text-muted-foreground">
+        Please log in to access the reward store.
+      </div>
+    );
+  }
 
   const queryClient = useQueryClient();
 
@@ -163,7 +184,7 @@ export function RewardStore() {
                     <div className="text-yellow-500 font-medium">{reward.cost} coins</div>
                     <Dialog open={selectedReward?.id === reward.id} onOpenChange={(open) => !open && setSelectedReward(null)}>
                       <DialogTrigger asChild>
-                        <Button 
+                        <Button
                           variant="secondary"
                           disabled={!userRewards || userRewards.coins < reward.cost}
                           onClick={() => setSelectedReward(reward)}

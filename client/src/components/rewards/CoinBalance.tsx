@@ -20,7 +20,12 @@ export function CoinBalance() {
     refetchOnWindowFocus: false, // Don't refetch on window focus
     refetchIntervalInBackground: false, // Don't poll when tab is in background
     staleTime: 4000, // Consider data fresh for 4 seconds
-    cacheTime: 1000 * 60 * 5, // Cache for 5 minutes
+    gcTime: 1000 * 60 * 5, // Cache for 5 minutes
+    retry: (failureCount, error: any) => {
+      // Don't retry on 401 errors
+      if (error?.status === 401) return false;
+      return failureCount < 3;
+    },
   });
 
   useEffect(() => {
@@ -33,10 +38,15 @@ export function CoinBalance() {
     setPreviousCoins(rewards?.coins ?? 0);
   }, [rewards?.coins]);
 
+  // Don't show anything if there's an auth error
+  if (isError) {
+    return null;
+  }
+
   return (
     <div className="flex items-center gap-2 text-[#D8F275] relative">
       <Coins className="h-4 w-4" />
-      <span className="font-medium">{isError ? '?' : (rewards?.coins ?? 0)}</span>
+      <span className="font-medium">{rewards?.coins ?? 0}</span>
       <CoinAnimation 
         amount={earnedCoins}
         onComplete={() => setEarnedCoins(0)}
