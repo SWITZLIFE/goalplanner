@@ -11,6 +11,8 @@ import { useLocation } from "wouter";
 import { LeftPanel } from "@/components/LeftPanel";
 import { PageHeader } from "@/components/PageHeader";
 import { motion } from "framer-motion";
+import { ArrowLeft } from "lucide-react";
+import { Link } from "wouter";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -108,6 +110,14 @@ export default function ProfilePage() {
         >
           <div className="h-full overflow-auto scrollbar-hide p-16">
             <div className="max-w-2xl mx-auto space-y-6">
+              <div className="flex items-center gap-4 mb-8">
+                <Link href="/">
+                  <Button variant="ghost" size="sm">
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Back to Dashboard
+                  </Button>
+                </Link>
+              </div>
               <Card>
                 <CardHeader>
                   <CardTitle>Account Information</CardTitle>
