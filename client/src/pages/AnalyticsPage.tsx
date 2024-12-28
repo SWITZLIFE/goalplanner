@@ -18,7 +18,7 @@ export default function AnalyticsPage() {
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.5 }}
         >
-          <div className="h-full overflow-auto scrollbar-hide p-16">
+          <div className="h-full overflow-auto scrollbar-hide py-6 px-14">
             <div className="max-w-8xl mx-auto">
               <div className="flex items-center gap-4 mb-8">
                 <Link href="/">
