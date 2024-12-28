@@ -552,7 +552,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     ))}
                     {!readOnly && (
                       <div
-                        className="flex items-center space-x-2 group h-8 px-8 -ml-6 cursor-pointer hover:bg-accent/50 rounded-sm"
+                        className="flex items-center space-x-2 group h-8 px-8 -ml-6 cursor-pointer hover:bg-transparent rounded-sm"
                         onClick={() => handleAddSubtask(mainTask.id)}
                       >
                         <Plus className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
