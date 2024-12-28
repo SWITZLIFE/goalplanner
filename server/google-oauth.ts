@@ -153,8 +153,6 @@ export function registerGoogleOAuthRoutes(app: Express) {
     }
   });
   
-
-  //sync-calender
   app.post("/api/goals/:goalId/sync-calendar", async (req, res) => {
     try {
       if (!req.isAuthenticated()) {
@@ -162,30 +160,22 @@ export function registerGoogleOAuthRoutes(app: Express) {
       }
   
       const userId = req.user!.id;
-      const goalId = parseInt(req.params.goalId);
   
-      // Fetch the user's Google tokens
-      let tokenRecord;
-      try {
-        [tokenRecord] = await db
-          .select()
-          .from(userTokens)
-          .where(and(eq(userTokens.userId, userId), eq(userTokens.provider, "google")))
-          .limit(1);
-      } catch (error) {
-        console.error("Database error fetching user tokens:", error);
-        return res.status(500).json({ error: "Failed to fetch user tokens from the database" });
-      }
+      // Get Google OAuth tokens
+      const [tokenRecord] = await db
+        .select()
+        .from(userTokens)
+        .where(and(eq(userTokens.userId, userId), eq(userTokens.provider, "google")))
+        .limit(1);
   
       if (!tokenRecord || !tokenRecord.refreshToken) {
         return res.status(400).json({ error: "Google Calendar not connected or refresh token missing" });
       }
   
-      // Check if the access token is expired
+      // Handle token refresh if expired
       const isTokenExpired = tokenRecord.expiresAt && new Date(tokenRecord.expiresAt) <= new Date();
-  
-      // If expired, refresh the token
       let accessToken = tokenRecord.accessToken;
+  
       if (isTokenExpired) {
         try {
           const oauth2Client = new google.auth.OAuth2(
@@ -194,145 +184,128 @@ export function registerGoogleOAuthRoutes(app: Express) {
             process.env.GOOGLE_REDIRECT_URI
           );
   
-          oauth2Client.setCredentials({
-            refresh_token: tokenRecord.refreshToken,
-          });
-  
+          oauth2Client.setCredentials({ refresh_token: tokenRecord.refreshToken });
           const { credentials } = await oauth2Client.refreshAccessToken();
   
           accessToken = credentials.access_token || null;
           const newExpiryDate = credentials.expiry_date ? new Date(credentials.expiry_date) : null;
   
-          // Update the database with the new token
           await db
             .update(userTokens)
-            .set({
-              accessToken,
-              expiresAt: newExpiryDate,
-            })
+            .set({ accessToken, expiresAt: newExpiryDate })
             .where(eq(userTokens.id, tokenRecord.id));
-  
-          console.log("Access token refreshed successfully");
         } catch (error) {
           console.error("Failed to refresh access token:", error);
           return res.status(500).json({ error: "Failed to refresh access token" });
         }
       }
   
-      // Proceed with syncing tasks to the calendar
+      // Initialize Google Calendar
       const oauth2Client = new google.auth.OAuth2(
         process.env.GOOGLE_CLIENT_ID,
         process.env.GOOGLE_CLIENT_SECRET,
         process.env.GOOGLE_REDIRECT_URI
       );
   
-      oauth2Client.setCredentials({
-        access_token: accessToken,
-        refresh_token: tokenRecord.refreshToken,
+      oauth2Client.setCredentials({ 
+        access_token: accessToken, 
+        refresh_token: tokenRecord.refreshToken 
       });
-  
+      
       const calendar = google.calendar({ version: "v3", auth: oauth2Client });
   
-      // Fetch the goal and tasks
-      let goal;
-      try {
-        [goal] = await db
-          .select()
-          .from(goals)
-          .where(and(eq(goals.id, goalId), eq(goals.userId, userId)))
-          .limit(1);
-      } catch (error) {
-        console.error("Database error fetching goal:", error);
-        return res.status(500).json({ error: "Failed to fetch goal from the database" });
-      }
+      // Fetch all tasks for the user
+      const userTasks = await db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.userId, userId));
   
-      if (!goal) {
-        return res.status(404).json({ error: "Goal not found" });
-      }
-  
-      let goalTasks;
-      try {
-        goalTasks = await db
-          .select()
-          .from(tasks)
-          .where(and(eq(tasks.goalId, goalId), eq(tasks.userId, userId)));
-      } catch (error) {
-        console.error("Database error fetching tasks:", error);
-        return res.status(500).json({ error: "Failed to fetch tasks from the database" });
-      }
-  
-      if (goalTasks.length === 0) {
-        return res.status(400).json({ error: "No tasks available to sync" });
-      }
-  
-      // Sync each task as a full-day event
-      for (const task of goalTasks) {
+      for (const task of userTasks) {
         if (!task.plannedDate) {
           console.warn(`Skipping task ${task.id} due to missing plannedDate`);
           continue;
         }
   
-        const plannedDate = new Date(task.plannedDate);
-        const plannedDateStr = plannedDate.toISOString().split("T")[0];
+        const plannedDateStr = new Date(task.plannedDate).toISOString().split("T")[0];
+        const logContext = { userId, taskId: task.id, operation: 'calendar-sync' };
   
-        if (task.eventId) {
-          // Fetch the existing event to see if it needs updating
-          try {
-            const existingEvent = await calendar.events.get({
-              calendarId: "primary",
-              eventId: task.eventId,
-            });
-  
-            if (existingEvent.data.start?.date !== plannedDateStr) {
-              // Delete the old event if the date has changed
-              await calendar.events.delete({
+        try {
+          if (task.eventId) {
+            try {
+              const existingEvent = await calendar.events.get({
                 calendarId: "primary",
                 eventId: task.eventId,
               });
-              console.log(`Deleted old event for task ${task.id}`);
-            } else {
-              console.log(`Task ${task.id} is already up-to-date`);
-              continue;
+  
+              // Check if event needs updating
+              if (
+                existingEvent.data.start?.date !== plannedDateStr ||
+                existingEvent.data.summary !== task.title
+              ) {
+                await calendar.events.update({
+                  calendarId: "primary",
+                  eventId: task.eventId,
+                  requestBody: {
+                    summary: task.title,
+                    description: task.notes || "No notes provided",
+                    start: { date: plannedDateStr },
+                    end: { date: plannedDateStr },
+                  },
+                });
+                console.log({ ...logContext, message: 'Updated existing calendar event' });
+              }
+            } catch (eventError) {
+              // If event doesn't exist, create a new one
+              console.warn(`Event for task ${task.id} not found, recreating`);
+              const newEvent = await calendar.events.insert({
+                calendarId: "primary",
+                requestBody: {
+                  summary: task.title,
+                  description: task.notes || "No notes provided",
+                  start: { date: plannedDateStr },
+                  end: { date: plannedDateStr },
+                },
+              });
+  
+              // Update task with new event ID
+              await db
+                .update(tasks)
+                .set({ eventId: newEvent.data.id })
+                .where(eq(tasks.id, task.id));
+              console.log({ ...logContext, message: 'Recreated calendar event and updated task' });
             }
-          } catch (error) {
-            console.warn(`Event for task ${task.id} not found, creating a new one`);
+          } else {
+            // Create new event
+            const event = {
+              summary: task.title,
+              description: task.notes || "No notes provided",
+              start: { date: plannedDateStr },
+              end: { date: plannedDateStr },
+            };
+  
+            const createdEvent = await calendar.events.insert({
+              calendarId: "primary",
+              requestBody: event,
+            });
+  
+            // Update task with new event ID
+            await db
+              .update(tasks)
+              .set({ eventId: createdEvent.data.id })
+              .where(eq(tasks.id, task.id));
+            console.log({ ...logContext, message: 'Created new calendar event and updated task' });
           }
-        }
-  
-        // Build the event
-        const event = {
-          summary: task.title,
-          description: task.notes || "No notes provided",
-          start: { date: plannedDateStr },
-          end: { date: plannedDateStr },
-        };
-  
-        try {
-          const createdEvent = await calendar.events.insert({
-            calendarId: "primary",
-            requestBody: event,
-          });
-  
-          console.log(`Task ${task.id} synced as event on ${plannedDateStr}`);
-  
-          // Save the event ID to the database
-          await db
-            .update(tasks)
-            .set({ eventId: createdEvent.data.id })
-            .where(eq(tasks.id, task.id));
-        } catch (error) {
-          console.error(`Failed to sync task ${task.id} to calendar:`, error);
+        } catch (taskError) {
+          console.error(`Error processing task ${task.id}:`, taskError);
         }
       }
   
-      res.json({ message: "Tasks synced with Google Calendar as full-day events" });
+      res.json({ message: "Tasks synced with Google Calendar" });
     } catch (error) {
       console.error("Error syncing tasks with calendar:", error);
       res.status(500).json({ error: "Failed to sync tasks with Google Calendar" });
     }
   });
-  
-  
   
   
   
