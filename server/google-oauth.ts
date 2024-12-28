@@ -225,6 +225,9 @@ export function registerGoogleOAuthRoutes(app: Express) {
           console.warn(`Skipping task ${task.id} due to missing plannedDate`);
           continue;
         }
+        if(task.completed === true){  
+          continue;
+        }
   
         // Fetch subtasks for the current task
         const subtasks = await db
