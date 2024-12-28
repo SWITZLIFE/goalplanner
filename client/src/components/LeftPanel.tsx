@@ -15,17 +15,16 @@ export function LeftPanel() {
   const [isGoalsOpen, setIsGoalsOpen] = useState(true);
 
   return (
-    <div className="w-72 lg:w-80 bg-primary h-screen overflow-hidden flex flex-col">
+    <div className="w-64 lg:w-72 bg-primary h-screen overflow-hidden flex flex-col">
       {/* Top Section */}
-      <div className="p-4 flex-none">
-        <div className="py-4 mb-6">
+      <div className="p-3 lg:p-4 flex-none">
+        <div className="py-2 lg:py-3 mb-4 lg:mb-6">
           <div className="flex flex-col items-center">
-            <div className="w-24 h-24 lg:w-32 lg:h-32 rounded-full overflow-hidden mb-3">
+            <div className="w-16 h-16 lg:w-24 lg:h-24 rounded-full overflow-hidden mb-2">
               <img src={user?.profilePhotoUrl || 'https://github.com/shadcn.png'} alt="Profile" className="w-full h-full object-cover" />
             </div>
-            <h2 className="text-white font-medium text-lg">{user?.email?.split('@')[0] || 'User'}</h2>
-            <p className="text-gray-400 text-sm">Product Designer</p>
-            <div className="flex gap-3 mt-3">
+            <h2 className="text-white font-medium text-sm lg:text-base">{user?.email?.split('@')[0] || 'User'}</h2>
+            <div className="flex gap-2 mt-2">
               <a href="https://calendar.google.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">
                 <Calendar className="h-4 w-4" />
               </a>
@@ -42,21 +41,21 @@ export function LeftPanel() {
           </div>
         </div>
 
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-l font-semibold text-white">Coin balance</h1>
+        <div className="flex justify-between items-center mb-3">
+          <h1 className="text-sm lg:text-base font-semibold text-white">Coin balance</h1>
           <CoinBalance />
         </div>
         <CreateGoalDialog />
 
-        <div className="mt-4 space-y-2">
+        <div className="mt-3 space-y-2">
           <Link href="/rewards">
-            <Button variant="subtle" className="w-full text-sm py-1.5">
+            <Button variant="subtle" className="w-full text-xs lg:text-sm py-1.5">
               <Gift className="mr-2 h-4 w-4" />
               Reward Store
             </Button>
           </Link>
           <Link href="/analytics">
-            <Button variant="subtle" className="w-full text-sm py-1.5">
+            <Button variant="subtle" className="w-full text-xs lg:text-sm py-1.5">
               <BarChart2 className="mr-2 h-4 w-4" />
               View Analytics
             </Button>
@@ -65,7 +64,7 @@ export function LeftPanel() {
       </div>
 
       {/* Goals Section - Scrollable */}
-      <div className="px-4 flex-1 min-h-0">
+      <div className="px-3 lg:px-4 flex-1 min-h-0">
         <h2 className="text-sm font-medium text-white mb-2">Your Goals</h2>
         <div className={cn(
           "h-full overflow-y-auto space-y-2 pr-1 pb-4",
@@ -78,8 +77,8 @@ export function LeftPanel() {
       </div>
 
       {/* Footer Section */}
-      <div className="p-4 border-t border-white/10 mt-auto flex-none">
-        <div className="text-sm text-gray-400">
+      <div className="p-3 lg:p-4 border-t border-white/10 mt-auto flex-none">
+        <div className="text-xs lg:text-sm text-gray-400">
           <p className="font-medium text-white mb-1">Need Help?</p>
           <p>Check out our user guide or contact support for assistance.</p>
         </div>
