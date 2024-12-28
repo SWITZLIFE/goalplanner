@@ -40,6 +40,7 @@ export const tasks = pgTable("tasks", {
   isSubtask: boolean("is_subtask").default(false).notNull(),
   isAiGenerated: boolean("is_ai_generated").default(false).notNull(),
   order: integer("order"),
+   eventId: text("event_id"), // Add this line for Google Calendar event ID
 });
 
 export const futureMessages = pgTable("future_messages", {
