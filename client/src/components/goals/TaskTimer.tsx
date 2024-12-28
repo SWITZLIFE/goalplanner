@@ -39,20 +39,19 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Query current timer state with reduced polling frequency and proper error handling
-  const { data: activeTimer, isLoading, error } = useQuery<ActiveTimer | null>({
+  // Query current timer state
+  const { data: activeTimer, error } = useQuery<ActiveTimer | null>({
     queryKey: ["/api/timer/current"],
-    refetchInterval: 5000, // Poll every 5 seconds instead of every second
-    refetchOnWindowFocus: false, // Don't refetch on window focus
-    refetchIntervalInBackground: false, // Don't poll when tab is in background
-    staleTime: 4000, // Consider data fresh for 4 seconds
-    gcTime: 1000 * 60 * 5, // Cache for 5 minutes
+    refetchInterval: 5000,
+    refetchOnWindowFocus: false,
+    refetchIntervalInBackground: false,
+    staleTime: 4000,
+    gcTime: 1000 * 60 * 5,
     retry: (failureCount, error: any) => {
-      // Don't retry on 401 errors
       if (error?.status === 401) return false;
       return failureCount < 3;
     },
-    enabled: !!taskId, // Only run query if we have a taskId
+    enabled: !!taskId,
   });
 
   // Start timer mutation
@@ -71,7 +70,6 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
       return res.json() as Promise<ActiveTimer>;
     },
     onSuccess: () => {
-      // Only invalidate necessary queries
       queryClient.invalidateQueries({ queryKey: ["/api/timer/current"] });
       toast({
         title: "Timer Started",
@@ -107,7 +105,6 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
       setElapsedTime(0);
       onTimerStop?.(data.coinsEarned);
 
-      // Batch invalidations to reduce network requests
       await queryClient.invalidateQueries({
         predicate: (query) => {
           const queryKey = query.queryKey[0];
@@ -153,19 +150,15 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
-
   if (error) {
-    return null; // Don't show timer controls if there's an auth error
+    return null;
   }
 
   const isCurrentTask = activeTimer?.taskId === taskId;
 
   return (
     <div className="flex items-center gap-2">
-      {isCurrentTask && (
+      {isCurrentTask && activeTimer?.isActive && (
         <div className="font-mono text-lg">
           {formatTime(elapsedTime)}
         </div>
