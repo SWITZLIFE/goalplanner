@@ -6,7 +6,7 @@ import { format } from "date-fns";
 import type { Task as BaseTask } from "@db/schema";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Clock, Calendar as CalendarIcon, Quote, X, Plus, ChevronRight } from "lucide-react";
+import { Clock, Calendar as CalendarIcon, Quote, X, Plus, ChevronRight , RefreshCw} from "lucide-react";
 import { VisionGenerator } from "./VisionGenerator";
 import { OverdueTasksDialog } from "./OverdueTasksDialog";
 import { useQuery } from "@tanstack/react-query";
@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { Checkbox } from "@/components/ui/checkbox";
 import { NoteList } from "./NoteList";
-
+import { useUser } from "@/hooks/use-user";
 // Extend the Task type to include properties needed for the task list dialog
 interface Task extends BaseTask {
   isTaskList?: boolean;
@@ -50,6 +50,13 @@ interface TaskDialogProps {
   initialTasks: Task[];
 }
 
+interface User {
+  id?: number;
+  email?: string;
+  googleConnected?: boolean;
+  profilePhotoUrl?: string | null;
+  
+}
 function TaskDialog({ task, onClose, onUpdateDate, onToggleComplete, initialTasks }: TaskDialogProps) {
   const [showDatePicker, setShowDatePicker] = useState(false);
 
@@ -173,6 +180,8 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
   const [showOverdueTasks, setShowOverdueTasks] = useState(true);
   const { updateTask, createTask, updateGoal, goals } = useGoals();
   const { toast } = useToast();
+  const { user }: { user: User | null } = useUser();
+  console.log(user);
 
   // Get overdue tasks
   const overdueTasks = initialTasks.filter(task => {
@@ -267,6 +276,33 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
   const handleDateSelect = async (date: Date | undefined) => {
     setSelectedDate(date);
   };
+
+  
+
+  const handleSyncWithGoogle = async (goalId: number) => {
+    try {
+      const response = await fetch(`/api/goals/${goalId}/sync-calendar`, {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to sync tasks with Google Calendar");
+      }
+
+      toast({
+        title: "Success",
+        description: "Tasks have been synced with your Google Calendar.",
+      });
+    } catch (error:any) {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to sync tasks. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
 
   const handleUpdateTaskDate = async (taskId: number, date: Date | undefined) => {
     try {
@@ -410,6 +446,26 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                   <option value="all">All Goals</option>
                   <option value={goalId}>{goal.title}</option>
                 </select>
+
+                <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!user?.googleConnected}
+                    onClick={() => handleSyncWithGoogle(goal.id)}
+                    className="relative group"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Sync with Google
+                    {!user?.googleConnected && (
+                      <div
+                        className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-max px-3 py-1 text-sm text-white bg-black rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                        role="tooltip"
+                      >
+                        Please visit the <a href="/profile" className="underline text-blue-400">profile page</a> to link Google Calendar with us.
+                      </div>
+                    )}
+                  </Button>
+
               </div>
             </div>
 
