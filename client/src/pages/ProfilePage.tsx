@@ -222,6 +222,30 @@ export default function ProfilePage() {
                       <Label>Email</Label>
                       <Input value={user.email} disabled />
                     </div>
+
+                    <div className="pt-4">
+                      <Button 
+                        variant="destructive" 
+                        onClick={async () => {
+                          try {
+                            const response = await fetch('/api/logout', {
+                              method: 'POST',
+                              credentials: 'include'
+                            });
+                            if (!response.ok) throw new Error('Logout failed');
+                            window.location.href = '/';
+                          } catch (error) {
+                            toast({
+                              title: "Error",
+                              description: "Failed to logout",
+                              variant: "destructive",
+                            });
+                          }
+                        }}
+                      >
+                        Sign Out
+                      </Button>
+                    </div>
                   </div>
                   
                   {!isChangingPassword ? (
