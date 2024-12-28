@@ -39,22 +39,13 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Query current timer state
-  const { data: activeTimer, error } = useQuery<ActiveTimer | null>({
+  const { data: activeTimer } = useQuery<ActiveTimer | null>({
     queryKey: ["/api/timer/current"],
-    refetchInterval: 5000,
-    refetchOnWindowFocus: false,
-    refetchIntervalInBackground: false,
-    staleTime: 4000,
-    gcTime: 1000 * 60 * 5,
-    retry: (failureCount, error: any) => {
-      if (error?.status === 401) return false;
-      return failureCount < 3;
-    },
+    refetchInterval: 1000,
+    staleTime: 0,
     enabled: !!taskId,
   });
 
-  // Start timer mutation
   const startTimer = useMutation({
     mutationFn: async () => {
       const res = await fetch(`/api/tasks/${taskId}/timer/start`, {
@@ -85,7 +76,6 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
     },
   });
 
-  // Stop timer mutation
   const stopTimer = useMutation({
     mutationFn: async () => {
       const res = await fetch(`/api/tasks/${taskId}/timer/stop`, {
@@ -101,19 +91,11 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
       const data: TimerResponse = await res.json();
       return data;
     },
-    onSuccess: async (data) => {
+    onSuccess: (data) => {
       setElapsedTime(0);
       onTimerStop?.(data.coinsEarned);
-
-      await queryClient.invalidateQueries({
-        predicate: (query) => {
-          const queryKey = query.queryKey[0];
-          return (
-            queryKey === "/api/timer/current" ||
-            queryKey === "/api/rewards"
-          );
-        },
-      });
+      queryClient.invalidateQueries({ queryKey: ["/api/timer/current"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/rewards"] });
 
       toast({
         title: "Timer Stopped",
@@ -129,12 +111,12 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
     },
   });
 
-  // Update elapsed time using local state management
   useEffect(() => {
     if (activeTimer?.taskId === taskId && activeTimer?.isActive) {
       const startTime = new Date(activeTimer.startTime).getTime();
       const updateInterval = setInterval(() => {
-        setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
+        const now = Date.now();
+        setElapsedTime(Math.floor((now - startTime) / 1000));
       }, 1000);
 
       return () => clearInterval(updateInterval);
@@ -143,16 +125,11 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
     }
   }, [activeTimer, taskId]);
 
-  // Format seconds into MM:SS
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
-
-  if (error) {
-    return null;
-  }
 
   const isCurrentTask = activeTimer?.taskId === taskId;
 
