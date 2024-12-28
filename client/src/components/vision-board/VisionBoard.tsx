@@ -368,24 +368,25 @@ export function VisionBoard() {
       <Collapsible
         open={isVisionBoardOpen}
         onOpenChange={setIsVisionBoardOpen}
-        className="space-y-4"
+        className="space-y-2"
       >
         <div className="flex justify-between items-center">
-          <CollapsibleTrigger className="flex items-center gap-2">
-            <h2 className="text-xl font-semibold">Vision Board</h2>
+          <CollapsibleTrigger className="flex items-center gap-1.5">
+            <h2 className="text-base font-medium">Vision Board</h2>
             {isVisionBoardOpen ? (
-              <ChevronDown className="h-4 w-4" />
+              <ChevronDown className="h-3.5 w-3.5" />
             ) : (
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-3.5 w-3.5" />
             )}
           </CollapsibleTrigger>
           <Button
             variant="outline"
             size="sm"
+            className="h-7 text-xs"
             disabled={images.length >= 12 || uploading}
             onClick={() => document.getElementById("image-upload")?.click()}
           >
-            <ImagePlus className="w-4 h-4 mr-2" />
+            <ImagePlus className="w-3.5 h-3.5 mr-1.5" />
             {uploading ? "Uploading..." : "Add Image"}
           </Button>
           <input
@@ -400,7 +401,8 @@ export function VisionBoard() {
         <CollapsibleContent
           className={cn(
             "data-[state=open]:animate-collapsible-down",
-            "data-[state=closed]:animate-collapsible-up"
+            "data-[state=closed]:animate-collapsible-up",
+            "pt-1"
           )}
         >
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">

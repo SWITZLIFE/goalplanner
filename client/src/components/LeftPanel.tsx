@@ -54,6 +54,8 @@ export function LeftPanel() {
               Reward Store
             </Button>
           </Link>
+        </div>
+        <div className="mt-3 space-y-2">  
           <Link href="/analytics">
             <Button variant="subtle" className="w-full text-xs lg:text-sm py-1.5">
               <BarChart2 className="mr-2 h-4 w-4" />
@@ -67,7 +69,7 @@ export function LeftPanel() {
       <div className="px-3 lg:px-4 flex-1 min-h-0">
         <h2 className="text-sm font-medium text-white mb-2">Your Goals</h2>
         <div className={cn(
-          "h-full overflow-y-auto space-y-2 pr-1 pb-4",
+          "h-full overflow-y-auto space-y-2 pr-1 pb-4 pt-4 mb-4",
           "scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
         )}>
           {goals.map((goal) => (
@@ -79,7 +81,6 @@ export function LeftPanel() {
       {/* Footer Section */}
       <div className="p-3 lg:p-4 border-t border-white/10 mt-auto flex-none">
         <div className="text-xs lg:text-sm text-gray-400">
-          <p className="font-medium text-white mb-1">Need Help?</p>
           <p>Check out our user guide or contact support for assistance.</p>
         </div>
       </div>
