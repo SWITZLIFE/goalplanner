@@ -39,28 +39,19 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: activeTimer } = useQuery<ActiveTimer | null>({
+  // Query current active timer
+  const { data: activeTimer, error: timerError } = useQuery<ActiveTimer>({
     queryKey: ["/api/timer/current"],
     refetchInterval: 1000,
     staleTime: 0,
-    enabled: !!taskId,
+    enabled: true,
     retry: (failureCount, error: any) => {
-      // Don't retry on auth errors
       if (error?.response?.status === 401) return false;
       return failureCount < 3;
-    },
-    onError: (error: any) => {
-      // Only show error toast for non-auth errors
-      if (error?.response?.status !== 401) {
-        toast({
-          title: "Error",
-          description: "Failed to fetch timer status",
-          variant: "destructive",
-        });
-      }
     }
   });
 
+  // Start timer mutation
   const startTimer = useMutation({
     mutationFn: async () => {
       const res = await fetch(`/api/tasks/${taskId}/timer/start`, {
@@ -78,7 +69,7 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
 
       return res.json() as Promise<ActiveTimer>;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/timer/current"] });
       toast({
         title: "Timer Started",
@@ -94,6 +85,7 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
     },
   });
 
+  // Stop timer mutation
   const stopTimer = useMutation({
     mutationFn: async () => {
       const res = await fetch(`/api/tasks/${taskId}/timer/stop`, {
@@ -109,8 +101,7 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
         throw new Error(errorData.error || "Failed to stop timer");
       }
 
-      const data: TimerResponse = await res.json();
-      return data;
+      return res.json() as Promise<TimerResponse>;
     },
     onSuccess: (data) => {
       setElapsedTime(0);
@@ -132,8 +123,9 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
     },
   });
 
+  // Update elapsed time
   useEffect(() => {
-    if (activeTimer?.taskId === taskId && activeTimer?.isActive) {
+    if (activeTimer && activeTimer.taskId === taskId && activeTimer.isActive) {
       const startTime = new Date(activeTimer.startTime).getTime();
       const updateInterval = setInterval(() => {
         const now = Date.now();
@@ -152,11 +144,9 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const isCurrentTask = activeTimer?.taskId === taskId;
-
   return (
     <div className="flex items-center gap-2">
-      {isCurrentTask && activeTimer?.isActive && (
+      {activeTimer?.taskId === taskId && activeTimer?.isActive && (
         <div className="font-mono text-lg">
           {formatTime(elapsedTime)}
         </div>
@@ -171,7 +161,7 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
         >
           <Timer className="h-4 w-4" />
         </Button>
-      ) : isCurrentTask ? (
+      ) : activeTimer.taskId === taskId ? (
         <Button
           variant="ghost"
           size="sm"
