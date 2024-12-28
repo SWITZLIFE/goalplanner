@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Gift, BarChart2, Calendar, Facebook, Instagram, Linkedin } from "lucide-react";
 import { Link } from "wouter";
@@ -59,18 +58,6 @@ export function LeftPanel() {
           <CoinBalance />
         </div>
         <CreateGoalDialog />
-        <Link href="/rewards">
-          <Button variant="subtle" className="w-full text-xs lg:text-sm py-1.5">
-            <Gift className="mr-2 h-4 w-4" />
-            Reward Store
-          </Button>
-        </Link>
-        <Link href="/analytics">
-          <Button variant="subtle" className="w-full text-xs lg:text-sm py-1.5">
-            <BarChart2 className="mr-2 h-4 w-4" />
-            View Analytics
-          </Button>
-        </Link>
       </div>
 
       {/* Goals Section */}
