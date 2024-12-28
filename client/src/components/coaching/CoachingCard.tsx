@@ -147,7 +147,7 @@ export function CoachingCard({ goalId }: CoachingCardProps) {
 
   if (isMinimized) {
     return (
-      <div className="fixed bottom-4 right-4 z-50">
+      <div className="fixed bottom-4 right-4 z-50 p-6">
         <Button
           className="rounded-full w-12 h-12 shadow-lg"
           onClick={() => setIsMinimized(false)}
@@ -159,7 +159,7 @@ export function CoachingCard({ goalId }: CoachingCardProps) {
   }
 
   return (
-    <Card className="fixed bottom-4 right-4 w-96 h-[500px] shadow-xl z-50 flex flex-col">
+    <Card className="fixed bottom-8 right-8 w-96 h-[500px] shadow-xl z-50 flex flex-col m-6">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center gap-2">
