@@ -68,7 +68,7 @@ export function LeftPanel() {
           "snap-y snap-mandatory"
         )}>
           {goals.map((goal) => (
-            <div key={goal.id} className="snap-start py-1">
+            <div key={goal.id} className="snap-start py-0.5">
               <GoalCard goal={goal} />
             </div>
           ))}
