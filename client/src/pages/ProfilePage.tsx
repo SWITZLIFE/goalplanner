@@ -46,6 +46,27 @@ export default function ProfilePage() {
     return null;
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex h-screen bg-primary">
+        <LeftPanel />
+        <div className="flex-1 flex flex-col">
+          <PageHeader />
+          <motion.div 
+            className="flex-1 m-4 bg-background rounded-[30px] overflow-hidden"
+            initial={{ x: 300, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+          >
+            <div className="h-full flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
   const handleConnectGoogle = () => {
     window.location.href = "/api/auth/google/init";
   };
