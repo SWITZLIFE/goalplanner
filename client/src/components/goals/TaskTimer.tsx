@@ -40,36 +40,43 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
   const queryClient = useQueryClient();
 
   // Query current active timer
-  const { data: activeTimer, error: timerError } = useQuery<ActiveTimer>({
+  const { data: activeTimer } = useQuery<ActiveTimer | null>({
     queryKey: ["/api/timer/current"],
     refetchInterval: 1000,
     staleTime: 0,
-    enabled: true,
-    retry: (failureCount, error: any) => {
-      if (error?.response?.status === 401) return false;
-      return failureCount < 3;
-    }
   });
 
   // Start timer mutation
   const startTimer = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/tasks/${taskId}/timer/start`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          'Content-Type': 'application/json'
+      try {
+        const res = await fetch(`/api/tasks/${taskId}/timer/start`, {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          if (data.error === "Another timer is already running") {
+            toast({
+              title: "Timer Error",
+              description: "Another timer is already running. Please stop it first.",
+              variant: "destructive",
+            });
+          }
+          throw new Error(data.error || "Failed to start timer");
         }
-      });
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(errorData.error || "Failed to start timer");
+        return data;
+      } catch (error: any) {
+        throw new Error(error.message || "Failed to start timer");
       }
-
-      return res.json() as Promise<ActiveTimer>;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/timer/current"] });
       toast({
         title: "Timer Started",
@@ -77,31 +84,38 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
       });
     },
     onError: (error) => {
-      toast({
-        title: "Failed to start timer",
-        description: error instanceof Error ? error.message : "Something went wrong",
-        variant: "destructive",
-      });
+      if (error.message !== "Another timer is already running") {
+        toast({
+          title: "Failed to start timer",
+          description: error instanceof Error ? error.message : "Something went wrong",
+          variant: "destructive",
+        });
+      }
     },
   });
 
   // Stop timer mutation
   const stopTimer = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/tasks/${taskId}/timer/stop`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          'Content-Type': 'application/json'
+      try {
+        const res = await fetch(`/api/tasks/${taskId}/timer/stop`, {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to stop timer");
         }
-      });
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(errorData.error || "Failed to stop timer");
+        return data as TimerResponse;
+      } catch (error: any) {
+        throw new Error(error.message || "Failed to stop timer");
       }
-
-      return res.json() as Promise<TimerResponse>;
     },
     onSuccess: (data) => {
       setElapsedTime(0);
@@ -125,17 +139,23 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
 
   // Update elapsed time
   useEffect(() => {
-    if (activeTimer && activeTimer.taskId === taskId && activeTimer.isActive) {
+    let intervalId: NodeJS.Timeout | undefined;
+
+    if (activeTimer?.taskId === taskId && activeTimer?.isActive) {
       const startTime = new Date(activeTimer.startTime).getTime();
-      const updateInterval = setInterval(() => {
+      intervalId = setInterval(() => {
         const now = Date.now();
         setElapsedTime(Math.floor((now - startTime) / 1000));
       }, 1000);
-
-      return () => clearInterval(updateInterval);
     } else {
       setElapsedTime(0);
     }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
   }, [activeTimer, taskId]);
 
   const formatTime = (seconds: number) => {
@@ -144,14 +164,17 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const isTimerRunningForTask = activeTimer?.taskId === taskId && activeTimer?.isActive;
+  const isAnyTimerRunning = activeTimer?.isActive;
+
   return (
     <div className="flex items-center gap-2">
-      {activeTimer?.taskId === taskId && activeTimer?.isActive && (
+      {isTimerRunningForTask && (
         <div className="font-mono text-lg">
           {formatTime(elapsedTime)}
         </div>
       )}
-      {!activeTimer ? (
+      {!isAnyTimerRunning ? (
         <Button
           variant="ghost"
           size="sm"
@@ -161,7 +184,7 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
         >
           <Timer className="h-4 w-4" />
         </Button>
-      ) : activeTimer.taskId === taskId ? (
+      ) : isTimerRunningForTask ? (
         <Button
           variant="ghost"
           size="sm"
@@ -172,8 +195,8 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
           <StopCircle className="h-4 w-4" />
         </Button>
       ) : (
-        <Button variant="outline" size="sm" disabled>
-          Timer Active on Another Task
+        <Button variant="outline" size="sm" disabled title="Another timer is running">
+          Timer Active
         </Button>
       )}
     </div>
