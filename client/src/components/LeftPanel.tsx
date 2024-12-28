@@ -72,7 +72,6 @@ export function LeftPanel() {
               <GoalCard goal={goal} />
             </div>
           ))}
-          ))}
         </div>
       </div>
 
