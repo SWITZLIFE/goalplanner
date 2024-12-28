@@ -6,7 +6,7 @@ import { Gift, BarChart2 } from "lucide-react";
 
 export function PageHeader() {
   return (
-    <div className="h-14 flex pt-5 justify-between px-8 text-white border-white/10">
+    <div className="h-11 flex pt-3 justify-between px-8 text-white border-white/10">
       <nav className="flex gap-6">
         <Link href="/rewards">
           <Button variant="ghost" className="text-sm font-medium hover:text/80">

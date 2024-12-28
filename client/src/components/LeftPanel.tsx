@@ -18,7 +18,7 @@ export function LeftPanel() {
     <div className="w-[clamp(16rem,20vw,30rem)] bg-primary h-screen flex flex-col">
       {/* User Profile Section */}
       <div className="flex-none p-4 border-b border-white/10">
-        <div className="flex flex-col items-center py-4">
+        <div className="flex flex-col items-center mt-14">
           <div 
             className="w-16 h-16 lg:w-24 lg:h-24 rounded-full overflow-hidden mb-3 cursor-pointer" 
             onClick={() => window.location.href = '/profile'}
@@ -52,7 +52,7 @@ export function LeftPanel() {
       </div>
 
       {/* Coins and Actions Section */}
-      <div className="flex-none p-4 space-y-4 border-b border-white/10">
+      <div className="flex-none py-2 px-4 space-y-4">
         <div className="flex justify-between items-center">
           <h1 className="text-sm lg:text-base font-semibold text-white">Coin balance</h1>
           <CoinBalance />
@@ -61,11 +61,10 @@ export function LeftPanel() {
       </div>
 
       {/* Goals Section */}
-      <div className="flex-1 flex flex-col min-h-0 p-4">
+      <div className="flex-1 flex flex-col min-h-0 px-4 py-2">
         <h2 className="text-sm font-medium text-white mb-3">Your Goals</h2>
         <div className={cn(
-          "flex-1 overflow-y-auto space-y-2 pr-1",
-          "scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
+          "flex-1 overflow-y-auto space-y-2 pr-1, scrollbar-hide"
         )}>
           {goals.map((goal) => (
             <GoalCard key={goal.id} goal={goal} />
@@ -74,7 +73,8 @@ export function LeftPanel() {
       </div>
 
       {/* Footer Section */}
-      <div className="flex-none py-6 px-4 border-t border-white/10">
+      <div className="flex-none py-6 px-4">
+        <h1 className="text-sm lg:text-base font-semibold text-white">Tutorial</h1>
         {/* Footer content if needed */}
       </div>
     </div>
