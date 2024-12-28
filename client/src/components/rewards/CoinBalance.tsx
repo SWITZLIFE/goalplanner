@@ -19,6 +19,8 @@ export function CoinBalance() {
     refetchInterval: 5000, // Poll every 5 seconds instead of every second
     refetchOnWindowFocus: false, // Don't refetch on window focus
     refetchIntervalInBackground: false, // Don't poll when tab is in background
+    staleTime: 4000, // Consider data fresh for 4 seconds
+    cacheTime: 1000 * 60 * 5, // Cache for 5 minutes
   });
 
   useEffect(() => {

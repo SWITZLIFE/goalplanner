@@ -39,10 +39,14 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Query current timer state
+  // Query current timer state with reduced polling frequency
   const { data: activeTimer, isLoading } = useQuery<ActiveTimer | null>({
     queryKey: ["/api/timer/current"],
-    refetchInterval: 1000, // Poll every second to keep timer state in sync
+    refetchInterval: 5000, // Poll every 5 seconds instead of every second
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchIntervalInBackground: false, // Don't poll when tab is in background
+    staleTime: 4000, // Consider data fresh for 4 seconds
+    cacheTime: 1000 * 60 * 5, // Cache for 5 minutes
   });
 
   // Start timer mutation
@@ -56,8 +60,8 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
       return res.json() as Promise<ActiveTimer>;
     },
     onSuccess: () => {
+      // Only invalidate necessary queries
       queryClient.invalidateQueries({ queryKey: ["/api/timer/current"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/goals"] }); // Refresh goals to get updated task times
       toast({
         title: "Timer Started",
         description: "Time tracking has begun for this task",
@@ -86,13 +90,17 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
     onSuccess: async (data) => {
       setElapsedTime(0);
       onTimerStop?.(data.coinsEarned);
-      
-      // Invalidate all affected queries to refresh their data
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["/api/timer/current"] }),
-        queryClient.invalidateQueries({ queryKey: ["/api/goals"] }), // Refresh goals to get updated task times
-        queryClient.invalidateQueries({ queryKey: ["/api/rewards"] }), // Force refresh of coin balance
-      ]);
+
+      // Batch invalidations to reduce network requests
+      await queryClient.invalidateQueries({
+        predicate: (query) => {
+          const queryKey = query.queryKey[0];
+          return (
+            queryKey === "/api/timer/current" ||
+            queryKey === "/api/rewards"
+          );
+        },
+      });
 
       toast({
         title: "Timer Stopped",
@@ -108,16 +116,15 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
     },
   });
 
-  // Update elapsed time every second when timer is active
+  // Update elapsed time using local state management
   useEffect(() => {
     if (activeTimer && activeTimer.taskId === taskId) {
       const startTime = new Date(activeTimer.startTime).getTime();
-      const interval = setInterval(() => {
-        const now = Date.now();
-        setElapsedTime(Math.floor((now - startTime) / 1000));
+      const updateInterval = setInterval(() => {
+        setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
       }, 1000);
 
-      return () => clearInterval(interval);
+      return () => clearInterval(updateInterval);
     } else {
       setElapsedTime(0);
     }
@@ -138,36 +145,36 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
 
   return (
     <div className="flex items-center gap-2">
-        {isCurrentTask && (
-          <div className="font-mono text-lg">
-            {formatTime(elapsedTime)}
-          </div>
-        )}
-        {!activeTimer ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => startTimer.mutate()}
-            disabled={startTimer.isPending}
-            title="Start Timer"
-          >
-            <Timer className="h-4 w-4" />
-          </Button>
-        ) : isCurrentTask ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => stopTimer.mutate()}
-            disabled={stopTimer.isPending}
-            title="Stop Timer"
-          >
-            <StopCircle className="h-4 w-4" />
-          </Button>
-        ) : (
-          <Button variant="outline" size="sm" disabled>
-            Timer Active on Another Task
-          </Button>
-        )}
-      </div>
+      {isCurrentTask && (
+        <div className="font-mono text-lg">
+          {formatTime(elapsedTime)}
+        </div>
+      )}
+      {!activeTimer ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => startTimer.mutate()}
+          disabled={startTimer.isPending}
+          title="Start Timer"
+        >
+          <Timer className="h-4 w-4" />
+        </Button>
+      ) : isCurrentTask ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => stopTimer.mutate()}
+          disabled={stopTimer.isPending}
+          title="Stop Timer"
+        >
+          <StopCircle className="h-4 w-4" />
+        </Button>
+      ) : (
+        <Button variant="outline" size="sm" disabled>
+          Timer Active on Another Task
+        </Button>
+      )}
+    </div>
   );
 }
