@@ -1,4 +1,11 @@
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  serial,
+  integer,
+  boolean,
+  timestamp,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 import { z } from "zod";
@@ -15,7 +22,9 @@ export const users = pgTable("users", {
 
 export const goals = pgTable("goals", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description"),
   targetDate: timestamp("target_date").notNull(),
@@ -28,13 +37,18 @@ export const goals = pgTable("goals", {
 
 export const tasks = pgTable("tasks", {
   id: serial("id").primaryKey(),
-  goalId: integer("goal_id").notNull().references(() => goals.id, { onDelete: "cascade" }),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  goalId: integer("goal_id")
+    .notNull()
+    .references(() => goals.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   completed: boolean("completed").default(false).notNull(),
   estimatedMinutes: integer("estimated_minutes"),
   totalMinutesSpent: integer("total_minutes_spent").default(0).notNull(),
   plannedDate: timestamp("planned_date"),
+  notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   parentTaskId: integer("parent_task_id").references(() => tasks.id),
   isSubtask: boolean("is_subtask").default(false).notNull(),
@@ -44,7 +58,9 @@ export const tasks = pgTable("tasks", {
 
 export const futureMessages = pgTable("future_messages", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   message: text("message").notNull(),
   isRead: boolean("is_read").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -52,8 +68,12 @@ export const futureMessages = pgTable("future_messages", {
 
 export const goalDailyQuotes = pgTable("goal_daily_quotes", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  goalId: integer("goal_id").notNull().references(() => goals.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  goalId: integer("goal_id")
+    .notNull()
+    .references(() => goals.id, { onDelete: "cascade" }),
   quote: text("quote").notNull(),
   isRead: boolean("is_read").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -61,9 +81,15 @@ export const goalDailyQuotes = pgTable("goal_daily_quotes", {
 
 export const notes = pgTable("notes", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  goalId: integer("goal_id").notNull().references(() => goals.id, { onDelete: "cascade" }),
-  taskId: integer("task_id").references(() => tasks.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  goalId: integer("goal_id")
+    .notNull()
+    .references(() => goals.id, { onDelete: "cascade" }),
+  taskId: integer("task_id").references(() => tasks.id, {
+    onDelete: "cascade",
+  }),
   title: text("title").notNull(),
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -106,16 +132,19 @@ export const futureMessagesRelations = relations(futureMessages, ({ one }) => ({
   }),
 }));
 
-export const goalDailyQuotesRelations = relations(goalDailyQuotes, ({ one }) => ({
-  user: one(users, {
-    fields: [goalDailyQuotes.userId],
-    references: [users.id],
+export const goalDailyQuotesRelations = relations(
+  goalDailyQuotes,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [goalDailyQuotes.userId],
+      references: [users.id],
+    }),
+    goal: one(goals, {
+      fields: [goalDailyQuotes.goalId],
+      references: [goals.id],
+    }),
   }),
-  goal: one(goals, {
-    fields: [goalDailyQuotes.goalId],
-    references: [goals.id],
-  }),
-}));
+);
 
 export const notesRelations = relations(notes, ({ one }) => ({
   user: one(users, {
@@ -176,7 +205,9 @@ export type NewGoalDailyQuote = typeof goalDailyQuotes.$inferInsert;
 
 export const rewards = pgTable("rewards", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   coins: integer("coins").default(0).notNull(),
   lastUpdated: timestamp("last_updated").defaultNow().notNull(),
 });
@@ -193,15 +224,23 @@ export const rewardItems = pgTable("reward_items", {
 
 export const purchasedRewards = pgTable("purchased_rewards", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  rewardItemId: integer("reward_item_id").notNull().references(() => rewardItems.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  rewardItemId: integer("reward_item_id")
+    .notNull()
+    .references(() => rewardItems.id, { onDelete: "cascade" }),
   purchasedAt: timestamp("purchased_at").defaultNow().notNull(),
 });
 
 export const timeTracking = pgTable("time_tracking", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  taskId: integer("task_id")
+    .notNull()
+    .references(() => tasks.id, { onDelete: "cascade" }),
   startTime: timestamp("start_time").notNull(),
   endTime: timestamp("end_time"),
   coinsEarned: integer("coins_earned").default(0),
@@ -211,7 +250,9 @@ export const timeTracking = pgTable("time_tracking", {
 
 export const visionBoardImages = pgTable("vision_board_images", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   imageUrl: text("image_url").notNull(),
   position: integer("position").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -221,16 +262,19 @@ export const rewardItemsRelations = relations(rewardItems, ({ many }) => ({
   purchases: many(purchasedRewards),
 }));
 
-export const purchasedRewardsRelations = relations(purchasedRewards, ({ one }) => ({
-  user: one(users, {
-    fields: [purchasedRewards.userId],
-    references: [users.id],
+export const purchasedRewardsRelations = relations(
+  purchasedRewards,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [purchasedRewards.userId],
+      references: [users.id],
+    }),
+    rewardItem: one(rewardItems, {
+      fields: [purchasedRewards.rewardItemId],
+      references: [rewardItems.id],
+    }),
   }),
-  rewardItem: one(rewardItems, {
-    fields: [purchasedRewards.rewardItemId],
-    references: [rewardItems.id],
-  }),
-}));
+);
 
 export const timeTrackingRelations = relations(timeTracking, ({ one }) => ({
   user: one(users, {
@@ -252,7 +296,9 @@ export const visionBoardRelations = relations(visionBoardImages, ({ one }) => ({
 
 export const userTokens = pgTable("user_tokens", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
   provider: text("provider").notNull(),
   accessToken: text("access_token"),
   refreshToken: text("refresh_token"),

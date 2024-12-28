@@ -1,7 +1,17 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { eq, and, desc, isNull, sql } from "drizzle-orm";
-import { notes, users, rewards, rewardItems, purchasedRewards } from "@db/schema";
-import { getTodayMessage, markMessageAsRead, generateDailyMessage } from "./future-message";
+import {
+  notes,
+  users,
+  rewards,
+  rewardItems,
+  purchasedRewards,
+} from "@db/schema";
+import {
+  getTodayMessage,
+  markMessageAsRead,
+  generateDailyMessage,
+} from "./future-message";
 import { createServer, type Server } from "http";
 import { db } from "@db";
 import { goals, tasks, timeTracking, visionBoardImages } from "@db/schema";
@@ -12,27 +22,30 @@ import { generateTaskBreakdown, generateShortTitle } from "./openai";
 import { getCoachingAdvice } from "./coaching";
 import { setupAuth } from "./auth";
 import { openai } from "./openai";
-import { uploadFileToSupabase } from './supabase';
+import { uploadFileToSupabase } from "./supabase";
 import { getTodayQuote, markQuoteAsRead } from "./goal-quotes";
+import { registerGoogleOAuthRoutes } from "./google-oauth";
 
 // Configure multer for handling file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
     if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
-      return cb(new Error('Only image files are allowed!'));
+      return cb(new Error("Only image files are allowed!"));
     }
     cb(null, true);
   },
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
-  }
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
 });
 
 // Authentication middleware with proper session handling
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated()) {
-    return res.status(401).json({ error: "You must be logged in to access this resource" });
+    return res
+      .status(401)
+      .json({ error: "You must be logged in to access this resource" });
   }
 
   // Add session timestamp
@@ -59,59 +72,70 @@ export function registerRoutes(app: Express): Server {
   // Setup authentication middleware and routes first
   setupAuth(app);
 
+  registerGoogleOAuthRoutes(app);
   // Profile photo upload route
-  app.post("/api/user/profile-photo", requireAuth, upload.single('photo'), async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ error: "No file uploaded" });
+  app.post(
+    "/api/user/profile-photo",
+    requireAuth,
+    upload.single("photo"),
+    async (req, res) => {
+      try {
+        if (!req.file) {
+          return res.status(400).json({ error: "No file uploaded" });
+        }
+
+        const userId = req.user!.id;
+
+        // Upload to Supabase storage
+        const imageUrl = await uploadFileToSupabase(req.file);
+
+        // Update user's profile photo URL in database
+        const [updatedUser] = await db
+          .update(users)
+          .set({ profilePhotoUrl: imageUrl })
+          .where(eq(users.id, userId))
+          .returning();
+
+        if (!updatedUser) {
+          throw new Error("Failed to update user profile");
+        }
+
+        res.json({
+          message: "Profile photo updated successfully",
+          profilePhotoUrl: imageUrl,
+        });
+      } catch (error) {
+        console.error("Failed to upload profile photo:", error);
+        res.status(500).json({ error: "Failed to upload profile photo" });
       }
-
-      const userId = req.user!.id;
-
-      // Upload to Supabase storage
-      const imageUrl = await uploadFileToSupabase(req.file);
-
-      // Update user's profile photo URL in database
-      const [updatedUser] = await db.update(users)
-        .set({ profilePhotoUrl: imageUrl })
-        .where(eq(users.id, userId))
-        .returning();
-
-      if (!updatedUser) {
-        throw new Error("Failed to update user profile");
-      }
-
-      res.json({ 
-        message: "Profile photo updated successfully",
-        profilePhotoUrl: imageUrl 
-      });
-    } catch (error) {
-      console.error("Failed to upload profile photo:", error);
-      res.status(500).json({ error: "Failed to upload profile photo" });
-    }
-  });
+    },
+  );
 
   // Configure CORS headers for Supabase Storage URLs
   app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', process.env.SUPABASE_URL);
-    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH');
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    res.header("Access-Control-Allow-Origin", process.env.SUPABASE_URL);
+    res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,PATCH");
+    res.header("Access-Control-Allow-Headers", "Content-Type");
     next();
   });
 
   // Protect all /api routes except auth routes with enhanced session verification
-  app.use('/api', (req, res, next) => {
+  app.use("/api", (req, res, next) => {
     // Skip auth for public routes
-    if (req.path.startsWith('/login') || 
-        req.path.startsWith('/register') || 
-        req.path.startsWith('/logout') || 
-        req.path.startsWith('/user')) {
+    if (
+      req.path.startsWith("/login") ||
+      req.path.startsWith("/register") ||
+      req.path.startsWith("/logout") ||
+      req.path.startsWith("/user")
+    ) {
       return next();
     }
 
     // Enhanced session verification
     if (!req.isAuthenticated() || !req.session) {
-      return res.status(401).json({ error: "You must be logged in to access this resource" });
+      return res
+        .status(401)
+        .json({ error: "You must be logged in to access this resource" });
     }
 
     // Strict user verification
@@ -149,63 +173,61 @@ export function registerRoutes(app: Express): Server {
   app.get("/api/goals", async (req, res) => {
     try {
       const userId = res.locals.userId; // Get userId from middleware
-      console.log('Fetching goals for user:', userId);
+      console.log("Fetching goals for user:", userId);
 
       // First verify the user exists
-      const [user] = await db.select()
+      const [user] = await db
+        .select()
         .from(users)
         .where(eq(users.id, userId))
         .limit(1);
 
       if (!user) {
-        console.error('User not found:', userId);
+        console.error("User not found:", userId);
         return res.status(404).json({ error: "User not found" });
       }
 
       // Get all goals that belong to this user only with strict filtering
-      const userGoals = await db.select({
-        id: goals.id,
-        title: goals.title,
-        description: goals.description,
-        targetDate: goals.targetDate,
-        progress: goals.progress,
-        totalTasks: goals.totalTasks,
-        createdAt: goals.createdAt,
-        visionStatement: goals.visionStatement,
-        visionResponses: goals.visionResponses,
-        userId: goals.userId, // Explicitly select userId to verify ownership
-      })
-      .from(goals)
-      .where(eq(goals.userId, userId))
-      .orderBy(desc(goals.createdAt));
+      const userGoals = await db
+        .select({
+          id: goals.id,
+          title: goals.title,
+          description: goals.description,
+          targetDate: goals.targetDate,
+          progress: goals.progress,
+          totalTasks: goals.totalTasks,
+          createdAt: goals.createdAt,
+          visionStatement: goals.visionStatement,
+          visionResponses: goals.visionResponses,
+          userId: goals.userId, // Explicitly select userId to verify ownership
+        })
+        .from(goals)
+        .where(eq(goals.userId, userId))
+        .orderBy(desc(goals.createdAt));
 
       // Double check that all goals belong to the current user
-      if (userGoals.some(goal => goal.userId !== userId)) {
-        console.error('Data isolation breach detected');
+      if (userGoals.some((goal) => goal.userId !== userId)) {
+        console.error("Data isolation breach detected");
         return res.status(500).json({ error: "Data isolation error" });
       }
 
       // For each goal, get its tasks
       const goalsWithTasks = await Promise.all(
         userGoals.map(async (goal) => {
-          const goalTasks = await db.select()
+          const goalTasks = await db
+            .select()
             .from(tasks)
-            .where(
-              and(
-                eq(tasks.goalId, goal.id),
-                eq(tasks.userId, userId)
-              )
-            )
+            .where(and(eq(tasks.goalId, goal.id), eq(tasks.userId, userId)))
             .orderBy(tasks.createdAt);
 
           return {
             ...goal,
-            tasks: goalTasks
+            tasks: goalTasks,
           };
-        })
+        }),
       );
 
-      console.log('Found goals:', goalsWithTasks.length);
+      console.log("Found goals:", goalsWithTasks.length);
       res.json(goalsWithTasks);
     } catch (error) {
       console.error("Failed to fetch goals:", error);
@@ -217,22 +239,30 @@ export function registerRoutes(app: Express): Server {
     try {
       const { title, description, targetDate, totalTasks } = req.body;
       const userId = req.user!.id;
-      console.log('Creating goal for user:', userId, 'with totalTasks:', totalTasks);
+      console.log(
+        "Creating goal for user:",
+        userId,
+        "with totalTasks:",
+        totalTasks,
+      );
 
       // Verify user exists
-      const [user] = await db.select()
+      const [user] = await db
+        .select()
         .from(users)
         .where(eq(users.id, userId))
         .limit(1);
 
       if (!user) {
-        console.error('User not found:', userId);
+        console.error("User not found:", userId);
         return res.status(404).json({ error: "User not found" });
       }
 
       // Validate input
       if (!title || !targetDate) {
-        return res.status(400).json({ error: "Title and target date are required" });
+        return res
+          .status(400)
+          .json({ error: "Title and target date are required" });
       }
 
       // Double check user authentication and authorization
@@ -241,11 +271,13 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Generate a shorter title using AI only if we're generating tasks
-      const shortTitle = totalTasks > 0 ? await generateShortTitle(title) : title;
-      console.log('Using title:', shortTitle);
+      const shortTitle =
+        totalTasks > 0 ? await generateShortTitle(title) : title;
+      console.log("Using title:", shortTitle);
 
       // Create the goal with strict user association
-      const [newGoal] = await db.insert(goals)
+      const [newGoal] = await db
+        .insert(goals)
         .values({
           userId,
           title: shortTitle,
@@ -257,31 +289,32 @@ export function registerRoutes(app: Express): Server {
         .returning();
 
       if (!newGoal) {
-        throw new Error('Failed to create goal');
+        throw new Error("Failed to create goal");
       }
 
       // Verify the created goal belongs to the current user
-      const [verifiedGoal] = await db.select()
+      const [verifiedGoal] = await db
+        .select()
         .from(goals)
-        .where(and(
-          eq(goals.id, newGoal.id),
-          eq(goals.userId, userId)
-        ))
+        .where(and(eq(goals.id, newGoal.id), eq(goals.userId, userId)))
         .limit(1);
 
       if (!verifiedGoal || verifiedGoal.userId !== userId) {
         await db.delete(goals).where(eq(goals.id, newGoal.id));
-        throw new Error('Data isolation breach detected during goal creation');
+        throw new Error("Data isolation breach detected during goal creation");
       }
 
-      console.log('Created and verified goal:', verifiedGoal);
+      console.log("Created and verified goal:", verifiedGoal);
 
       // Create tasks and subtasks only if totalTasks > 0
       let createdTasks = [];
       if (totalTasks > 0) {
         try {
           const breakdown = await generateTaskBreakdown(title, totalTasks);
-          console.log('Task breakdown from OpenAI:', JSON.stringify(breakdown, null, 2));
+          console.log(
+            "Task breakdown from OpenAI:",
+            JSON.stringify(breakdown, null, 2),
+          );
 
           // Create tasks in the order they come from OpenAI
           for (const task of breakdown) {
@@ -289,7 +322,8 @@ export function registerRoutes(app: Express): Server {
 
             try {
               // Create main task with strict user association
-              const [mainTask] = await db.insert(tasks)
+              const [mainTask] = await db
+                .insert(tasks)
                 .values({
                   goalId: newGoal.id,
                   userId: userId,
@@ -309,7 +343,8 @@ export function registerRoutes(app: Express): Server {
                 for (const subtask of task.subtasks) {
                   if (!subtask.title) continue;
 
-                  const [createdSubtask] = await db.insert(tasks)
+                  const [createdSubtask] = await db
+                    .insert(tasks)
                     .values({
                       goalId: newGoal.id,
                       userId: userId,
@@ -328,19 +363,19 @@ export function registerRoutes(app: Express): Server {
                 }
               }
             } catch (taskError) {
-              console.error('Error creating task:', taskError);
+              console.error("Error creating task:", taskError);
               continue;
             }
           }
         } catch (breakdownError) {
-          console.error('Error generating task breakdown:', breakdownError);
+          console.error("Error generating task breakdown:", breakdownError);
         }
       }
 
       // Return the goal with any created tasks
       const response = {
         ...verifiedGoal,
-        tasks: createdTasks
+        tasks: createdTasks,
       };
 
       res.json(response);
@@ -359,44 +394,39 @@ export function registerRoutes(app: Express): Server {
 
       // First verify the goal exists and belongs to the user
       const goalToDelete = await db.query.goals.findFirst({
-        where: and(
-          eq(goals.id, goalIdInt),
-          eq(goals.userId, userId)
-        ),
+        where: and(eq(goals.id, goalIdInt), eq(goals.userId, userId)),
         with: {
-          tasks: true
-        }
+          tasks: true,
+        },
       });
 
       if (!goalToDelete) {
-        return res.status(404).json({ error: "Goal not found or unauthorized" });
+        return res
+          .status(404)
+          .json({ error: "Goal not found or unauthorized" });
       }
 
       // Delete in correct order to handle foreign key constraints
 
       // 1. Delete all time tracking records for tasks in this goal
       for (const task of goalToDelete.tasks) {
-        await db.delete(timeTracking)
-          .where(eq(timeTracking.taskId, task.id));
+        await db.delete(timeTracking).where(eq(timeTracking.taskId, task.id));
       }
 
       // 2. Delete all tasks associated with the goal
-      await db.delete(tasks)
-        .where(eq(tasks.goalId, goalIdInt));
+      await db.delete(tasks).where(eq(tasks.goalId, goalIdInt));
 
       // 3. Finally delete the goal
-      await db.delete(goals)
-        .where(and(
-          eq(goals.id, goalIdInt),
-          eq(goals.userId, userId)
-        ));
+      await db
+        .delete(goals)
+        .where(and(eq(goals.id, goalIdInt), eq(goals.userId, userId)));
 
       res.json({ success: true });
     } catch (error) {
       console.error("Failed to delete goal:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to delete goal",
-        details: error instanceof Error ? error.message : "Unknown error"
+        details: error instanceof Error ? error.message : "Unknown error",
       });
     }
   });
@@ -409,27 +439,25 @@ export function registerRoutes(app: Express): Server {
       const userId = req.user!.id;
 
       // Verify the goal belongs to the user
-      const [goal] = await db.select()
+      const [goal] = await db
+        .select()
         .from(goals)
-        .where(and(
-          eq(goals.id, parseInt(goalId)),
-          eq(goals.userId, userId)
-        ))
+        .where(and(eq(goals.id, parseInt(goalId)), eq(goals.userId, userId)))
         .limit(1);
 
       if (!goal) {
-        return res.status(404).json({ error: "Goal not found or unauthorized" });
+        return res
+          .status(404)
+          .json({ error: "Goal not found or unauthorized" });
       }
 
       // Update the goal
-      const [updatedGoal] = await db.update(goals)
-        .set({ 
-          visionStatement: visionStatement
+      const [updatedGoal] = await db
+        .update(goals)
+        .set({
+          visionStatement: visionStatement,
         })
-        .where(and(
-          eq(goals.id, parseInt(goalId)),
-          eq(goals.userId, userId)
-        ))
+        .where(and(eq(goals.id, parseInt(goalId)), eq(goals.userId, userId)))
         .returning();
 
       if (!updatedGoal) {
@@ -439,9 +467,9 @@ export function registerRoutes(app: Express): Server {
       res.json(updatedGoal);
     } catch (error) {
       console.error("Failed to update goal:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to update goal",
-        details: error instanceof Error ? error.message : "Unknown error"
+        details: error instanceof Error ? error.message : "Unknown error",
       });
     }
   });
@@ -455,31 +483,30 @@ export function registerRoutes(app: Express): Server {
 
       // Verify the goal belongs to the user
       const goal = await db.query.goals.findFirst({
-        where: and(
-          eq(goals.id, parseInt(goalId)),
-          eq(goals.userId, userId)
-        )
+        where: and(eq(goals.id, parseInt(goalId)), eq(goals.userId, userId)),
       });
 
       if (!goal) {
-        return res.status(404).json({ error: "Goal not found or unauthorized" });
+        return res
+          .status(404)
+          .json({ error: "Goal not found or unauthorized" });
       }
 
       // If this is a subtask, verify the parent task belongs to the user
       if (parentTaskId) {
         const parentTask = await db.query.tasks.findFirst({
-          where: and(
-            eq(tasks.id, parentTaskId),
-            eq(tasks.userId, userId)
-          )
+          where: and(eq(tasks.id, parentTaskId), eq(tasks.userId, userId)),
         });
 
         if (!parentTask) {
-          return res.status(404).json({ error: "Parent task not found or unauthorized" });
+          return res
+            .status(404)
+            .json({ error: "Parent task not found or unauthorized" });
         }
       }
 
-      const [newTask] = await db.insert(tasks)
+      const [newTask] = await db
+        .insert(tasks)
         .values({
           goalId: parseInt(goalId),
           userId, // Ensure task is associated with the correct user
@@ -502,24 +529,25 @@ export function registerRoutes(app: Express): Server {
     try {
       const { taskId } = req.params;
       const userId = req.user!.id;
-      const { completed, title, estimatedMinutes, plannedDate, notes } = req.body;
+      const { completed, title, estimatedMinutes, plannedDate, notes } =
+        req.body;
 
       // First verify the task belongs to the user
       const task = await db.query.tasks.findFirst({
-        where: and(
-          eq(tasks.id, parseInt(taskId)),
-          eq(tasks.userId, userId)
-        )
+        where: and(eq(tasks.id, parseInt(taskId)), eq(tasks.userId, userId)),
       });
 
       if (!task) {
-        return res.status(404).json({ error: "Task not found or unauthorized" });
+        return res
+          .status(404)
+          .json({ error: "Task not found or unauthorized" });
       }
 
       const updateData: Partial<typeof tasks.$inferInsert> = {};
-      if (typeof completed !== 'undefined') updateData.completed = completed;
+      if (typeof completed !== "undefined") updateData.completed = completed;
       if (title) updateData.title = title;
-      if (typeof estimatedMinutes !== 'undefined') updateData.estimatedMinutes = estimatedMinutes;
+      if (typeof estimatedMinutes !== "undefined")
+        updateData.estimatedMinutes = estimatedMinutes;
       if (plannedDate !== undefined) {
         updateData.plannedDate = plannedDate ? new Date(plannedDate) : null;
       }
@@ -527,40 +555,38 @@ export function registerRoutes(app: Express): Server {
         updateData.notes = notes;
       }
 
-      console.log('Updating task with data:', { taskId, updateData });
+      console.log("Updating task with data:", { taskId, updateData });
 
-      const [updatedTask] = await db.update(tasks)
+      const [updatedTask] = await db
+        .update(tasks)
         .set(updateData)
-        .where(and(
-          eq(tasks.id, parseInt(taskId)),
-          eq(tasks.userId, userId)
-        ))
+        .where(and(eq(tasks.id, parseInt(taskId)), eq(tasks.userId, userId)))
         .returning();
 
       if (!updatedTask) {
-        return res.status(404).json({ error: "Task not found or unauthorized" });
+        return res
+          .status(404)
+          .json({ error: "Task not found or unauthorized" });
       }
 
       // Update goal progress
-      if (updatedTask && typeof completed !== 'undefined') {
-        const goalTasks = await db.select()
+      if (updatedTask && typeof completed !== "undefined") {
+        const goalTasks = await db
+          .select()
           .from(tasks)
           .where(
-            and(
-              eq(tasks.goalId, updatedTask.goalId),
-              eq(tasks.userId, userId)
-            )
+            and(eq(tasks.goalId, updatedTask.goalId), eq(tasks.userId, userId)),
           );
 
-        const completedTasks = goalTasks.filter(t => t.completed).length;
+        const completedTasks = goalTasks.filter((t) => t.completed).length;
         const progress = Math.round((completedTasks / goalTasks.length) * 100);
 
-        await db.update(goals)
+        await db
+          .update(goals)
           .set({ progress })
-          .where(and(
-            eq(goals.id, updatedTask.goalId),
-            eq(goals.userId, userId)
-          ));
+          .where(
+            and(eq(goals.id, updatedTask.goalId), eq(goals.userId, userId)),
+          );
       }
 
       res.json(updatedTask);
@@ -578,66 +604,63 @@ export function registerRoutes(app: Express): Server {
 
       // First verify the task exists and belongs to the user
       const taskToDelete = await db.query.tasks.findFirst({
-        where: and(
-          eq(tasks.id, taskIdInt),
-          eq(tasks.userId, userId)
-        )
+        where: and(eq(tasks.id, taskIdInt), eq(tasks.userId, userId)),
       });
 
       if (!taskToDelete) {
-        return res.status(404).json({ error: "Task not found or unauthorized" });
+        return res
+          .status(404)
+          .json({ error: "Task not found or unauthorized" });
       }
 
       // First delete any time tracking records for this task
-      await db.delete(timeTracking)
-        .where(eq(timeTracking.taskId, taskIdInt));
+      await db.delete(timeTracking).where(eq(timeTracking.taskId, taskIdInt));
 
       // Then delete all subtasks
-      await db.delete(tasks)
-        .where(eq(tasks.parentTaskId, taskIdInt));
+      await db.delete(tasks).where(eq(tasks.parentTaskId, taskIdInt));
 
       // Finally delete the main task
-      const [deletedTask] = await db.delete(tasks)
-        .where(and(
-          eq(tasks.id, taskIdInt),
-          eq(tasks.userId, userId)
-        ))
+      const [deletedTask] = await db
+        .delete(tasks)
+        .where(and(eq(tasks.id, taskIdInt), eq(tasks.userId, userId)))
         .returning();
 
       // Update goal progress
-      const remainingTasks = await db.select()
+      const remainingTasks = await db
+        .select()
         .from(tasks)
-        .where(and(
-          eq(tasks.goalId, taskToDelete.goalId),
-          eq(tasks.userId, userId)
-        ));
+        .where(
+          and(eq(tasks.goalId, taskToDelete.goalId), eq(tasks.userId, userId)),
+        );
 
       if (remainingTasks.length > 0) {
-        const completedTasks = remainingTasks.filter(t => t.completed).length;
-        const progress = Math.round((completedTasks / remainingTasks.length) * 100);
+        const completedTasks = remainingTasks.filter((t) => t.completed).length;
+        const progress = Math.round(
+          (completedTasks / remainingTasks.length) * 100,
+        );
 
-        await db.update(goals)
+        await db
+          .update(goals)
           .set({ progress })
-          .where(and(
-            eq(goals.id, taskToDelete.goalId),
-            eq(goals.userId, userId)
-          ));
+          .where(
+            and(eq(goals.id, taskToDelete.goalId), eq(goals.userId, userId)),
+          );
       } else {
         // If no tasks remain, set progress to 0
-        await db.update(goals)
+        await db
+          .update(goals)
           .set({ progress: 0 })
-          .where(and(
-            eq(goals.id, taskToDelete.goalId),
-            eq(goals.userId, userId)
-          ));
+          .where(
+            and(eq(goals.id, taskToDelete.goalId), eq(goals.userId, userId)),
+          );
       }
 
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting task:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to delete task",
-        details: error instanceof Error ? error.message : "Unknown error"
+        details: error instanceof Error ? error.message : "Unknown error",
       });
     }
   });
@@ -651,20 +674,19 @@ export function registerRoutes(app: Express): Server {
 
       // Get the goal details first and verify ownership
       const goal = await db.query.goals.findFirst({
-        where: and(
-          eq(goals.id, parseInt(goalId)),
-          eq(goals.userId, userId)
-        ),
+        where: and(eq(goals.id, parseInt(goalId)), eq(goals.userId, userId)),
       });
 
       if (!goal) {
-        return res.status(404).json({ error: "Goal not found or unauthorized" });
+        return res
+          .status(404)
+          .json({ error: "Goal not found or unauthorized" });
       }
 
       // Generate vision statement using OpenAI
       const prompt = `Write a heartfelt letter from my present self to my future self about my goal: "${goal.title}". This letter should remind me of my core motivations and serve as a powerful reminder of why I started this journey. Use these reflections to craft the message:
 My reflections:
-${answers.map((answer: string, index: number) => `${index + 1}. ${answer}`).join('\n')}
+${answers.map((answer: string, index: number) => `${index + 1}. ${answer}`).join("\n")}
 
 Write the letter like this:
 1. Start with "Dear future me," (on its own line)
@@ -705,12 +727,13 @@ Remember to:
         messages: [
           {
             role: "system",
-            content: "You are a motivational coach who crafts inspiring vision statements. Be concise but impactful."
+            content:
+              "You are a motivational coach who crafts inspiring vision statements. Be concise but impactful.",
           },
           {
             role: "user",
-            content: prompt
-          }
+            content: prompt,
+          },
         ],
         temperature: 0.7,
       });
@@ -721,7 +744,7 @@ Remember to:
         throw new Error("Failed to generate vision statement from OpenAI");
       }
 
-      console.log('Generated vision statement:', visionStatement);
+      console.log("Generated vision statement:", visionStatement);
 
       try {
         // Validate vision statement before saving
@@ -730,15 +753,13 @@ Remember to:
         }
 
         // Update the goal with the new vision statement
-        const [updatedGoal] = await db.update(goals)
-          .set({ 
+        const [updatedGoal] = await db
+          .update(goals)
+          .set({
             visionStatement: visionStatement,
-            visionResponses: JSON.stringify(answers)
+            visionResponses: JSON.stringify(answers),
           })
-          .where(and(
-            eq(goals.id, parseInt(goalId)),
-            eq(goals.userId, userId)
-          ))
+          .where(and(eq(goals.id, parseInt(goalId)), eq(goals.userId, userId)))
           .returning();
 
         if (!updatedGoal) {
@@ -747,10 +768,7 @@ Remember to:
 
         // Verify the update was successful
         const verifiedGoal = await db.query.goals.findFirst({
-          where: and(
-            eq(goals.id, parseInt(goalId)),
-            eq(goals.userId, userId)
-          ),
+          where: and(eq(goals.id, parseInt(goalId)), eq(goals.userId, userId)),
         });
 
         if (!verifiedGoal || verifiedGoal.visionStatement !== visionStatement) {
@@ -758,22 +776,25 @@ Remember to:
         }
 
         // Return both the vision statement and the updated goal
-        res.json({ 
+        res.json({
           visionStatement,
-          goal: verifiedGoal
+          goal: verifiedGoal,
         });
       } catch (dbError) {
         console.error("Failed to update goal in database:", dbError);
-        res.status(500).json({ 
+        res.status(500).json({
           error: "Failed to save vision statement",
-          details: dbError instanceof Error ? dbError.message : "Unknown database error"
+          details:
+            dbError instanceof Error
+              ? dbError.message
+              : "Unknown database error",
         });
       }
     } catch (error) {
       console.error("Failed to generate vision statement:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to generate vision statement",
-        details: error instanceof Error ? error.message : "Unknown error" 
+        details: error instanceof Error ? error.message : "Unknown error",
       });
     }
   });
@@ -781,44 +802,54 @@ Remember to:
   // AI Coaching API
   app.get("/api/goals/:goalId/coaching", requireAuth, async (req, res) => {
     res.json({
-      message: "Hey! I'm your AI coach. Let me know if you need help with anything!",
-      type: "welcome"
+      message:
+        "Hey! I'm your AI coach. Let me know if you need help with anything!",
+      type: "welcome",
     });
   });
 
-  app.post("/api/goals/:goalId/coaching/chat", requireAuth, async (req, res) => {
-    try {
-      const { goalId } = req.params;
-      const { message } = req.body;
-      const userId = req.user!.id;
+  app.post(
+    "/api/goals/:goalId/coaching/chat",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const { goalId } = req.params;
+        const { message } = req.body;
+        const userId = req.user!.id;
 
-      const goal = await db.query.goals.findFirst({
-        where: and(
-          eq(goals.id, parseInt(goalId)),
-          eq(goals.userId, userId)
-        ),
-        with: {
-          tasks: true,
-        },
-      });
+        const goal = await db.query.goals.findFirst({
+          where: and(eq(goals.id, parseInt(goalId)), eq(goals.userId, userId)),
+          with: {
+            tasks: true,
+          },
+        });
 
-      if (!goal) {
-        return res.status(404).json({ error: "Goal not found or unauthorized" });
+        if (!goal) {
+          return res
+            .status(404)
+            .json({ error: "Goal not found or unauthorized" });
+        }
+
+        const response = await getCoachingAdvice(
+          goal,
+          goal.tasks || [],
+          message,
+        );
+
+        // Ensure we always return an array of messages
+        const messages = Array.isArray(response.messages)
+          ? response.messages
+          : [response.messages];
+        res.json({
+          messages,
+          type: "response",
+        });
+      } catch (error) {
+        console.error("Failed to get coaching advice:", error);
+        res.status(500).json({ error: "Failed to get coaching advice" });
       }
-
-      const response = await getCoachingAdvice(goal, goal.tasks || [], message);
-
-      // Ensure we always return an array of messages
-      const messages = Array.isArray(response.messages) ? response.messages : [response.messages];
-      res.json({
-        messages,
-        type: "response"
-      });
-    } catch (error) {
-      console.error("Failed to get coaching advice:", error);
-      res.status(500).json({ error: "Failed to get coaching advice" });
-    }
-  });
+    },
+  );
 
   // Daily Goal Quote API
   app.get("/api/goals/:goalId/quote", requireAuth, async (req, res) => {
@@ -847,7 +878,6 @@ Remember to:
     }
   });
 
-
   // Timer Current Status API
   app.get("/api/timer/current", requireAuth, async (req, res) => {
     try {
@@ -856,7 +886,7 @@ Remember to:
       const activeTimer = await db.query.timeTracking.findFirst({
         where: and(
           eq(timeTracking.userId, userId),
-          eq(timeTracking.isActive, true)
+          eq(timeTracking.isActive, true),
         ),
       });
 
@@ -877,16 +907,19 @@ Remember to:
       const activeTimer = await db.query.timeTracking.findFirst({
         where: and(
           eq(timeTracking.userId, userId),
-          eq(timeTracking.isActive, true)
+          eq(timeTracking.isActive, true),
         ),
       });
 
       if (activeTimer) {
-        return res.status(400).json({ error: "Another timer is already active" });
+        return res
+          .status(400)
+          .json({ error: "Another timer is already active" });
       }
 
       // Start new timer
-      const [timer] = await db.insert(timeTracking)
+      const [timer] = await db
+        .insert(timeTracking)
         .values({
           userId,
           taskId: parseInt(taskId),
@@ -912,7 +945,7 @@ Remember to:
         where: and(
           eq(timeTracking.userId, userId),
           eq(timeTracking.taskId, parseInt(taskId)),
-          eq(timeTracking.isActive, true)
+          eq(timeTracking.isActive, true),
         ),
       });
 
@@ -922,11 +955,14 @@ Remember to:
 
       // Calculate coins earned (1 coin per minute)
       const endTime = new Date();
-      const minutesWorked = Math.floor((endTime.getTime() - activeTimer.startTime.getTime()) / 60000);
+      const minutesWorked = Math.floor(
+        (endTime.getTime() - activeTimer.startTime.getTime()) / 60000,
+      );
       const coinsEarned = Math.max(1, minutesWorked); // Minimum 1 coin
 
       // Update timer
-      const [updatedTimer] = await db.update(timeTracking)
+      const [updatedTimer] = await db
+        .update(timeTracking)
         .set({
           endTime,
           isActive: false,
@@ -936,7 +972,8 @@ Remember to:
         .returning();
 
       // Update task's total time
-      const [updatedTask] = await db.update(tasks)
+      const [updatedTask] = await db
+        .update(tasks)
         .set({
           totalMinutesSpent: sql`${tasks.totalMinutesSpent} + ${minutesWorked}`,
         })
@@ -944,22 +981,23 @@ Remember to:
         .returning();
 
       // Update user's coins - ensure the rewards record exists first
-      const [userRewards] = await db.select()
+      const [userRewards] = await db
+        .select()
         .from(rewards)
         .where(eq(rewards.userId, userId))
         .limit(1);
 
       if (!userRewards) {
         // Create initial rewards record if it doesn't exist
-        await db.insert(rewards)
-          .values({
-            userId,
-            coins: coinsEarned,
-            lastUpdated: new Date(),
-          });
+        await db.insert(rewards).values({
+          userId,
+          coins: coinsEarned,
+          lastUpdated: new Date(),
+        });
       } else {
         // Update existing rewards
-        await db.update(rewards)
+        await db
+          .update(rewards)
           .set({
             coins: sql`${rewards.coins} + ${coinsEarned}`,
             lastUpdated: new Date(),
@@ -1008,9 +1046,9 @@ Remember to:
       res.json(message);
     } catch (error) {
       console.error("Failed to generate future message:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to generate future message",
-        message: error instanceof Error ? error.message : "Unknown error"
+        message: error instanceof Error ? error.message : "Unknown error",
       });
     }
   });
@@ -1023,23 +1061,22 @@ Remember to:
 
       // Verify the goal belongs to the user
       const goal = await db.query.goals.findFirst({
-        where: and(
-          eq(goals.id, parseInt(goalId)),
-          eq(goals.userId, userId)
-        )
+        where: and(eq(goals.id, parseInt(goalId)), eq(goals.userId, userId)),
       });
 
       if (!goal) {
-        return res.status(404).json({ error: "Goal not found or unauthorized" });
+        return res
+          .status(404)
+          .json({ error: "Goal not found or unauthorized" });
       }
 
       // Fetch notes for this goal
-      const goalNotes = await db.select()
+      const goalNotes = await db
+        .select()
         .from(notes)
-        .where(and(
-          eq(notes.goalId, parseInt(goalId)),
-          eq(notes.userId, userId)
-        ))
+        .where(
+          and(eq(notes.goalId, parseInt(goalId)), eq(notes.userId, userId)),
+        )
         .orderBy(desc(notes.createdAt));
 
       res.json(goalNotes);
@@ -1055,18 +1092,17 @@ Remember to:
       const { title, content, taskId } = req.body;
       const userId = req.user!.id;
 
-      console.log('Creating note:', { goalId, title, content, taskId, userId });
+      console.log("Creating note:", { goalId, title, content, taskId, userId });
 
       // Verify the goal belongs to the user
       const goal = await db.query.goals.findFirst({
-        where: and(
-          eq(goals.id, parseInt(goalId)),
-          eq(goals.userId, userId)
-        )
+        where: and(eq(goals.id, parseInt(goalId)), eq(goals.userId, userId)),
       });
 
       if (!goal) {
-        return res.status(404).json({ error: "Goal not found or unauthorized" });
+        return res
+          .status(404)
+          .json({ error: "Goal not found or unauthorized" });
       }
 
       // If taskId is provided, verify it belongs to the user and goal
@@ -1075,17 +1111,20 @@ Remember to:
           where: and(
             eq(tasks.id, taskId),
             eq(tasks.userId, userId),
-            eq(tasks.goalId, parseInt(goalId))
-          )
+            eq(tasks.goalId, parseInt(goalId)),
+          ),
         });
 
         if (!task) {
-          return res.status(404).json({ error: "Task not found or unauthorized" });
+          return res
+            .status(404)
+            .json({ error: "Task not found or unauthorized" });
         }
       }
 
       // Create the note
-      const [newNote] = await db.insert(notes)
+      const [newNote] = await db
+        .insert(notes)
         .values({
           userId,
           goalId: parseInt(goalId),
@@ -1101,104 +1140,110 @@ Remember to:
 
       // Verify the note was created
       const createdNote = await db.query.notes.findFirst({
-        where: and(
-          eq(notes.id, newNote.id),
-          eq(notes.userId, userId)
-        )
+        where: and(eq(notes.id, newNote.id), eq(notes.userId, userId)),
       });
 
       if (!createdNote) {
         throw new Error("Note verification failed");
       }
 
-      console.log('Note created successfully:', createdNote);
+      console.log("Note created successfully:", createdNote);
       res.json(createdNote);
     } catch (error) {
       console.error("Failed to create note:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to create note",
-        details: error instanceof Error ? error.message : "Unknown error"
+        details: error instanceof Error ? error.message : "Unknown error",
       });
     }
   });
 
-  app.delete("/api/goals/:goalId/notes/:noteId", requireAuth, async (req, res) => {
-    try {
-      const { goalId, noteId } = req.params;
-      const userId = req.user!.id;
+  app.delete(
+    "/api/goals/:goalId/notes/:noteId",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const { goalId, noteId } = req.params;
+        const userId = req.user!.id;
 
-      // Verify the note exists and belongs to the user
-      const note = await db.query.notes.findFirst({
-        where: and(
-          eq(notes.id, parseInt(noteId)),
-          eq(notes.goalId, parseInt(goalId)),
-          eq(notes.userId, userId)
-        ),
-      });
+        // Verify the note exists and belongs to the user
+        const note = await db.query.notes.findFirst({
+          where: and(
+            eq(notes.id, parseInt(noteId)),
+            eq(notes.goalId, parseInt(goalId)),
+            eq(notes.userId, userId),
+          ),
+        });
 
-      if (!note) {
-        return res.status(404).json({ error: "Note not found or unauthorized" });
+        if (!note) {
+          return res
+            .status(404)
+            .json({ error: "Note not found or unauthorized" });
+        }
+
+        // Delete the note
+        await db
+          .delete(notes)
+          .where(and(eq(notes.id, parseInt(noteId)), eq(notes.userId, userId)));
+
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Failed to delete note:", error);
+        res.status(500).json({ error: "Failed to delete note" });
       }
+    },
+  );
 
-      // Delete the note
-      await db.delete(notes)
-        .where(and(
-          eq(notes.id, parseInt(noteId)),
-          eq(notes.userId, userId)
-        ));
+  app.patch(
+    "/api/goals/:goalId/notes/:noteId",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const { goalId, noteId } = req.params;
+        const { title, content, taskId } = req.body;
+        const userId = req.user!.id;
 
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Failed to delete note:", error);
-      res.status(500).json({ error: "Failed to delete note" });
-    }
-  });
+        // Verify the note exists and belongs to the user
+        const note = await db.query.notes.findFirst({
+          where: and(
+            eq(notes.id, parseInt(noteId)),
+            eq(notes.goalId, parseInt(goalId)),
+            eq(notes.userId, userId),
+          ),
+        });
 
-  app.patch("/api/goals/:goalId/notes/:noteId", requireAuth, async (req, res) => {
-    try {
-      const { goalId, noteId } = req.params;
-      const { title, content, taskId } = req.body;
-      const userId = req.user!.id;
+        if (!note) {
+          return res
+            .status(404)
+            .json({ error: "Note not found or unauthorized" });
+        }
 
-      // Verify the note exists and belongs to the user
-      const note = await db.query.notes.findFirst({
-        where: and(
-          eq(notes.id, parseInt(noteId)),
-          eq(notes.goalId, parseInt(goalId)),
-          eq(notes.userId, userId)
-        ),
-      });
+        // Update the note
+        const [updatedNote] = await db
+          .update(notes)
+          .set({
+            title,
+            content,
+            taskId: taskId || null,
+            updatedAt: new Date(),
+          })
+          .where(and(eq(notes.id, parseInt(noteId)), eq(notes.userId, userId)))
+          .returning();
 
-      if (!note) {
-        return res.status(404).json({ error: "Note not found or unauthorized" });
+        res.json(updatedNote);
+      } catch (error) {
+        console.error("Failed to update note:", error);
+        res.status(500).json({ error: "Failed to update note" });
       }
-
-      // Update the note
-      const [updatedNote] = await db.update(notes)
-        .set({
-          title,
-          content,
-          taskId: taskId || null,
-          updatedAt: new Date(),
-        })
-        .where(and(
-          eq(notes.id, parseInt(noteId)),
-          eq(notes.userId, userId)
-        ))
-        .returning();
-
-      res.json(updatedNote);
-    } catch (error) {
-      console.error("Failed to update note:", error);
-      res.status(500).json({ error: "Failed to update note" });
-    }
-  });
+    },
+  );
 
   // Vision Board API
   app.get("/api/vision-board", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
-      const images = await db.select()
+      const images = await db
+        .select()
         .from(visionBoardImages)
         .where(eq(visionBoardImages.userId, userId))
         .orderBy(visionBoardImages.position);
@@ -1209,73 +1254,84 @@ Remember to:
     }
   });
 
-  app.post("/api/vision-board/upload", requireAuth, upload.single('image'), async (req, res) => {
-    try {
-      console.log('Processing image upload request');
-      const userId = req.user!.id;
+  app.post(
+    "/api/vision-board/upload",
+    requireAuth,
+    upload.single("image"),
+    async (req, res) => {
+      try {
+        console.log("Processing image upload request");
+        const userId = req.user!.id;
 
-      // Check if user already has 12 images
-      const imageCount = await db.select({ count: sql<number>`count(*)` })
-        .from(visionBoardImages)
-        .where(eq(visionBoardImages.userId, userId));
+        // Check if user already has 12 images
+        const imageCount = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(visionBoardImages)
+          .where(eq(visionBoardImages.userId, userId));
 
-      console.log('Current image count:', imageCount[0].count);
+        console.log("Current image count:", imageCount[0].count);
 
-      if (imageCount[0].count >= 12) {
-        return res.status(400).json({ error: "Maximum number of images (12) reached" });
+        if (imageCount[0].count >= 12) {
+          return res
+            .status(400)
+            .json({ error: "Maximum number of images (12) reached" });
+        }
+
+        // Find the next available position
+        const existingPositions = await db
+          .select({ position: visionBoardImages.position })
+          .from(visionBoardImages)
+          .where(eq(visionBoardImages.userId, userId));
+
+        const usedPositions = existingPositions.map((img) => img.position);
+        let nextPosition = 0;
+        while (usedPositions.includes(nextPosition)) {
+          nextPosition++;
+        }
+
+        console.log("Using position:", nextPosition);
+
+        if (!req.file) {
+          console.error("No file uploaded");
+          return res.status(400).json({ error: "No image file provided" });
+        }
+
+        // Upload file to Supabase Storage
+        const imageUrl = await uploadFileToSupabase(req.file);
+        console.log("Supabase Image URL:", imageUrl);
+
+        const [newImage] = await db
+          .insert(visionBoardImages)
+          .values({
+            userId,
+            imageUrl,
+            position: nextPosition,
+          })
+          .returning();
+
+        res.json(newImage);
+      } catch (error) {
+        console.error("Failed to upload image:", error);
+        res.status(500).json({
+          error: "Failed to upload image",
+          details: error instanceof Error ? error.message : "Unknown error",
+        });
       }
-
-      // Find the next available position
-      const existingPositions = await db.select({ position: visionBoardImages.position })
-        .from(visionBoardImages)
-        .where(eq(visionBoardImages.userId, userId));
-
-      const usedPositions = existingPositions.map(img => img.position);
-      let nextPosition = 0;
-      while (usedPositions.includes(nextPosition)) {
-        nextPosition++;
-      }
-
-      console.log('Using position:', nextPosition);
-
-      if (!req.file) {
-        console.error('No file uploaded');
-        return res.status(400).json({ error: "No image file provided" });
-      }
-
-      // Upload file to Supabase Storage
-      const imageUrl = await uploadFileToSupabase(req.file);
-      console.log('Supabase Image URL:', imageUrl);
-
-      const [newImage] = await db.insert(visionBoardImages)
-        .values({
-          userId,
-          imageUrl,
-          position: nextPosition,
-        })
-        .returning();
-
-      res.json(newImage);
-    } catch (error) {
-      console.error("Failed to upload image:", error);
-      res.status(500).json({ 
-        error: "Failed to upload image",
-        details: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
+    },
+  );
 
   app.delete("/api/vision-board/:id", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
       const imageId = parseInt(req.params.id);
 
-      const [deletedImage] = await db.delete(visionBoardImages)
+      const [deletedImage] = await db
+        .delete(visionBoardImages)
         .where(
           and(
             eq(visionBoardImages.id, imageId),
-            eq(visionBoardImages.userId, userId)
-          )
+            eq(visionBoardImages.userId, userId),
+          ),
         )
         .returning();
 
@@ -1294,7 +1350,8 @@ Remember to:
   app.get("/api/rewards", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
-      const [userRewards] = await db.select()
+      const [userRewards] = await db
+        .select()
         .from(rewards)
         .where(eq(rewards.userId, userId))
         .limit(1);
@@ -1309,10 +1366,10 @@ Remember to:
       const items = await db.query.rewardItems.findMany({
         orderBy: (rewardItems, { asc }) => [asc(rewardItems.cost)],
       });
-      console.log('Fetched reward items:', items);
+      console.log("Fetched reward items:", items);
       res.json(items);
     } catch (error) {
-      console.error('Error fetching reward items:', error);
+      console.error("Error fetching reward items:", error);
       res.status(500).json({ error: "Failed to fetch reward items" });
     }
   });
@@ -1326,14 +1383,22 @@ Remember to:
         with: {
           rewardItem: true,
         },
-        orderBy: (purchasedRewards, { desc }) => [desc(purchasedRewards.purchasedAt)],
+        orderBy: (purchasedRewards, { desc }) => [
+          desc(purchasedRewards.purchasedAt),
+        ],
       });
 
-      console.log('Fetched purchased items:', JSON.stringify(purchasedItems, null, 2));
+      console.log(
+        "Fetched purchased items:",
+        JSON.stringify(purchasedItems, null, 2),
+      );
       res.json(purchasedItems);
     } catch (error) {
-      console.error('Error fetching purchased rewards:', error);
-      console.error('Error details:', error instanceof Error ? error.message : error);
+      console.error("Error fetching purchased rewards:", error);
+      console.error(
+        "Error details:",
+        error instanceof Error ? error.message : error,
+      );
       res.status(500).json({ error: "Failed to fetch purchased rewards" });
     }
   });
@@ -1344,28 +1409,30 @@ Remember to:
       const userId = req.user!.id;
 
       // Get the reward item with error handling
-      const items = await db.select()
+      const items = await db
+        .select()
         .from(rewardItems)
         .where(eq(rewardItems.id, itemId));
 
       const item = items[0];
       if (!item) {
-        return res.status(404).json({ 
+        return res.status(404).json({
           error: "Reward item not found",
-          message: "The requested reward item could not be found"
+          message: "The requested reward item could not be found",
         });
       }
 
       // Get user's current coins with error handling
-      const userRewardsResult = await db.select()
+      const userRewardsResult = await db
+        .select()
         .from(rewards)
         .where(eq(rewards.userId, userId));
 
       const userRewards = userRewardsResult[0];
       if (!userRewards) {
-        return res.status(404).json({ 
+        return res.status(404).json({
           error: "User rewards not found",
-          message: "Could not find rewards record for user"
+          message: "Could not find rewards record for user",
         });
       }
 
@@ -1374,15 +1441,16 @@ Remember to:
           error: "Insufficient coins",
           message: `You need ${item.cost} coins but only have ${userRewards.coins}`,
           required: item.cost,
-          available: userRewards.coins
+          available: userRewards.coins,
         });
       }
 
       // Update user's coins with validation
-      const [updatedRewards] = await db.update(rewards)
-        .set({ 
+      const [updatedRewards] = await db
+        .update(rewards)
+        .set({
           coins: userRewards.coins - item.cost,
-          lastUpdated: new Date()
+          lastUpdated: new Date(),
         })
         .where(eq(rewards.userId, userId))
         .returning();
@@ -1392,28 +1460,32 @@ Remember to:
       }
 
       // Record the purchase
-      const [purchaseRecord] = await db.insert(purchasedRewards)
+      const [purchaseRecord] = await db
+        .insert(purchasedRewards)
         .values({
           userId,
           rewardItemId: itemId,
-          purchasedAt: new Date()
+          purchasedAt: new Date(),
         })
         .returning();
 
-      res.json({ 
+      res.json({
         message: "Purchase successful",
         item: {
           name: item.name,
-          cost: item.cost
+          cost: item.cost,
         },
         newBalance: updatedRewards.coins,
-        purchaseRecord
+        purchaseRecord,
       });
     } catch (error) {
       console.error("Purchase error:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to process purchase",
-        message: error instanceof Error ? error.message : "An unexpected error occurred"
+        message:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
       });
     }
   });
