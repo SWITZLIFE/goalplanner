@@ -7,6 +7,17 @@ import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
 import { useLocation } from "wouter";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function ProfilePage() {
   const { user } = useUser();
@@ -30,6 +41,11 @@ export default function ProfilePage() {
     return null;
   }
 
+  const handleConnectGoogle = () => {
+    window.location.href = "/api/auth/google/init";
+  };
+  
+  
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -233,6 +249,37 @@ export default function ProfilePage() {
               </div>
             </form>
           )}
+
+          
+          
+        <div className="mb-6">
+          {user?.googleConnected ? (
+            <p className="text-sm text-green-600">Google Calendar Connected!</p>
+          ) : (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  Connect Google Calendar
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Connect Google Calendar</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will redirect you to Google to grant calendar
+                    permissions. Continue?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleConnectGoogle}>
+                    Connect
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
         </CardContent>
       </Card>
     </div>
