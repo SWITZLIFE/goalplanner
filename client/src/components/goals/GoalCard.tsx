@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 
 interface GoalCardProps {
   goal: Goal;
-  className?: string;
 }
 
 export function GoalCard({ goal }: GoalCardProps) {
