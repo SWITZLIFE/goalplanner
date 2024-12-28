@@ -1,29 +1,13 @@
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
 import { useLocation } from "wouter";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+
 export default function ProfilePage() {
   const { user } = useUser();
   const { toast } = useToast();
@@ -34,25 +18,21 @@ export default function ProfilePage() {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   // Get initials from email
-  const initials =
-    user?.email
-      ?.split("@")[0]
-      ?.split(".")
-      ?.map((part) => part[0])
-      ?.join("")
-      ?.toUpperCase() || "";
+  const initials = user?.email
+    ?.split('@')[0]
+    ?.split('.')
+    ?.map(part => part[0])
+    ?.join('')
+    ?.toUpperCase() || '';
 
   if (!user) {
     setLocation("/");
     return null;
   }
-  const handleConnectGoogle = () => {
-    window.location.href = "/api/auth/google/init";
-  };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    
     if (newPassword !== confirmPassword) {
       toast({
         title: "Error",
@@ -83,7 +63,7 @@ export default function ProfilePage() {
         title: "Success",
         description: "Password changed successfully",
       });
-
+      
       setIsChangingPassword(false);
       setCurrentPassword("");
       setNewPassword("");
@@ -91,8 +71,7 @@ export default function ProfilePage() {
     } catch (error) {
       toast({
         title: "Error",
-        description:
-          error instanceof Error ? error.message : "Failed to change password",
+        description: error instanceof Error ? error.message : "Failed to change password",
         variant: "destructive",
       });
     }
@@ -106,21 +85,19 @@ export default function ProfilePage() {
           ← Back to Dashboard
         </Button>
       </div>
-
+      
       <Card>
         <CardHeader>
           <CardTitle>Account Information</CardTitle>
-          <CardDescription>
-            View and manage your account details
-          </CardDescription>
+          <CardDescription>View and manage your account details</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-6">
             <div className="flex items-center gap-4">
               <Avatar className="h-20 w-20">
                 {user.profilePhotoUrl ? (
-                  <AvatarImage
-                    src={user.profilePhotoUrl}
+                  <AvatarImage 
+                    src={user.profilePhotoUrl} 
                     alt="Profile photo"
                     className="object-cover w-full h-full"
                   />
@@ -133,9 +110,7 @@ export default function ProfilePage() {
               <div>
                 <Button
                   variant="outline"
-                  onClick={() =>
-                    document.getElementById("photo-upload")?.click()
-                  }
+                  onClick={() => document.getElementById('photo-upload')?.click()}
                 >
                   Change Photo
                 </Button>
@@ -148,7 +123,7 @@ export default function ProfilePage() {
                     const file = e.target.files?.[0];
                     if (!file) return;
 
-                    if (!file.type.startsWith("image/")) {
+                    if (!file.type.startsWith('image/')) {
                       toast({
                         title: "Error",
                         description: "Please select an image file",
@@ -158,17 +133,17 @@ export default function ProfilePage() {
                     }
 
                     const formData = new FormData();
-                    formData.append("photo", file);
+                    formData.append('photo', file);
 
                     try {
-                      const response = await fetch("/api/user/profile-photo", {
-                        method: "POST",
+                      const response = await fetch('/api/user/profile-photo', {
+                        method: 'POST',
                         body: formData,
-                        credentials: "include",
+                        credentials: 'include',
                       });
 
                       if (!response.ok) {
-                        throw new Error("Failed to upload photo");
+                        throw new Error('Failed to upload photo');
                       }
 
                       const data = await response.json();
@@ -196,9 +171,9 @@ export default function ProfilePage() {
               <Input value={user.email} disabled />
             </div>
           </div>
-
+          
           {!isChangingPassword ? (
-            <Button
+            <Button 
               variant="outline"
               onClick={() => setIsChangingPassword(true)}
             >
@@ -216,7 +191,7 @@ export default function ProfilePage() {
                   required
                 />
               </div>
-
+              
               <div className="space-y-2">
                 <Label htmlFor="newPassword">New Password</Label>
                 <Input
@@ -227,7 +202,7 @@ export default function ProfilePage() {
                   required
                 />
               </div>
-
+              
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm New Password</Label>
                 <Input
@@ -238,7 +213,7 @@ export default function ProfilePage() {
                   required
                 />
               </div>
-
+              
               <div className="flex gap-2">
                 <Button
                   type="button"
@@ -252,41 +227,12 @@ export default function ProfilePage() {
                 >
                   Cancel
                 </Button>
-                <Button type="submit">Update Password</Button>
+                <Button type="submit">
+                  Update Password
+                </Button>
               </div>
             </form>
           )}
-
-          <div className="mb-6">
-            {user?.googleConnected ? (
-              <p className="text-sm text-green-600">
-                Google Calendar Connected!
-              </p>
-            ) : (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    Connect Google Calendar
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Connect Google Calendar</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This will redirect you to Google to grant calendar
-                      permissions. Continue?
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleConnectGoogle}>
-                      Connect
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-          </div>
         </CardContent>
       </Card>
     </div>

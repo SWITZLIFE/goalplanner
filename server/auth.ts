@@ -5,9 +5,9 @@ import session from "express-session";
 import createMemoryStore from "memorystore";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { users, insertUserSchema, type SelectUser, userTokens } from "@db/schema";
+import { users, insertUserSchema, type SelectUser } from "@db/schema";
 import { db } from "@db";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 const scryptAsync = promisify(scrypt);
@@ -217,38 +217,12 @@ export function setupAuth(app: Express) {
     });
   });
 
-  app.get("/api/user", async (req, res) => {
-    try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).send("Not logged in");
-      }
-
-      const userId = req.user!.id;
-
-      // Fetch the user details
-      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-
-      // Check if the user has a valid Google token
-      const googleToken = await db.query.userTokens.findFirst({
-        where: and(eq(userTokens.userId, userId), eq(userTokens.provider, "google")),
-      });
-
-       // Safely determine Google connection status
-    const googleConnected = googleToken && googleToken.accessToken ? true : false;
-
-      // Respond with user details and Google connection status
-      res.json({
-        ...user,
-        googleConnected,
-      });
-    } catch (error) {
-      console.error("Error fetching user data:", error);
-      res.status(500).json({ error: "Failed to fetch user data" });
+  app.get("/api/user", (req, res) => {
+    if (req.isAuthenticated()) {
+      return res.json(req.user);
     }
+
+    res.status(401).send("Not logged in");
   });
 
   app.post("/api/forgot-password", async (req, res) => {
