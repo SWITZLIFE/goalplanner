@@ -10,13 +10,24 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 
+interface FutureMessageResponse {
+  message: string | null;
+  isRead: boolean;
+}
+
 export function FutureMessage() {
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: message, isLoading } = useQuery<{ message: string | null; isRead: boolean }>({
+  const { data: message, isLoading, error } = useQuery<FutureMessageResponse>({
     queryKey: ["/api/future-message/today"],
+    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
+    gcTime: 1000 * 60 * 10, // Cache for 10 minutes
+    retry: (failureCount, error: any) => {
+      if (error?.status === 401) return false;
+      return failureCount < 3;
+    },
   });
 
   const generateMessageMutation = useMutation({
@@ -27,19 +38,22 @@ export function FutureMessage() {
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("You must be logged in to generate a message");
+        }
         throw new Error("Failed to generate message");
       }
 
-      return response.json();
+      return response.json() as Promise<FutureMessageResponse>;
     },
     onSuccess: (data) => {
       queryClient.setQueryData(["/api/future-message/today"], data);
       setIsOpen(true);
     },
-    onError: () => {
+    onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to generate your message",
+        description: error instanceof Error ? error.message : "Failed to generate your message",
         variant: "destructive",
       });
     },
@@ -53,6 +67,9 @@ export function FutureMessage() {
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error("You must be logged in to read messages");
+        }
         throw new Error("Failed to mark message as read");
       }
 
@@ -61,38 +78,28 @@ export function FutureMessage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/future-message/today"] });
     },
-    onError: () => {
+    onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to open message",
+        description: error instanceof Error ? error.message : "Failed to open message",
         variant: "destructive",
       });
     },
   });
 
-  const loadingState = (
-    <div className="mb-8 bg-[#D8F275] rounded-lg p-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Message from Your Future Self</h2>
-      </div>
-      <div className="h-20 flex items-center justify-center">
-        <div className="animate-pulse">Loading...</div>
-      </div>
-    </div>
-  );
-
-  if (isLoading) {
-    return loadingState;
+  // Don't show anything if there's an auth error
+  if (error) {
+    return null;
   }
 
-  if (!message) {
+  if (isLoading) {
     return (
       <div className="mb-8 bg-white rounded-lg p-6">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold">Message from Your Future Self</h2>
         </div>
         <div className="mt-4 text-muted-foreground">
-          Checking for your daily message...
+          Loading...
         </div>
       </div>
     );
@@ -102,7 +109,7 @@ export function FutureMessage() {
     <div className="mb-8 bg-white rounded-lg p-6">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Message from Your Future Self</h2>
-        {!message.message && !message.isRead && (
+        {(!message?.message || message.message === null) && !message?.isRead && (
           <Button
             variant="outline"
             size="sm"
@@ -116,7 +123,7 @@ export function FutureMessage() {
         )}
       </div>
 
-      {message.message ? (
+      {message?.message ? (
         message.isRead ? (
           <div className="mt-4">
             <div className="flex gap-2 items-start">

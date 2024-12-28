@@ -14,8 +14,15 @@ interface QuoteResponse {
 }
 
 export function DailyQuote({ goalId }: DailyQuoteProps) {
-  const { data: quoteData, isLoading } = useQuery<QuoteResponse>({
+  const { data: quoteData, isLoading, error } = useQuery<QuoteResponse>({
     queryKey: [`/api/goals/${goalId}/quote`],
+    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
+    gcTime: 1000 * 60 * 10, // Cache for 10 minutes
+    retry: (failureCount, error: any) => {
+      if (error?.status === 401) return false;
+      return failureCount < 3;
+    },
+    enabled: !!goalId, // Only run query if we have a goalId
   });
 
   useEffect(() => {
@@ -27,7 +34,8 @@ export function DailyQuote({ goalId }: DailyQuoteProps) {
     }
   }, [quoteData, goalId]);
 
-  if (isLoading || !quoteData?.quote) {
+  // Don't render anything if there's an auth error or no quote
+  if (isLoading || error || !quoteData?.quote) {
     return null;
   }
 
