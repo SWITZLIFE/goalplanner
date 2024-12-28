@@ -78,7 +78,7 @@ function EditableTaskTitle({ task, onSave, className, continuousCreate }: Editab
             setIsEditing(false);
           }
         }}
-        className={cn("h-6 py-0 px-1 border-none focus-visible:ring-0 focus-visible:ring-offset-0", className)}
+        className={cn("h-6 py-0 px-1 border-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent", className)}
       />
     );
   }
