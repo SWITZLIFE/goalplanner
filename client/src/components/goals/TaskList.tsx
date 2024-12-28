@@ -484,13 +484,13 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
 
               <Collapsible.Root
                 open={expandedTasks.has(mainTask.id)}
-                className={cn(
-                  "ml-10 pl-4 mt-2",
-                  getOrderedSubtasks(mainTask.id).length > 0 && "border-l-2 border-gray-200"
-                )}
+                className="ml-10 mt-2"
               >
                 <Collapsible.Content>
-                  <div className="space-y-2">
+                  <div className={cn(
+                    "pl-4 space-y-2",
+                    getOrderedSubtasks(mainTask.id).length > 0 && "border-l-2 border-gray-200"
+                  )}>
                     {getOrderedSubtasks(mainTask.id).map((subtask) => (
                       <div
                         key={subtask.id}
