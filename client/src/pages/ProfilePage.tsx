@@ -104,9 +104,9 @@ export default function ProfilePage() {
         <PageHeader />
         <motion.div 
           className="flex-1 m-4 bg-background rounded-[30px] overflow-hidden"
-          initial={{ x: 50, opacity: 1 }}
+          initial={{ x: 300, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
         >
           <div className="h-full overflow-auto scrollbar-hide p-16">
             <div className="max-w-2xl mx-auto space-y-6">
