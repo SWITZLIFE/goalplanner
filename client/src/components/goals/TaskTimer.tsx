@@ -44,6 +44,21 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
     refetchInterval: 1000,
     staleTime: 0,
     enabled: !!taskId,
+    retry: (failureCount, error: any) => {
+      // Don't retry on auth errors
+      if (error?.response?.status === 401) return false;
+      return failureCount < 3;
+    },
+    onError: (error: any) => {
+      // Only show error toast for non-auth errors
+      if (error?.response?.status !== 401) {
+        toast({
+          title: "Error",
+          description: "Failed to fetch timer status",
+          variant: "destructive",
+        });
+      }
+    }
   });
 
   const startTimer = useMutation({
@@ -51,13 +66,16 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
       const res = await fetch(`/api/tasks/${taskId}/timer/start`, {
         method: "POST",
         credentials: "include",
-      });
-      if (!res.ok) {
-        if (res.status === 401) {
-          throw new Error("You must be logged in to start a timer");
+        headers: {
+          'Content-Type': 'application/json'
         }
-        throw new Error(await res.text());
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(errorData.error || "Failed to start timer");
       }
+
       return res.json() as Promise<ActiveTimer>;
     },
     onSuccess: () => {
@@ -81,13 +99,16 @@ export function TaskTimer({ taskId, totalMinutesSpent, onTimerStop }: TaskTimerP
       const res = await fetch(`/api/tasks/${taskId}/timer/stop`, {
         method: "POST",
         credentials: "include",
-      });
-      if (!res.ok) {
-        if (res.status === 401) {
-          throw new Error("You must be logged in to stop a timer");
+        headers: {
+          'Content-Type': 'application/json'
         }
-        throw new Error(await res.text());
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(errorData.error || "Failed to stop timer");
       }
+
       const data: TimerResponse = await res.json();
       return data;
     },
