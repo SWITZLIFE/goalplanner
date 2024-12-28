@@ -1,5 +1,5 @@
 import { db } from "@db";
-import { futureMessages, goals, tasks } from "@db/schema";
+import { futureMessages, goals } from "@db/schema";
 import { eq, and, gte, lte } from "drizzle-orm";
 import OpenAI from "openai";
 import { startOfDay, endOfDay } from "date-fns";
@@ -51,7 +51,7 @@ Respond with a JSON object in this exact format:
 }`;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo", // Using gpt-3.5-turbo for better reliability and cost-effectiveness
+      model: "gpt-3.5-turbo",
       messages: [
         { role: "system", content: systemPrompt }
       ],
@@ -65,7 +65,7 @@ Respond with a JSON object in this exact format:
     }
 
     const parsed = JSON.parse(content);
-    
+
     // Create a new message in the database
     await db.insert(futureMessages).values({
       userId,
@@ -73,7 +73,7 @@ Respond with a JSON object in this exact format:
       isRead: false,
     });
 
-    return parsed.message;
+    return { message: parsed.message, isRead: false };
   } catch (error) {
     console.error("Failed to generate daily message:", error);
     throw error;
@@ -82,7 +82,7 @@ Respond with a JSON object in this exact format:
 
 export async function getTodayMessage(userId: number) {
   const today = new Date();
-  
+
   // Check if there's already a message for today
   const existingMessage = await db.query.futureMessages.findFirst({
     where: and(
@@ -93,7 +93,10 @@ export async function getTodayMessage(userId: number) {
   });
 
   // Only return the existing message if it exists, don't generate a new one
-  return existingMessage || {
+  return existingMessage ? {
+    message: existingMessage.message,
+    isRead: existingMessage.isRead,
+  } : {
     message: null,
     isRead: false,
   };
@@ -101,7 +104,7 @@ export async function getTodayMessage(userId: number) {
 
 export async function markMessageAsRead(userId: number) {
   const today = new Date();
-  
+
   // Find today's message and mark it as read
   await db.update(futureMessages)
     .set({ isRead: true })
@@ -112,4 +115,6 @@ export async function markMessageAsRead(userId: number) {
         lte(futureMessages.createdAt, endOfDay(today))
       )
     );
+
+  return { success: true };
 }

@@ -33,20 +33,25 @@ export function FutureMessage() {
         credentials: "include",
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error("Failed to generate message");
+        throw new Error(data.message || "Failed to generate message");
       }
 
-      return response.json() as Promise<FutureMessageResponse>;
+      return data;
     },
     onSuccess: (data) => {
-      queryClient.setQueryData(["/api/future-message/today"], data);
+      queryClient.setQueryData(["/api/future-message/today"], {
+        message: data.message,
+        isRead: false
+      });
       setIsOpen(true);
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Failed to generate your message",
+        description: error.message || "Failed to generate your message",
         variant: "destructive",
       });
     },
@@ -59,19 +64,21 @@ export function FutureMessage() {
         credentials: "include",
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error("Failed to mark message as read");
+        throw new Error(data.message || "Failed to mark message as read");
       }
 
-      return response.json();
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/future-message/today"] });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Failed to open message",
+        description: error.message || "Failed to mark message as read",
         variant: "destructive",
       });
     },
