@@ -226,6 +226,22 @@ export function registerGoogleOAuthRoutes(app: Express) {
           continue;
         }
   
+        // Fetch subtasks for the current task
+        const subtasks = await db
+          .select()
+          .from(tasks)
+          .where(eq(tasks.parentTaskId, task.id));
+  
+        // Format subtasks as bullet points
+        const subtasksDescription = subtasks
+          .map(subtask => `• ${subtask.title}`)
+          .join("\n");
+  
+        const fullDescription = [
+          task.notes || "No notes provided",
+          subtasks.length > 0 ? "\nSubtasks:\n" + subtasksDescription : "",
+        ].join("\n");
+  
         const plannedDateStr = new Date(task.plannedDate).toISOString().split("T")[0];
         const logContext = { userId, taskId: task.id, operation: 'calendar-sync' };
   
@@ -240,14 +256,15 @@ export function registerGoogleOAuthRoutes(app: Express) {
               // Check if event needs updating
               if (
                 existingEvent.data.start?.date !== plannedDateStr ||
-                existingEvent.data.summary !== task.title
+                existingEvent.data.summary !== task.title ||
+                existingEvent.data.description !== fullDescription
               ) {
                 await calendar.events.update({
                   calendarId: "primary",
                   eventId: task.eventId,
                   requestBody: {
                     summary: task.title,
-                    description: task.notes || "No notes provided",
+                    description: fullDescription,
                     start: { date: plannedDateStr },
                     end: { date: plannedDateStr },
                   },
@@ -261,7 +278,7 @@ export function registerGoogleOAuthRoutes(app: Express) {
                 calendarId: "primary",
                 requestBody: {
                   summary: task.title,
-                  description: task.notes || "No notes provided",
+                  description: fullDescription,
                   start: { date: plannedDateStr },
                   end: { date: plannedDateStr },
                 },
@@ -278,7 +295,7 @@ export function registerGoogleOAuthRoutes(app: Express) {
             // Create new event
             const event = {
               summary: task.title,
-              description: task.notes || "No notes provided",
+              description: fullDescription,
               start: { date: plannedDateStr },
               end: { date: plannedDateStr },
             };
@@ -306,6 +323,7 @@ export function registerGoogleOAuthRoutes(app: Express) {
       res.status(500).json({ error: "Failed to sync tasks with Google Calendar" });
     }
   });
+  
   
   
   
