@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function ProfilePage() {
-  const { user } = useUser();
+  const { user, isLoading } = useUser();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [isChangingPassword, setIsChangingPassword] = useState(false);
