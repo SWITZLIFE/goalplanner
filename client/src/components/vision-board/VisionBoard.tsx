@@ -372,7 +372,7 @@ export function VisionBoard() {
       >
         <div className="flex justify-between items-center">
           <CollapsibleTrigger className="flex items-center gap-1.5">
-            <h2 className="text-base font-medium">Vision Board</h2>
+            <h2 className="text-xl font-semibold">Vision Board</h2>
             {isVisionBoardOpen ? (
               <ChevronDown className="h-3.5 w-3.5" />
             ) : (
