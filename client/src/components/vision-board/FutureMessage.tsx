@@ -20,14 +20,10 @@ export function FutureMessage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: message, isLoading, error } = useQuery<FutureMessageResponse>({
+  const { data: message, isLoading } = useQuery<FutureMessageResponse>({
     queryKey: ["/api/future-message/today"],
     staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
     gcTime: 1000 * 60 * 10, // Cache for 10 minutes
-    retry: (failureCount, error: any) => {
-      if (error?.status === 401) return false;
-      return failureCount < 3;
-    },
   });
 
   const generateMessageMutation = useMutation({
@@ -38,9 +34,6 @@ export function FutureMessage() {
       });
 
       if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error("You must be logged in to generate a message");
-        }
         throw new Error("Failed to generate message");
       }
 
@@ -50,10 +43,10 @@ export function FutureMessage() {
       queryClient.setQueryData(["/api/future-message/today"], data);
       setIsOpen(true);
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to generate your message",
+        description: "Failed to generate your message",
         variant: "destructive",
       });
     },
@@ -67,9 +60,6 @@ export function FutureMessage() {
       });
 
       if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error("You must be logged in to read messages");
-        }
         throw new Error("Failed to mark message as read");
       }
 
@@ -78,19 +68,14 @@ export function FutureMessage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/future-message/today"] });
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to open message",
+        description: "Failed to open message",
         variant: "destructive",
       });
     },
   });
-
-  // Don't show anything if there's an auth error
-  if (error) {
-    return null;
-  }
 
   if (isLoading) {
     return (
@@ -109,7 +94,7 @@ export function FutureMessage() {
     <div className="mb-8 bg-white rounded-lg p-6">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Message from Your Future Self</h2>
-        {(!message?.message || message.message === null) && !message?.isRead && (
+        {!message?.message && (
           <Button
             variant="outline"
             size="sm"
