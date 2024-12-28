@@ -87,7 +87,7 @@ export function LeftPanel() {
       </div>
 
       {/* Footer Section */}
-      <div className="flex-none p-4 border-t border-white/10">
+      <div className="flex-none py-6 px-4 border-t border-white/10">
         {/* Footer content if needed */}
       </div>
     </div>
