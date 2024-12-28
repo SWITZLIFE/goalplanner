@@ -22,7 +22,7 @@ export default function Dashboard() {
       <div className="flex-1 flex flex-col">
         <PageHeader />
         <motion.div 
-          className="flex-1 m-4 bg-background rounded-[30px] overflow-hidden"
+          className="flex-1 m-4 bg-background rounded-[30px] overflow-hidden mb-8"
           initial={{ x: 50, opacity: 1 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.5 }}
