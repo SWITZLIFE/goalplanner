@@ -848,6 +848,25 @@ Remember to:
   });
 
 
+  // Timer Current Status API
+  app.get("/api/timer/current", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+
+      const activeTimer = await db.query.timeTracking.findFirst({
+        where: and(
+          eq(timeTracking.userId, userId),
+          eq(timeTracking.isActive, true)
+        ),
+      });
+
+      res.json(activeTimer || null);
+    } catch (error) {
+      console.error("Failed to get current timer:", error);
+      res.status(500).json({ error: "Failed to get current timer status" });
+    }
+  });
+
   // Time Tracking API
   app.post("/api/tasks/:taskId/timer/start", requireAuth, async (req, res) => {
     try {
@@ -916,7 +935,7 @@ Remember to:
         .where(eq(timeTracking.id, activeTimer.id))
         .returning();
 
-      // Update task's total time and get updated task
+      // Update task's total time
       const [updatedTask] = await db.update(tasks)
         .set({
           totalMinutesSpent: sql`${tasks.totalMinutesSpent} + ${minutesWorked}`,
@@ -931,7 +950,7 @@ Remember to:
         .limit(1);
 
       if (!userRewards) {
-        // Create initial rewards record if itdoesn't exist
+        // Create initial rewards record if it doesn't exist
         await db.insert(rewards)
           .values({
             userId,
