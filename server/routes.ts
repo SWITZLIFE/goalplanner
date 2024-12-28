@@ -14,7 +14,7 @@ import { setupAuth } from "./auth";
 import { openai } from "./openai";
 import { uploadFileToSupabase } from './supabase';
 import { getTodayQuote, markQuoteAsRead } from "./goal-quotes";
-
+import { registerGoogleOAuthRoutes } from "./google-oauth";
 // Configure multer for handling file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -59,6 +59,7 @@ export function registerRoutes(app: Express): Server {
   // Setup authentication middleware and routes first
   setupAuth(app);
 
+  registerGoogleOAuthRoutes(app);
   // Profile photo upload route
   app.post("/api/user/profile-photo", requireAuth, upload.single('photo'), async (req, res) => {
     try {
