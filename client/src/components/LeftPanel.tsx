@@ -18,7 +18,7 @@ export function LeftPanel() {
     <div className="w-[clamp(16rem,20vw,30rem)] bg-primary h-screen overflow-hidden flex flex-col">
       {/* Top Section */}
       <div className="p-3 lg:p-4 flex-none">
-        <div className="py-2 lg:py-3 mb-4 lg:mb-6">
+        <div className="py-2 lg:py-3 mb-2 lg:mb-6">
           <div className="flex flex-col items-center">
             <div className="w-16 h-16 lg:w-24 lg:h-24 rounded-full overflow-hidden mb-2">
               <img src={user?.profilePhotoUrl || 'https://github.com/shadcn.png'} alt="Profile" className="w-full h-full object-cover" />
@@ -69,7 +69,7 @@ export function LeftPanel() {
       <div className="px-3 lg:px-4 flex-1 min-h-0">
         <h2 className="text-sm font-medium text-white mb-2">Your Goals</h2>
         <div className={cn(
-          "h-full overflow-y-auto space-y-2 pr-1 pb-4 pt-4 mb-4 scrollbar-hide",
+          "h-full overflow-y-auto space-y-2 pr-1 pb-12 pt-2 scrollbar-hide",
           "scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
         )}>
           {goals.map((goal) => (
@@ -79,10 +79,7 @@ export function LeftPanel() {
       </div>
 
       {/* Footer Section */}
-      <div className="p-3 lg:p-4 border-t border-white/10 mt-auto flex-none">
-        <div className="text-xs lg:text-sm text-gray-400">
-          <p>Check out our user guide or contact support for assistance.</p>
-        </div>
+      <div className="p-3 lg:p-4 mt-auto flex-none">
       </div>
     </div>
   );
