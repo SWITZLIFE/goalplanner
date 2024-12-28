@@ -15,7 +15,7 @@ export function LeftPanel() {
   const [isGoalsOpen, setIsGoalsOpen] = useState(true);
 
   return (
-    <div className="w-[clamp(16rem,20vw,25rem)] bg-primary h-screen overflow-hidden flex flex-col">
+    <div className="w-[clamp(16rem,20vw,30rem)] bg-primary h-screen overflow-hidden flex flex-col">
       {/* Top Section */}
       <div className="p-3 lg:p-4 flex-none">
         <div className="py-2 lg:py-3 mb-4 lg:mb-6">
