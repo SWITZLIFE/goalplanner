@@ -64,7 +64,8 @@ export function LeftPanel() {
       <div className="flex-1 flex flex-col min-h-0 px-4 py-2">
         <h2 className="text-sm font-medium text-white mb-3">Your Goals</h2>
         <div className={cn(
-          "flex-1 overflow-y-auto space-y-2 pr-1, scrollbar-hide"
+          "flex-1 overflow-y-auto space-y-2 pr-1 scrollbar-hide scroll-smooth",
+          "snap-y snap-mandatory"
         )}>
           {goals.map((goal) => (
             <GoalCard key={goal.id} goal={goal} />
