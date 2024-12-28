@@ -7,7 +7,7 @@ import type { Express } from "express";
 export function registerGoogleOAuthRoutes(app: Express) {
   // 1) INITIATE GOOGLE OAUTH
   app.get("/api/auth/google/init", (req, res) => {
-    console.log("Initiating Google OAuth");
+    
     // We assume you have set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and a
     // callback URL in your environment variables or .env
     const oauth2Client = new google.auth.OAuth2(
@@ -34,7 +34,7 @@ export function registerGoogleOAuthRoutes(app: Express) {
   app.get("/api/auth/google/callback", async (req, res) => {
     try {
       const code = req.query.code as string | undefined;
-      console.log(code);
+      
       if (!code) {
         return res.status(400).json({ error: "No code returned from Google" });
       }
@@ -48,7 +48,7 @@ export function registerGoogleOAuthRoutes(app: Express) {
 
       // Exchange the code for tokens
       const { tokens } = await oauth2Client.getToken(code);
-      console.log("TOKENS :", tokens);
+      
 
       if (!req.isAuthenticated()) {
         return res
