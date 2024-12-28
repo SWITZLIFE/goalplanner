@@ -15,8 +15,9 @@ export function LeftPanel() {
   const [isGoalsOpen, setIsGoalsOpen] = useState(true);
 
   return (
-    <div className="w-72 lg:w-80 bg-primary h-screen overflow-hidden">
-      <div className="p-4">
+    <div className="w-72 lg:w-80 bg-primary h-screen overflow-hidden flex flex-col">
+      {/* Top Section */}
+      <div className="p-4 flex-none">
         <div className="py-4 mb-6">
           <div className="flex flex-col items-center">
             <div className="w-24 h-24 lg:w-32 lg:h-32 rounded-full overflow-hidden mb-3">
@@ -63,15 +64,24 @@ export function LeftPanel() {
         </div>
       </div>
 
-      <div className="px-4">
+      {/* Goals Section - Scrollable */}
+      <div className="px-4 flex-1 min-h-0">
         <h2 className="text-sm font-medium text-white mb-2">Your Goals</h2>
         <div className={cn(
-          "h-[calc(100vh-26rem)] overflow-y-auto space-y-2 pr-1",
+          "h-full overflow-y-auto space-y-2 pr-1 pb-4",
           "scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
         )}>
           {goals.map((goal) => (
             <GoalCard key={goal.id} goal={goal} />
           ))}
+        </div>
+      </div>
+
+      {/* Footer Section */}
+      <div className="p-4 border-t border-white/10 mt-auto flex-none">
+        <div className="text-sm text-gray-400">
+          <p className="font-medium text-white mb-1">Need Help?</p>
+          <p>Check out our user guide or contact support for assistance.</p>
         </div>
       </div>
     </div>
