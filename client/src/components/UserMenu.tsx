@@ -50,7 +50,7 @@ export function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="hover:opacity-80">
-        <Avatar>
+        <Avatar onClick={() => window.location.href = '/profile'} className="cursor-pointer">
           {user.profilePhotoUrl ? (
             <AvatarImage 
               src={user.profilePhotoUrl} 

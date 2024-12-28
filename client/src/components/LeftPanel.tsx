@@ -20,7 +20,7 @@ export function LeftPanel() {
       <div className="p-3 lg:p-4 flex-none">
         <div className="py-2 lg:py-3 mb-2 lg:mb-6">
           <div className="flex flex-col items-center">
-            <div className="w-16 h-16 lg:w-24 lg:h-24 rounded-full overflow-hidden mb-2">
+            <div className="w-16 h-16 lg:w-24 lg:h-24 rounded-full overflow-hidden mb-2 cursor-pointer" onClick={() => window.location.href = '/profile'}>
               <img src={user?.profilePhotoUrl || 'https://github.com/shadcn.png'} alt="Profile" className="w-full h-full object-cover" />
             </div>
             <h2 className="text-white font-medium text-sm lg:text-base">{user?.email?.split('@')[0] || 'User'}</h2>
