@@ -53,24 +53,26 @@ export function LeftPanel() {
       </div>
 
       {/* Coins and Actions Section */}
-      <div className="flex-none p-4 space-y-4 border-b border-white/10">
-        <div className="flex justify-between items-center">
+      <div className="flex-none px-2 py-3 border-b border-white/10">
+        <div className="flex justify-between items-center px-2 mb-3">
           <h1 className="text-sm lg:text-base font-semibold text-white">Coin balance</h1>
           <CoinBalance />
         </div>
-        <CreateGoalDialog />
-        <Link href="/rewards">
-          <Button variant="subtle" className="w-full text-xs lg:text-sm py-1.5">
-            <Gift className="mr-2 h-4 w-4" />
-            Reward Store
-          </Button>
-        </Link>
-        <Link href="/analytics">
-          <Button variant="subtle" className="w-full text-xs lg:text-sm py-1.5">
-            <BarChart2 className="mr-2 h-4 w-4" />
-            View Analytics
-          </Button>
-        </Link>
+        <div className="space-y-1">
+          <CreateGoalDialog className="w-full justify-start px-2 py-1.5 h-8 font-normal hover:bg-white/10" />
+          <Link href="/rewards" className="block">
+            <Button variant="ghost" className="w-full justify-start px-2 py-1.5 h-8 font-normal hover:bg-white/10">
+              <Gift className="mr-2 h-4 w-4" />
+              Reward Store
+            </Button>
+          </Link>
+          <Link href="/analytics" className="block">
+            <Button variant="ghost" className="w-full justify-start px-2 py-1.5 h-8 font-normal hover:bg-white/10">
+              <BarChart2 className="mr-2 h-4 w-4" />
+              View Analytics
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Goals Section */}
