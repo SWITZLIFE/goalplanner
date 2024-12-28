@@ -5,7 +5,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import type { Task as BaseTask } from "@db/schema";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Clock, Calendar as CalendarIcon, Quote, X, Plus, ChevronRight } from "lucide-react";
 import { VisionGenerator } from "./VisionGenerator";
 import { OverdueTasksDialog } from "./OverdueTasksDialog";
@@ -60,7 +60,7 @@ function TaskDialog({ task, onClose, onUpdateDate, onToggleComplete, initialTask
 
   return (
     <Dialog open={true} onOpenChange={() => onClose()}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>
             <div className="flex items-center gap-3">
@@ -73,6 +73,9 @@ function TaskDialog({ task, onClose, onUpdateDate, onToggleComplete, initialTask
               )}>{task.title}</span>
             </div>
           </DialogTitle>
+          <DialogDescription>
+            Manage task details, completion status, and associated subtasks
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
@@ -139,6 +142,9 @@ function TaskDialog({ task, onClose, onUpdateDate, onToggleComplete, initialTask
           <DialogContent className="max-w-[min-content]">
             <DialogHeader>
               <DialogTitle>Select New Date</DialogTitle>
+              <DialogDescription>
+                Choose a new date for this task. You can update or remove the planned date.
+              </DialogDescription>
             </DialogHeader>
             <Calendar
               mode="single"
@@ -590,6 +596,9 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
         <DialogContent className="max-w-[min-content]">
           <DialogHeader>
             <DialogTitle>Select Task Date</DialogTitle>
+            <DialogDescription>
+              Choose a date for your task. Select a date to schedule or reschedule the task.
+            </DialogDescription>
           </DialogHeader>
           <Calendar
             mode="single"

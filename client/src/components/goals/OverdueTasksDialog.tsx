@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
@@ -40,17 +40,16 @@ export function OverdueTasksDialog({ tasks, onClose, onUpdateTaskDate }: Overdue
 
   return (
     <Dialog open={true} onOpenChange={() => onClose()}>
-      <DialogContent className="max-w-xl">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Overdue Tasks Found</DialogTitle>
-        </DialogHeader>
-        
-        <div className="py-4">
-          <p className="text-muted-foreground mb-4">
+          <DialogDescription>
             You have {tasks.length} overdue {tasks.length === 1 ? 'task' : 'tasks'}. 
             Would you like to move them all to today or reschedule them individually?
-          </p>
+          </DialogDescription>
+        </DialogHeader>
 
+        <div className="py-4">
           <div className="space-y-4">
             <div className="flex gap-4">
               <Button onClick={handleMoveAllToToday} className="flex-1">
@@ -87,9 +86,12 @@ export function OverdueTasksDialog({ tasks, onClose, onUpdateTaskDate }: Overdue
 
         {selectedTaskId && (
           <Dialog open={true} onOpenChange={() => setSelectedTaskId(null)}>
-            <DialogContent className="max-w-[min-content]">
+            <DialogContent>
               <DialogHeader>
                 <DialogTitle>Select New Date</DialogTitle>
+                <DialogDescription>
+                  Choose a new date for this task. Only future dates are available.
+                </DialogDescription>
               </DialogHeader>
               <Calendar
                 mode="single"

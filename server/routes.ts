@@ -29,11 +29,29 @@ const upload = multer({
   }
 });
 
-// Authentication middleware
+// Authentication middleware with proper session handling
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "You must be logged in to access this resource" });
   }
+
+  // Add session timestamp
+  if (req.session && !req.session.createdAt) {
+    (req.session as any).createdAt = new Date();
+  }
+
+  // Session expiry check
+  if (req.session && (req.session as any).createdAt) {
+    const sessionStart = new Date((req.session as any).createdAt);
+    const sessionAge = Date.now() - sessionStart.getTime();
+    if (sessionAge > 24 * 60 * 60 * 1000) {
+      req.session.destroy((err) => {
+        if (err) console.error("Session destruction failed:", err);
+      });
+      return res.status(401).json({ error: "Session expired" });
+    }
+  }
+
   next();
 }
 
@@ -49,10 +67,10 @@ export function registerRoutes(app: Express): Server {
       }
 
       const userId = req.user!.id;
-      
+
       // Upload to Supabase storage
       const imageUrl = await uploadFileToSupabase(req.file);
-      
+
       // Update user's profile photo URL in database
       const [updatedUser] = await db.update(users)
         .set({ profilePhotoUrl: imageUrl })
@@ -72,9 +90,6 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ error: "Failed to upload profile photo" });
     }
   });
-
-  // Setup authentication middleware and routes
-  setupAuth(app);
 
   // Configure CORS headers for Supabase Storage URLs
   app.use((req, res, next) => {
