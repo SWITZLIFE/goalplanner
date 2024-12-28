@@ -68,7 +68,7 @@ export function TaskEditor({ task, open, onOpenChange }: TaskEditorProps) {
   return (
     <>
       <div className={cn(
-        "fixed inset-y-0 right-0 w-96 bg-background border-l border-border shadow-lg transform transition-transform duration-200 ease-in-out",
+        "fixed inset-y-0 right-0 w-72 lg:w-80 bg-background border-l border-border shadow-lg transform transition-transform duration-200 ease-in-out",
         open ? "translate-x-0" : "translate-x-full"
       )}>
         <div className="flex flex-col h-full">

@@ -360,7 +360,7 @@ export function VisionBoard() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 max-w-[calc(100vw-19rem)] mx-auto px-4">
       <FutureMessage />
       <div className="h-px bg-border" />
 
@@ -403,7 +403,7 @@ export function VisionBoard() {
             "data-[state=closed]:animate-collapsible-up"
           )}
         >
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {slots.map((image, index) => (
               <div
                 key={index}
