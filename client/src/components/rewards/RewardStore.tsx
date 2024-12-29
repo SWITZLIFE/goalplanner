@@ -178,12 +178,11 @@ export function RewardStore() {
       <motion.div 
         className="flex justify-between items-center"
         variants={itemVariants}
-      >
         <h2 className="text-2xl font-semibold">Reward Store</h2>
         <div className="text-sm text-muted-foreground">
           Your balance: <span className="font-medium text-yellow-500">{userRewards?.coins || 0} coins</span>
         </div>
-      </motion.div>
+      </div>
 
       <Tabs defaultValue="available" className="space-y-6">
         <TabsList className="grid w-full grid-cols-2">
@@ -243,7 +242,7 @@ export function RewardStore() {
               </Card>
               </motion.div>
             ))}
-          </motion.div>
+          </div>
         </TabsContent>
 
         <TabsContent value="purchased" className="space-y-6">
@@ -267,7 +266,7 @@ export function RewardStore() {
               </Card>
               </motion.div>
             ))}
-          </motion.div>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
