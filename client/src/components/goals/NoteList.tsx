@@ -179,8 +179,9 @@ export function NoteList({ goalId, tasks, initialTaskId, onClose }: NoteListProp
         description: "Your note has been created successfully.",
       });
 
-      // Invalidate the notes query to force a refresh
+      // Invalidate both notes and tasks queries to refresh the data
       queryClient.invalidateQueries([`/api/goals/${goalId}/notes`]);
+      queryClient.invalidateQueries([`/api/goals`]);
 
       // Close the panel immediately after successful creation if in task note creation mode
       if (onClose) {
