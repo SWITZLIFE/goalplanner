@@ -14,6 +14,7 @@ import { TaskTimer } from "./TaskTimer";
 import { TaskEditor } from "./TaskEditor";
 import { NoteList } from "./NoteList";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
 
 interface TaskListProps {
   tasks: Task[];
@@ -102,6 +103,14 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
   const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
   const [optimisticTaskStates, setOptimisticTaskStates] = useState<Record<number, boolean>>({});
   const [showNoteCreator, setShowNoteCreator] = useState<{ taskId: number; title: string } | null>(null);
+
+  const { data: notes = [] } = useQuery({
+    queryKey: [`/api/goals/${goalId}/notes`],
+  });
+
+  const hasNotes = (taskId: number) => {
+    return notes.some(note => note.taskId === taskId);
+  };
 
   const handleDelete = async (taskId: number) => {
     try {
@@ -318,7 +327,6 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
     setShowNoteCreator({ taskId, title });
   };
 
-
   return (
     <>
       <div className="space-y-6 bg-white p-4 rounded-md">
@@ -400,7 +408,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     <div className="flex items-center gap-1">
                       {!readOnly && (
                         <>
-                          {mainTask.notes && (
+                          {hasNotes(mainTask.id) && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -531,7 +539,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                               continuousCreate={true}
                             />
                             <div className="flex items-center gap-1">
-                              {!subtask.isSubtask && subtask.notes && (
+                              {hasNotes(subtask.id) && (
                                 <button
                                   onClick={() => setEditingTaskId(subtask.id)}
                                   className="text-muted-foreground hover:text-foreground transition-colors"
