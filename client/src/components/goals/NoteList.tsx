@@ -115,7 +115,7 @@ const NoteEditor = ({ onSubmit, initialContent = '' }: { onSubmit: (html: string
   }, [editor]);
 
   return (
-    <div className="border rounded-lg overflow-hidden">
+    <div className="border rounded-lg overflow-hidden" css={editorStyles}>
       <MenuBar editor={editor} />
       <EditorContent editor={editor} />
     </div>
@@ -305,11 +305,14 @@ export function NoteList({ goalId, tasks, initialTaskId, viewTaskId, onClose }: 
 
   const editorStyles = css`
     .ProseMirror {
-      height: 200px; /* Minimum height */
-      overflow-y: auto; /* Enable vertical scrolling */
+      min-height: 200px;
+      max-height: calc(50vh - 100px);
+      height: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
     }
-    .ProseMirror-scroll {
-      overflow-y: auto; /* Ensure scrolling within the content area */
+    .ProseMirror-focused {
+      outline: none;
     }
   `;
 
