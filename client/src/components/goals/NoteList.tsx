@@ -91,7 +91,7 @@ const NoteEditor = ({ onSubmit, initialContent = '' }: { onSubmit: (html: string
     content: initialContent,
     editorProps: {
       attributes: {
-        class: 'prose prose-sm focus:outline-none p-4 min-h-[200px] max-h-[50vh] overflow-y-auto',
+        class: 'prose prose-sm focus:outline-none p-4 h-[400px] overflow-y-auto',
       },
     },
     onUpdate: ({ editor }) => {
