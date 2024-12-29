@@ -15,7 +15,6 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import { queryClient } from "@/lib/queryClient";
-import { css } from '@emotion/react';
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -115,7 +114,7 @@ const NoteEditor = ({ onSubmit, initialContent = '' }: { onSubmit: (html: string
   }, [editor]);
 
   return (
-    <div className="border rounded-lg overflow-hidden" css={editorStyles}>
+    <div className="border rounded-lg overflow-hidden">
       <MenuBar editor={editor} />
       <EditorContent editor={editor} />
     </div>
@@ -302,20 +301,6 @@ export function NoteList({ goalId, tasks, initialTaskId, viewTaskId, onClose }: 
   if (isLoading) {
     return <div>Loading notes...</div>;
   }
-
-  const editorStyles = css`
-    .ProseMirror {
-      min-height: 200px;
-      max-height: calc(50vh - 100px);
-      height: 100%;
-      overflow-y: auto;
-      overflow-x: hidden;
-    }
-    .ProseMirror-focused {
-      outline: none;
-    }
-  `;
-
 
   return (
     <div className="flex flex-col h-full">
