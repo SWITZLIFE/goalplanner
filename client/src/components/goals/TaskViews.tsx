@@ -443,8 +443,8 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
               animate="center"
               exit="exit"
               transition={{
-                x: { type: "spring", stiffness: 300, damping: 30 },
-                opacity: { duration: 0.2 }
+                x: { type: "spring", stiffness: 150, damping: 20 },  // Reduced stiffness & damping for slower motion
+                opacity: { duration: 0.4 }  // Doubled duration from 0.2
               }}
             >
               <TabsContent value="tasks" forceMount={currentTab === "tasks"}>
