@@ -181,8 +181,8 @@ export function NoteList({ goalId, tasks, initialTaskId, viewTaskId, onClose }: 
         description: "Your note has been created successfully.",
       });
 
-      // Invalidate the notes query to force a refresh
-      queryClient.invalidateQueries([`/api/goals/${goalId}/notes`]);
+      // Fix the invalidateQueries call to use the proper type
+      queryClient.invalidateQueries({ queryKey: [`/api/goals/${goalId}/notes`] });
 
       // Close the panel immediately after successful creation if in task note creation mode
       if (onClose) {
@@ -303,31 +303,31 @@ export function NoteList({ goalId, tasks, initialTaskId, viewTaskId, onClose }: 
   }
 
   return (
-    <div className="relative min-h-[calc(100vh-8rem)]">
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-medium">
-            {viewTaskId 
-              ? `Notes for "${tasks.find(t => t.id === viewTaskId)?.title}"`
-              : onClose ? "Create Note" : "Notes"
-            }
-          </h3>
-          {onClose ? (
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          ) : !viewTaskId && (
-            <Button onClick={() => {
-              setSelectedNote(null);
-              setIsCreating(true);
-            }}>
-              <Plus className="w-4 h-4 mr-2" />
-              Create Note
-            </Button>
-          )}
-        </div>
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between p-4 border-b">
+        <h3 className="text-lg font-semibold">
+          {viewTaskId 
+            ? `Notes for "${tasks.find(t => t.id === viewTaskId)?.title}"`
+            : onClose ? "Create Note" : "Notes"
+          }
+        </h3>
+        {onClose ? (
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        ) : !viewTaskId && (
+          <Button onClick={() => {
+            setSelectedNote(null);
+            setIsCreating(true);
+          }}>
+            <Plus className="w-4 h-4 mr-2" />
+            Create Note
+          </Button>
+        )}
+      </div>
 
-        {/* Notes List */}
+      {/* Notes List */}
+      <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-2">
           {displayedNotes.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">
@@ -337,8 +337,8 @@ export function NoteList({ goalId, tasks, initialTaskId, viewTaskId, onClose }: 
             displayedNotes.map((note) => (
               <div
                 key={note.id}
-                className={`group p-4 transition-colors cursor-pointer rounded-lg ${
-                  selectedNote?.id === note.id ? 'bg-[#D8F275]' : 'bg-white hover:bg-[#D8F275]'
+                className={`group p-4 transition-colors cursor-pointer rounded-lg border ${
+                  selectedNote?.id === note.id ? 'bg-[#D8F275] border-[#D8F275]' : 'bg-white hover:bg-[#D8F275] border-border hover:border-[#D8F275]'
                 }`}
                 onClick={() => handleNoteClick(note)}
               >
@@ -377,93 +377,97 @@ export function NoteList({ goalId, tasks, initialTaskId, viewTaskId, onClose }: 
 
       {/* Right Panel for Note Creation/Editing */}
       {(isCreating || selectedNote) && (
-        <div className="fixed inset-y-0 right-0 w-[600px] bg-background border-l shadow-xl p-6 space-y-4 overflow-y-auto">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold">
-              {selectedNote ? "Edit Note" : "Create New Note"}
-            </h3>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={closeSidePanel}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Title</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Note title..." {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="content"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Content</FormLabel>
-                    <FormControl>
-                      <NoteEditor
-                        onSubmit={field.onChange}
-                        initialContent={selectedNote?.content}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              {incompleteTasks.length > 0 && (
-                <FormField
-                  control={form.control}
-                  name="taskId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Associate with Task (Optional)</FormLabel>
-                      <Select
-                        onValueChange={(value) => field.onChange(parseInt(value))}
-                        value={field.value?.toString()}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a task" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {incompleteTasks.map((task) => (
-                            <SelectItem key={task.id} value={task.id.toString()}>
-                              {task.title}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </FormItem>
-                  )}
-                />
-              )}
-
+        <div className="fixed inset-y-0 right-0 w-[600px] bg-background border-l shadow-xl">
+          <div className="flex flex-col h-full">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold">
+                {selectedNote ? "Edit Note" : "Create New Note"}
+              </h3>
               <Button
-                type="submit"
-                className="w-full"
-                disabled={createNoteMutation.isPending || updateNoteMutation.isPending}
+                variant="ghost"
+                size="icon"
+                onClick={closeSidePanel}
               >
-                {(createNoteMutation.isPending || updateNoteMutation.isPending) ? (
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                ) : (
-                  selectedNote ? "Update Note" : "Create Note"
-                )}
+                <X className="h-4 w-4" />
               </Button>
-            </form>
-          </Form>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4">
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Title</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Note title..." {...field} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="content"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Content</FormLabel>
+                        <FormControl>
+                          <NoteEditor
+                            onSubmit={field.onChange}
+                            initialContent={selectedNote?.content}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  {incompleteTasks.length > 0 && (
+                    <FormField
+                      control={form.control}
+                      name="taskId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Associate with Task (Optional)</FormLabel>
+                          <Select
+                            onValueChange={(value) => field.onChange(parseInt(value))}
+                            value={field.value?.toString()}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a task" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {incompleteTasks.map((task) => (
+                                <SelectItem key={task.id} value={task.id.toString()}>
+                                  {task.title}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={createNoteMutation.isPending || updateNoteMutation.isPending}
+                  >
+                    {(createNoteMutation.isPending || updateNoteMutation.isPending) ? (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    ) : (
+                      selectedNote ? "Update Note" : "Create Note"
+                    )}
+                  </Button>
+                </form>
+              </Form>
+            </div>
+          </div>
         </div>
       )}
     </div>
