@@ -356,14 +356,16 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
           >
             {mainTasks.some(task => !expandedTasks.has(task.id)) ? 'Expand All' : 'Collapse All'}
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleAddTask}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Task
-          </Button>
+          {!readOnly && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAddTask}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Task
+            </Button>
+          )}
         </div>
 
         <div className="space-y-2">
