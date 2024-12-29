@@ -75,12 +75,13 @@ export function LeftPanel({ params }) { // Added params prop
               id={`goal-card-${goal.id}`}
               ref={(el) => {
                 if (el && params?.id === goal.id.toString()) {
-                  requestAnimationFrame(() => {
+                  setTimeout(() => {
                     el.scrollIntoView({ 
                       behavior: 'smooth', 
-                      block: 'start'
+                      block: 'center',
+                      inline: 'nearest'
                     });
-                  });
+                  }, 100);
                 }
               }}
               className="py-0.5"
