@@ -2,7 +2,7 @@
 import React from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Home, Gift, BarChart2 } from "lucide-react";
+import { Home, Gift, BarChart2, User } from "lucide-react";
 
 export function PageHeader() {
   return (
@@ -24,6 +24,12 @@ export function PageHeader() {
           <Button variant="ghost" className="text-sm font-medium hover:text/80">
             <BarChart2 className="mr-2 h-4 w-4" />
             Analytics
+          </Button>
+        </Link>
+        <Link href="/profile">
+          <Button variant="ghost" className="text-sm font-medium hover:text/80">
+            <User className="mr-2 h-4 w-4" />
+            Profile
           </Button>
         </Link>
       </nav>
