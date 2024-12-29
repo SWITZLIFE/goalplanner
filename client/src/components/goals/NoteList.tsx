@@ -312,7 +312,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
             notes.map((note) => (
               <div
                 key={note.id}
-                className="group border rounded-lg p-4 hover:bg-accent/50 transition-colors cursor-pointer"
+                className="group bg-white p-4 hover:bg-accent/50 transition-colors cursor-pointer"
                 onClick={() => handleNoteClick(note)}
               >
                 <div className="flex justify-between items-start">
