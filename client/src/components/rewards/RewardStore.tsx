@@ -183,6 +183,7 @@ export function RewardStore() {
         <div className="text-sm text-muted-foreground">
           Your balance: <span className="font-medium text-yellow-500">{userRewards?.coins || 0} coins</span>
         </div>
+      </motion.div>
       </div>
 
       <Tabs defaultValue="available" className="space-y-6">
