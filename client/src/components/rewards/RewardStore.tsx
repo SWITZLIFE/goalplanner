@@ -43,8 +43,9 @@ const cardVariants = {
     y: 0,
     transition: {
       type: "spring",
-      stiffness: 500,
-      damping: 30
+      stiffness: 300,  // Reduced stiffness for slower animation
+      damping: 25,     // Adjusted damping for smoother motion
+      duration: 0.5    // Added duration to ensure minimum animation time
     }
   }
 };
@@ -54,7 +55,8 @@ const containerVariants = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1
+      staggerChildren: 0.15,  // Increased delay between children
+      delayChildren: 0.1      // Added initial delay
     }
   }
 };

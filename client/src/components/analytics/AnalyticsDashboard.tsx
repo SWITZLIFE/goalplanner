@@ -16,8 +16,9 @@ const cardVariants = {
     y: 0,
     transition: {
       type: "spring",
-      stiffness: 500,
-      damping: 30
+      stiffness: 300,    // Reduced stiffness
+      damping: 25,       // Adjusted damping
+      duration: 0.5      // Added minimum duration
     }
   }
 };
@@ -27,7 +28,8 @@ const containerVariants = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1
+      staggerChildren: 0.2,   // Increased delay between children
+      delayChildren: 0.1      // Added initial delay
     }
   }
 };
@@ -38,7 +40,8 @@ const chartVariants = {
     opacity: 1,
     scale: 1,
     transition: {
-      duration: 0.5,
+      duration: 0.7,        // Increased duration
+      delay: 0.6,          // Added delay to start after cards
       ease: "easeOut"
     }
   }
