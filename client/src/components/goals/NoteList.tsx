@@ -35,6 +35,7 @@ interface NoteListProps {
   goalId: number;
   tasks: Task[];
   initialTaskId?: number;
+  viewTaskId?: number;
   onClose?: () => void;
 }
 
@@ -120,7 +121,7 @@ const NoteEditor = ({ onSubmit, initialContent = '' }: { onSubmit: (html: string
   );
 };
 
-export function NoteList({ goalId, tasks, initialTaskId, onClose }: NoteListProps) {
+export function NoteList({ goalId, tasks, initialTaskId, viewTaskId, onClose }: NoteListProps) {
   const [isCreating, setIsCreating] = useState(!!initialTaskId);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const { toast } = useToast();
@@ -131,16 +132,17 @@ export function NoteList({ goalId, tasks, initialTaskId, onClose }: NoteListProp
   // Fetch notes for this goal
   const { data: notes = [], isLoading, refetch } = useQuery<Note[]>({
     queryKey: [`/api/goals/${goalId}/notes`],
-    refetchInterval: 0,
-    refetchOnWindowFocus: false,
   });
+
+  // Filter notes if viewing task-specific notes
+  const displayedNotes = viewTaskId ? notes.filter(note => note.taskId === viewTaskId) : notes;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
       content: "",
-      taskId: initialTaskId,
+      taskId: initialTaskId || viewTaskId,
     },
   });
 
@@ -304,12 +306,17 @@ export function NoteList({ goalId, tasks, initialTaskId, onClose }: NoteListProp
     <div className="relative min-h-[calc(100vh-8rem)]">
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-medium">{onClose ? "Create Note" : "Notes"}</h3>
+          <h3 className="text-lg font-medium">
+            {viewTaskId 
+              ? `Notes for "${tasks.find(t => t.id === viewTaskId)?.title}"`
+              : onClose ? "Create Note" : "Notes"
+            }
+          </h3>
           {onClose ? (
             <Button variant="ghost" size="icon" onClick={onClose}>
               <X className="h-4 w-4" />
             </Button>
-          ) : (
+          ) : !viewTaskId && (
             <Button onClick={() => {
               setSelectedNote(null);
               setIsCreating(true);
@@ -322,15 +329,17 @@ export function NoteList({ goalId, tasks, initialTaskId, onClose }: NoteListProp
 
         {/* Notes List */}
         <div className="space-y-2">
-          {notes.length === 0 ? (
+          {displayedNotes.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">
-              No notes yet. Create one to get started!
+              No notes yet. {!viewTaskId && "Create one to get started!"}
             </p>
           ) : (
-            notes.map((note) => (
+            displayedNotes.map((note) => (
               <div
                 key={note.id}
-                className={`group p-4 transition-colors cursor-pointer rounded-lg ${selectedNote?.id === note.id ? 'bg-[#D8F275]' : 'bg-white hover:bg-[#D8F275]'}`}
+                className={`group p-4 transition-colors cursor-pointer rounded-lg ${
+                  selectedNote?.id === note.id ? 'bg-[#D8F275]' : 'bg-white hover:bg-[#D8F275]'
+                }`}
                 onClick={() => handleNoteClick(note)}
               >
                 <div className="flex justify-between items-start">

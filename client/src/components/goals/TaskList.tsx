@@ -103,6 +103,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
   const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
   const [optimisticTaskStates, setOptimisticTaskStates] = useState<Record<number, boolean>>({});
   const [showNoteCreator, setShowNoteCreator] = useState<{ taskId: number; title: string } | null>(null);
+  const [viewingTaskNotes, setViewingTaskNotes] = useState<{ taskId: number; title: string } | null>(null);
 
   const { data: notes = [] } = useQuery<{ taskId: number | null }[]>({
     queryKey: [`/api/goals/${goalId}/notes`],
@@ -325,6 +326,10 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
     setShowNoteCreator({ taskId, title });
   };
 
+  const handleNoteIconClick = (e: React.MouseEvent, taskId: number, title: string) => {
+    e.stopPropagation();
+    setViewingTaskNotes({ taskId, title });
+  };
 
   return (
     <>
@@ -392,7 +397,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     checked={optimisticTaskStates[mainTask.id] ?? mainTask.completed}
                     onCheckedChange={(checked) => handleTaskToggle(mainTask.id, checked as boolean)}
                   />
-                  <div 
+                  <div
                     className="flex items-center gap-2 flex-grow cursor-pointer"
                     onClick={() => handleTaskTitleClick(mainTask.id, mainTask.title)}
                   >
@@ -409,10 +414,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                         <>
                           {tasksWithNotes.has(mainTask.id) && (
                             <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingTaskId(mainTask.id);
-                              }}
+                              onClick={(e) => handleNoteIconClick(e, mainTask.id, mainTask.title)}
                               className="text-muted-foreground hover:text-foreground transition-colors"
                               title="View notes"
                             >
@@ -540,10 +542,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                             <div className="flex items-center gap-1">
                               {tasksWithNotes.has(subtask.id) && (
                                 <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingTaskId(subtask.id);
-                                  }}
+                                  onClick={(e) => handleNoteIconClick(e, subtask.id, subtask.title)}
                                   className="text-muted-foreground hover:text-foreground transition-colors"
                                   title="View notes"
                                 >
@@ -636,6 +635,17 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
             tasks={tasks}
             initialTaskId={showNoteCreator.taskId}
             onClose={() => setShowNoteCreator(null)}
+          />
+        </div>
+      )}
+
+      {viewingTaskNotes && (
+        <div className="fixed inset-y-0 right-0 w-[600px] bg-background border-l shadow-xl">
+          <NoteList
+            goalId={goalId}
+            tasks={tasks}
+            viewTaskId={viewingTaskNotes.taskId}
+            onClose={() => setViewingTaskNotes(null)}
           />
         </div>
       )}
