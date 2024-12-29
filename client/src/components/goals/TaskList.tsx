@@ -14,8 +14,6 @@ import { TaskTimer } from "./TaskTimer";
 import { TaskEditor } from "./TaskEditor";
 import { NoteList } from "./NoteList";
 import { useToast } from "@/hooks/use-toast";
-import type { UpdateTask } from "@/types/updateTask";
-
 
 interface TaskListProps {
   tasks: Task[];
@@ -151,12 +149,13 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
     setOptimisticTaskStates(prev => ({ ...prev, [taskId]: completed }));
 
     try {
-      const taskUpdate: UpdateTask = {
+      const taskUpdate = {
         taskId,
         completed,
         title: task.title,
-        plannedDate: task.plannedDate ? new Date(task.plannedDate).toISOString() : null,
+        plannedDate: task.plannedDate,
         estimatedMinutes: task.estimatedMinutes ?? undefined,
+        notes: task.notes
       };
 
       if (!task.isSubtask && completed) {
@@ -176,14 +175,18 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
               taskId: subtask.id,
               completed: true,
               title: subtask.title,
+              notes: subtask.notes,
               estimatedMinutes: subtask.estimatedMinutes ?? undefined,
-              plannedDate: subtask.plannedDate ? new Date(subtask.plannedDate).toISOString() : null,
+              plannedDate: subtask.plannedDate,
+              isSubtask: true,
+              parentTaskId: taskId
             })
           )
         );
       }
     } catch (error) {
       setOptimisticTaskStates(prev => ({ ...prev, [taskId]: !completed }));
+
       console.error("Failed to update task completion:", error);
       toast({
         variant: "destructive",
@@ -382,7 +385,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     checked={optimisticTaskStates[mainTask.id] ?? mainTask.completed}
                     onCheckedChange={(checked) => handleTaskToggle(mainTask.id, checked as boolean)}
                   />
-                  <div
+                  <div 
                     className="flex items-center gap-2 flex-grow cursor-pointer"
                     onClick={() => handleTaskTitleClick(mainTask.id, mainTask.title)}
                   >

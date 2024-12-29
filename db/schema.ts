@@ -40,8 +40,7 @@ export const tasks = pgTable("tasks", {
   isSubtask: boolean("is_subtask").default(false).notNull(),
   isAiGenerated: boolean("is_ai_generated").default(false).notNull(),
   order: integer("order"),
-  eventId: text("event_id"),
-  notes: text("notes"), // Added notes column
+   eventId: text("event_id"), // Add this line for Google Calendar event ID
 });
 
 export const futureMessages = pgTable("future_messages", {
@@ -95,10 +94,8 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
     references: [tasks.id],
   }),
   subtasks: many(tasks, {
-    relationName: "subtasks",
-  }),
-  notes: many(notes, {
-    relationName: "taskNotes",
+    fields: [tasks.id],
+    references: [tasks.parentTaskId],
   }),
   timeTrackingSessions: many(timeTracking),
 }));
@@ -161,9 +158,7 @@ export const updateTaskSchema = selectTaskSchema.partial().extend({
   title: z.string().optional(),
   estimatedMinutes: z.number().optional().nullable(),
   plannedDate: z.string().optional().nullable(),
-  isSubtask: z.boolean().optional(),
-  parentTaskId: z.number().optional().nullable(),
-  notes: z.array(z.string()).optional(), //Corrected to array of strings
+  notes: z.string().optional().nullable(),
 });
 
 export const selectUserSchema = createSelectSchema(users);
