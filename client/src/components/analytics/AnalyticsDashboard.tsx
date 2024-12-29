@@ -7,14 +7,27 @@ import { Trophy, Target, Clock, TrendingUp, Award } from "lucide-react";
 import { motion } from "framer-motion";
 
 const cardVariants = {
-  hidden: { opacity: 0, y: 20 },
+  hidden: { 
+    opacity: 0,
+    y: 20
+  },
   visible: { 
-    opacity: 1, 
+    opacity: 1,
     y: 0,
     transition: {
       type: "spring",
-      stiffness: 300,
-      damping: 24
+      stiffness: 500,
+      damping: 30
+    }
+  }
+};
+
+const containerVariants = {
+  hidden: { opacity: 1 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
     }
   }
 };
@@ -65,21 +78,11 @@ export function AnalyticsDashboard() {
   }).reverse();
 
   return (
-    <motion.div 
-      initial="hidden"
-      animate="visible"
-      className="space-y-8"
-    >
+    <div className="space-y-8">
       <motion.div 
-        variants={{
-          hidden: { opacity: 0 },
-          visible: {
-            opacity: 1,
-            transition: {
-              staggerChildren: 0.1
-            }
-          }
-        }}
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
         className="grid gap-4 md:grid-cols-3"
       >
         <motion.div variants={cardVariants}>
@@ -150,7 +153,7 @@ export function AnalyticsDashboard() {
       </motion.div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <motion.div variants={chartVariants}>
+        <motion.div variants={chartVariants} initial="hidden" animate="visible">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-base">Progress Trends</CardTitle>
@@ -177,7 +180,7 @@ export function AnalyticsDashboard() {
           </Card>
         </motion.div>
 
-        <motion.div variants={chartVariants}>
+        <motion.div variants={chartVariants} initial="hidden" animate="visible">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-base">Daily Task Completion</CardTitle>
@@ -199,6 +202,6 @@ export function AnalyticsDashboard() {
           </Card>
         </motion.div>
       </div>
-    </motion.div>
+    </div>
   );
 }
