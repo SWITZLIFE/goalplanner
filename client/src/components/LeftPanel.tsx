@@ -73,9 +73,12 @@ export function LeftPanel({ params }) { // Added params prop
               id={`goal-card-${goal.id}`}
               ref={(el) => {
                 if (el && params?.id === goal.id.toString()) {
-                  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                  setTimeout(() => {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }, 100);
                 }
               }}
+              className="py-0.5"
             >
               <GoalCard goal={goal} />
             </div>
