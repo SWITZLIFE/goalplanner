@@ -34,6 +34,8 @@ interface Note {
 interface NoteListProps {
   goalId: number;
   tasks: Task[];
+  initialTaskId?: number;
+  onClose?: () => void;
 }
 
 const MenuBar = ({ editor }: { editor: any }) => {
@@ -118,8 +120,8 @@ const NoteEditor = ({ onSubmit, initialContent = '' }: { onSubmit: (html: string
   );
 };
 
-export function NoteList({ goalId, tasks }: NoteListProps) {
-  const [isCreating, setIsCreating] = useState(false);
+export function NoteList({ goalId, tasks, initialTaskId, onClose }: NoteListProps) {
+  const [isCreating, setIsCreating] = useState(!!initialTaskId);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const { toast } = useToast();
 
@@ -138,7 +140,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
     defaultValues: {
       title: "",
       content: "",
-      taskId: undefined,
+      taskId: initialTaskId,
     },
   });
 
@@ -282,6 +284,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
     setIsCreating(false);
     setSelectedNote(null);
     form.reset();
+    if(onClose) onClose();
   };
 
   if (isLoading) {
@@ -292,14 +295,20 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
     <div className="relative min-h-[calc(100vh-8rem)]">
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-medium">Notes</h3>
-          <Button onClick={() => {
-            setSelectedNote(null);
-            setIsCreating(true);
-          }}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create Note
-          </Button>
+          <h3 className="text-lg font-medium">{onClose ? "Create Note" : "Notes"}</h3>
+          {onClose ? (
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button onClick={() => {
+              setSelectedNote(null);
+              setIsCreating(true);
+            }}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create Note
+            </Button>
+          )}
         </div>
 
         {/* Notes List */}
@@ -386,7 +395,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
                   <FormItem>
                     <FormLabel>Content</FormLabel>
                     <FormControl>
-                      <NoteEditor 
+                      <NoteEditor
                         onSubmit={field.onChange}
                         initialContent={selectedNote?.content}
                       />
@@ -424,8 +433,8 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
                 />
               )}
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full"
                 disabled={createNoteMutation.isPending || updateNoteMutation.isPending}
               >

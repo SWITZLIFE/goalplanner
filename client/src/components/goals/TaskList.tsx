@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Calendar } from "@/components/ui/calendar";
 import { TaskTimer } from "./TaskTimer";
 import { TaskEditor } from "./TaskEditor";
+import { NoteList } from "./NoteList";
 import { useToast } from "@/hooks/use-toast";
 
 interface TaskListProps {
@@ -100,6 +101,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
   const [showDatePicker, setShowDatePicker] = useState<{ taskId: number; date?: Date } | null>(null);
   const [expandedTasks, setExpandedTasks] = useState<Set<number>>(new Set());
   const [optimisticTaskStates, setOptimisticTaskStates] = useState<Record<number, boolean>>({});
+  const [showNoteCreator, setShowNoteCreator] = useState<{ taskId: number; title: string } | null>(null);
 
   const handleDelete = async (taskId: number) => {
     try {
@@ -312,6 +314,11 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
       .sort((a, b) => a.id - b.id);
   };
 
+  const handleTaskTitleClick = (taskId: number, title: string) => {
+    setShowNoteCreator({ taskId, title });
+  };
+
+
   return (
     <>
       <div className="space-y-6 bg-white p-4 rounded-md">
@@ -378,7 +385,10 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     checked={optimisticTaskStates[mainTask.id] ?? mainTask.completed}
                     onCheckedChange={(checked) => handleTaskToggle(mainTask.id, checked as boolean)}
                   />
-                  <div className="flex items-center gap-2 flex-grow cursor-pointer">
+                  <div 
+                    className="flex items-center gap-2 flex-grow cursor-pointer"
+                    onClick={() => handleTaskTitleClick(mainTask.id, mainTask.title)}
+                  >
                     <EditableTaskTitle
                       task={mainTask}
                       onSave={(title) => handleTaskTitleChange(mainTask.id, title)}
@@ -388,23 +398,31 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                       )}
                     />
                     <div className="flex items-center gap-1">
-                      {!mainTask.isSubtask && mainTask.notes && (
-                        <button
-                          onClick={() => setEditingTaskId(mainTask.id)}
-                          className="text-muted-foreground hover:text-foreground transition-colors"
-                          title="View notes"
-                        >
-                          <StickyNote className="h-4 w-4" />
-                        </button>
-                      )}
                       {!readOnly && (
-                        <button
-                          onClick={() => handleDelete(mainTask.id)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:text-destructive"
-                          title="Delete task"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        <>
+                          {mainTask.notes && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingTaskId(mainTask.id);
+                              }}
+                              className="text-muted-foreground hover:text-foreground transition-colors"
+                              title="View notes"
+                            >
+                              <StickyNote className="h-4 w-4" />
+                            </button>
+                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(mainTask.id);
+                            }}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:text-destructive"
+                            title="Delete task"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -599,6 +617,19 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
           open={!!editingTaskId}
           onOpenChange={(open) => !open && setEditingTaskId(null)}
         />
+      )}
+
+      {showNoteCreator && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm">
+          <div className="fixed inset-y-0 right-0 w-[600px] bg-background border-l shadow-xl">
+            <NoteList
+              goalId={goalId}
+              tasks={tasks}
+              initialTaskId={showNoteCreator.taskId}
+              onClose={() => setShowNoteCreator(null)}
+            />
+          </div>
+        </div>
       )}
     </>
   );
