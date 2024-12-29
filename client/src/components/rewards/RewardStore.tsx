@@ -243,7 +243,7 @@ export function RewardStore() {
               </Card>
               </motion.div>
             ))}
-          </div>
+          </motion.div>
         </TabsContent>
 
         <TabsContent value="purchased" className="space-y-6">
@@ -267,7 +267,7 @@ export function RewardStore() {
               </Card>
               </motion.div>
             ))}
-          </div>
+          </motion.div>
         </TabsContent>
       </Tabs>
     </div>
