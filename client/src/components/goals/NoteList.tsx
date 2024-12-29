@@ -312,7 +312,7 @@ export function NoteList({ goalId, tasks }: NoteListProps) {
             notes.map((note) => (
               <div
                 key={note.id}
-                className={`group bg-white p-4 hover:bg-[#D8F275] transition-colors cursor-pointer rounded-lg ${selectedNote?.id === note.id ? 'bg-[#D8F275]' : ''}`}
+                className={`group p-4 transition-colors cursor-pointer rounded-lg ${selectedNote?.id === note.id ? 'bg-[#D8F275]' : 'bg-white hover:bg-[#D8F275]'}`}
                 onClick={() => handleNoteClick(note)}
               >
                 <div className="flex justify-between items-start">
