@@ -50,7 +50,7 @@ export default function GoalView() {
           <div className="h-full overflow-auto scrollbar-hide py-12 px-14">
             <div className="max-w-8xl mx-auto">
               <div className="space-y-8">
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start group">
                   <div>
                     <h1 className="text-2xl font-semibold mb-2">{goal.title}</h1>
                     {goal.description && goal.description !== goal.title && (
@@ -60,7 +60,7 @@ export default function GoalView() {
                       <CalendarIcon className="h-4 w-4" /> {format(new Date(goal.targetDate), "MMMM d, yyyy")}
                     </p>
                   </div>
-                  <div className="flex space-x-2">
+                  <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <button className="text-destructive hover:text-destructive/80 transition-colors">
