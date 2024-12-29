@@ -9,7 +9,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/hooks/use-user";
 
-export function LeftPanel() {
+export function LeftPanel({ params }) { // Added params prop
   const { goals } = useGoals();
   const { user } = useUser();
   const [isGoalsOpen, setIsGoalsOpen] = useState(true);
@@ -68,7 +68,15 @@ export function LeftPanel() {
           "snap-y snap-mandatory"
         )}>
           {goals.map((goal) => (
-            <div key={goal.id} className="snap-start py-0.5">
+            <div 
+              key={goal.id} 
+              id={`goal-card-${goal.id}`}
+              ref={(el) => {
+                if (el && params?.id === goal.id.toString()) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+              }}
+            >
               <GoalCard goal={goal} />
             </div>
           ))}
