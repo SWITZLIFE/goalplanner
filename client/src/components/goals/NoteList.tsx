@@ -174,13 +174,19 @@ export function NoteList({ goalId, tasks, initialTaskId, onClose }: NoteListProp
       return response.json();
     },
     onSuccess: () => {
-      setIsCreating(false);
-      form.reset();
-      refetch();
       toast({
         title: "Note created",
         description: "Your note has been created successfully.",
       });
+
+      // Close the panel immediately after successful creation if in task note creation mode
+      if (onClose) {
+        onClose();
+      } else {
+        setIsCreating(false);
+        form.reset();
+        refetch();
+      }
     },
     onError: (error: Error) => {
       console.error("Failed to create note:", error);

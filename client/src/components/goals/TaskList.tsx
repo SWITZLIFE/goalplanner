@@ -620,15 +620,13 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
       )}
 
       {showNoteCreator && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm">
-          <div className="fixed inset-y-0 right-0 w-[600px] bg-background border-l shadow-xl">
-            <NoteList
-              goalId={goalId}
-              tasks={tasks}
-              initialTaskId={showNoteCreator.taskId}
-              onClose={() => setShowNoteCreator(null)}
-            />
-          </div>
+        <div className="fixed inset-y-0 right-0 w-[600px] bg-background border-l shadow-xl">
+          <NoteList
+            goalId={goalId}
+            tasks={tasks}
+            initialTaskId={showNoteCreator.taskId}
+            onClose={() => setShowNoteCreator(null)}
+          />
         </div>
       )}
     </>
