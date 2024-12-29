@@ -178,6 +178,7 @@ export function RewardStore() {
       <motion.div 
         className="flex justify-between items-center"
         variants={itemVariants}
+      >
         <h2 className="text-2xl font-semibold">Reward Store</h2>
         <div className="text-sm text-muted-foreground">
           Your balance: <span className="font-medium text-yellow-500">{userRewards?.coins || 0} coins</span>
