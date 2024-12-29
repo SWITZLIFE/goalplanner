@@ -156,6 +156,14 @@ export function NoteList({ goalId, tasks, initialTaskId, onClose }: NoteListProp
 
   const createNoteMutation = useMutation({
     mutationFn: async (values: z.infer<typeof formSchema>) => {
+      // Check if a note already exists for this task
+      if (values.taskId) {
+        const existingNotes = notes.filter(note => note.taskId === values.taskId);
+        if (existingNotes.length > 0) {
+          throw new Error("A note already exists for this task");
+        }
+      }
+
       const response = await fetch(`/api/goals/${goalId}/notes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -198,6 +206,11 @@ export function NoteList({ goalId, tasks, initialTaskId, onClose }: NoteListProp
         description: error.message || "Failed to create note. Please try again.",
         variant: "destructive",
       });
+
+      // If the error is about existing note, close the panel
+      if (error.message === "A note already exists for this task" && onClose) {
+        onClose();
+      }
     },
   });
 
