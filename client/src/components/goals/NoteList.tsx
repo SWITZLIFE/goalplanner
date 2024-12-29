@@ -15,6 +15,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import { queryClient } from "@/lib/queryClient";
+import { css } from '@emotion/react';
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -301,6 +302,17 @@ export function NoteList({ goalId, tasks, initialTaskId, viewTaskId, onClose }: 
   if (isLoading) {
     return <div>Loading notes...</div>;
   }
+
+  const editorStyles = css`
+    .ProseMirror {
+      height: 200px; /* Minimum height */
+      overflow-y: auto; /* Enable vertical scrolling */
+    }
+    .ProseMirror-scroll {
+      overflow-y: auto; /* Ensure scrolling within the content area */
+    }
+  `;
+
 
   return (
     <div className="flex flex-col h-full">
