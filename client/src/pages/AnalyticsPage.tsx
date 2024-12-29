@@ -18,15 +18,10 @@ export default function AnalyticsPage() {
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.5 }}
         >
-          <div className="h-full overflow-auto scrollbar-hide py-6 px-14">
+          <div className="h-full overflow-auto scrollbar-hide py-14 px-14">
             <div className="max-w-8xl mx-auto">
               <div className="flex items-center gap-4 mb-8">
-                <Link href="/">
-                  <Button variant="ghost" size="sm">
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back to Dashboard
-                  </Button>
-                </Link>
+               
                 <h1 className="text-2xl font-bold">Analytics Dashboard</h1>
               </div>
               <AnalyticsDashboard />

@@ -47,7 +47,7 @@ export default function GoalView() {
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.5 }}
         >
-          <div className="h-full overflow-auto scrollbar-hide py-10 px-14">
+          <div className="h-full overflow-auto scrollbar-hide py-12 px-14">
             <div className="max-w-8xl mx-auto">
               <div className="space-y-8">
                 <div className="flex justify-between items-start">
@@ -61,12 +61,6 @@ export default function GoalView() {
                     </p>
                   </div>
                   <div className="flex space-x-2">
-                    <Link href="/">
-                      <Button variant="ghost" size="sm">
-                        <ArrowLeft className="h-4 w-4 mr-2" />
-                        Back
-                      </Button>
-                    </Link>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <button className="text-destructive hover:text-destructive/80 transition-colors">
