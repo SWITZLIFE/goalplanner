@@ -153,9 +153,31 @@ export function RewardStore() {
     }
   };
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 }
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <motion.div 
+      className="space-y-6"
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+    >
+      <motion.div 
+        className="flex justify-between items-center"
+        variants={itemVariants}
         <h2 className="text-2xl font-semibold">Reward Store</h2>
         <div className="text-sm text-muted-foreground">
           Your balance: <span className="font-medium text-yellow-500">{userRewards?.coins || 0} coins</span>
@@ -169,9 +191,15 @@ export function RewardStore() {
         </TabsList>
 
         <TabsContent value="available" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <motion.div 
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+          >
             {rewardItems.map((reward) => (
-              <Card key={reward.id} className="transition-shadow hover:shadow-md flex flex-col h-[220px]">
+              <motion.div key={reward.id} variants={itemVariants}>
+                <Card className="transition-shadow hover:shadow-md flex flex-col h-[220px]">
                 <CardHeader className="flex-1 pb-2">
                   <CardTitle className="flex items-center gap-2 text-base line-clamp-2 min-h-[48px]">
                     {getIcon(reward.icon)}
@@ -212,6 +240,7 @@ export function RewardStore() {
                   </div>
                 </CardFooter>
               </Card>
+              </motion.div>
             ))}
           </div>
         </TabsContent>
@@ -235,6 +264,7 @@ export function RewardStore() {
                   </div>
                 </CardFooter>
               </Card>
+              </motion.div>
             ))}
           </div>
         </TabsContent>
