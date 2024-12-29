@@ -19,10 +19,7 @@ export function LeftPanel() {
       {/* User Profile Section */}
       <div className="flex-none p-4 border-b border-white/10">
         <div className="flex flex-col items-center mt-14">
-          <div 
-            className="w-16 h-16 lg:w-24 lg:h-24 rounded-full overflow-hidden mb-3 cursor-pointer" 
-            onClick={() => window.location.href = '/profile'}
-          >
+          <div className="w-16 h-16 lg:w-24 lg:h-24 rounded-full overflow-hidden mb-3">
             <img 
               src={user?.profilePhotoUrl || 'https://github.com/shadcn.png'} 
               alt="Profile" 
