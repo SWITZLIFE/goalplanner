@@ -1,9 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useGoals } from "@/hooks/use-goals";
 import { useQuery } from "@tanstack/react-query";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
-import { format, subDays } from "date-fns";
-import { Trophy, Target, Clock, TrendingUp, Award } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Area, AreaChart } from "recharts";
+import { format, subDays, parseISO } from "date-fns";
+import { Trophy, Target, Clock, TrendingUp, Award, Coins } from "lucide-react";
 import { motion } from "framer-motion";
 
 const cardVariants = {
@@ -16,9 +16,9 @@ const cardVariants = {
     y: 0,
     transition: {
       type: "spring",
-      stiffness: 300,    // Reduced stiffness
-      damping: 25,       // Adjusted damping
-      duration: 0.5      // Added minimum duration
+      stiffness: 300,
+      damping: 25,
+      duration: 0.5
     }
   }
 };
@@ -28,8 +28,8 @@ const containerVariants = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.2,   // Increased delay between children
-      delayChildren: 0.1      // Added initial delay
+      staggerChildren: 0.2,
+      delayChildren: 0.1
     }
   }
 };
@@ -40,8 +40,8 @@ const chartVariants = {
     opacity: 1,
     scale: 1,
     transition: {
-      duration: 0.7,        // Increased duration
-      delay: 0.6,          // Added delay to start after cards
+      duration: 0.7,
+      delay: 0.6,
       ease: "easeOut"
     }
   }
@@ -51,6 +51,9 @@ export function AnalyticsDashboard() {
   const { goals } = useGoals();
   const { data: rewards } = useQuery<{ coins: number }>({
     queryKey: ["/api/rewards"],
+  });
+  const { data: coinHistory } = useQuery<Array<{ amount: number; balance: number; timestamp: string }>>({
+    queryKey: ["/api/rewards/history"],
   });
 
   // Calculate stats
@@ -80,6 +83,12 @@ export function AnalyticsDashboard() {
     };
   }).reverse();
 
+  // Format coin history data for chart
+  const coinData = coinHistory?.map(entry => ({
+    date: format(parseISO(entry.timestamp), "MMM d"),
+    balance: entry.balance,
+  })) ?? [];
+
   return (
     <div className="space-y-8">
       <motion.div 
@@ -88,6 +97,28 @@ export function AnalyticsDashboard() {
         animate="visible"
         className="grid gap-4 md:grid-cols-3"
       >
+        <motion.div variants={cardVariants}>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Current Balance</CardTitle>
+              <Coins className="h-4 w-4 text-yellow-500" />
+            </CardHeader>
+            <CardContent>
+              <motion.div 
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                className="text-2xl font-bold"
+              >
+                {rewards?.coins ?? 0}
+              </motion.div>
+              <p className="text-xs text-muted-foreground">
+                Total coins earned
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
+
         <motion.div variants={cardVariants}>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -113,29 +144,7 @@ export function AnalyticsDashboard() {
         <motion.div variants={cardVariants}>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Task Completion</CardTitle>
-              <Trophy className="h-4 w-4 text-yellow-500" />
-            </CardHeader>
-            <CardContent>
-              <motion.div 
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.1 }}
-                className="text-2xl font-bold"
-              >
-                {completedTasks}
-              </motion.div>
-              <p className="text-xs text-muted-foreground">
-                {((completedTasks / Math.max(allTasks.length, 1)) * 100).toFixed(1)}% of total tasks
-              </p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div variants={cardVariants}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Time Investment</CardTitle>
+              <CardTitle className="text-sm font-medium">Time Investment</CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -159,24 +168,31 @@ export function AnalyticsDashboard() {
         <motion.div variants={chartVariants} initial="hidden" animate="visible">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-base">Progress Trends</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-base">Coin Balance Trend</CardTitle>
+              <Coins className="h-4 w-4 text-yellow-500" />
             </CardHeader>
             <CardContent>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={progressData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <AreaChart data={coinData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.1}/>
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.01}/>
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis unit="%" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
                     <Tooltip />
-                    <Line
-                      type="monotone"
-                      dataKey="progress"
-                      stroke="hsl(var(--primary))"
+                    <Area 
+                      type="monotone" 
+                      dataKey="balance" 
+                      stroke="hsl(var(--primary))" 
+                      fill="url(#colorBalance)"
                       strokeWidth={2}
                     />
-                  </LineChart>
+                  </AreaChart>
                 </ResponsiveContainer>
               </div>
             </CardContent>

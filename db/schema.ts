@@ -18,6 +18,7 @@ export const goals = pgTable("goals", {
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description"),
+  notes: text("notes"),
   targetDate: timestamp("target_date").notNull(),
   progress: integer("progress").default(0).notNull(),
   totalTasks: integer("total_tasks").default(0).notNull(),
@@ -40,7 +41,7 @@ export const tasks = pgTable("tasks", {
   isSubtask: boolean("is_subtask").default(false).notNull(),
   isAiGenerated: boolean("is_ai_generated").default(false).notNull(),
   order: integer("order"),
-   eventId: text("event_id"), // Add this line for Google Calendar event ID
+  eventId: text("event_id"),
 });
 
 export const futureMessages = pgTable("future_messages", {
@@ -269,3 +270,24 @@ export const insertNoteSchema = createInsertSchema(notes);
 export const selectNoteSchema = createSelectSchema(notes);
 export type Note = typeof notes.$inferSelect;
 export type NewNote = typeof notes.$inferInsert;
+
+export const coinHistory = pgTable("coin_history", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  amount: integer("amount").notNull(),
+  balance: integer("balance").notNull(),
+  reason: text("reason").notNull(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+});
+
+export const coinHistoryRelations = relations(coinHistory, ({ one }) => ({
+  user: one(users, {
+    fields: [coinHistory.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertCoinHistorySchema = createInsertSchema(coinHistory);
+export const selectCoinHistorySchema = createSelectSchema(coinHistory);
+export type CoinHistory = typeof coinHistory.$inferSelect;
+export type NewCoinHistory = typeof coinHistory.$inferInsert;

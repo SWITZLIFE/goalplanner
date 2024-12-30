@@ -15,6 +15,9 @@ import { openai } from "./openai";
 import { uploadFileToSupabase } from './supabase';
 import { getTodayQuote, markQuoteAsRead } from "./goal-quotes";
 import { registerGoogleOAuthRoutes } from "./google-oauth";
+import { coinHistory } from "@db/schema"; // Import coinHistory schema
+
+
 // Configure multer for handling file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -849,6 +852,27 @@ Remember to:
   });
 
 
+  // Coin History API
+  app.get("/api/rewards/history", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const history = await db.select({
+        amount: coinHistory.amount,
+        balance: coinHistory.balance,
+        timestamp: coinHistory.timestamp,
+        reason: coinHistory.reason
+      })
+      .from(coinHistory)
+      .where(eq(coinHistory.userId, userId))
+      .orderBy(coinHistory.timestamp);
+
+      res.json(history);
+    } catch (error) {
+      console.error("Failed to fetch coin history:", error);
+      res.status(500).json({ error: "Failed to fetch coin history" });
+    }
+  });
+
   // Timer Current Status API
   app.get("/api/timer/current", requireAuth, async (req, res) => {
     try {
@@ -950,23 +974,38 @@ Remember to:
         .where(eq(rewards.userId, userId))
         .limit(1);
 
+      let currentBalance = 0;
       if (!userRewards) {
         // Create initial rewards record if it doesn't exist
-        await db.insert(rewards)
+        const [newRewards] = await db.insert(rewards)
           .values({
             userId,
             coins: coinsEarned,
             lastUpdated: new Date(),
-          });
+          })
+          .returning();
+        currentBalance = coinsEarned;
       } else {
         // Update existing rewards
-        await db.update(rewards)
+        const [updatedRewards] = await db.update(rewards)
           .set({
             coins: sql`${rewards.coins} + ${coinsEarned}`,
             lastUpdated: new Date(),
           })
-          .where(eq(rewards.userId, userId));
+          .where(eq(rewards.userId, userId))
+          .returning();
+        currentBalance = updatedRewards.coins;
       }
+
+      // Record coin history
+      await db.insert(coinHistory)
+        .values({
+          userId,
+          amount: coinsEarned,
+          balance: currentBalance,
+          reason: `Earned from working ${minutesWorked} minutes on task`,
+          timestamp: new Date(),
+        });
 
       res.json({
         timer: updatedTimer,
@@ -976,318 +1015,6 @@ Remember to:
     } catch (error) {
       console.error("Failed to stop timer:", error);
       res.status(500).json({ error: "Failed to stop timer" });
-    }
-  });
-
-  // Future Message API
-  app.get("/api/future-message/today", requireAuth, async (req, res) => {
-    try {
-      const userId = req.user!.id;
-      const message = await getTodayMessage(userId);
-      res.json(message);
-    } catch (error) {
-      console.error("Failed to fetch future message:", error);
-      res.status(500).json({ error: "Failed to fetch future message" });
-    }
-  });
-
-  app.post("/api/future-message/read", requireAuth, async (req, res) => {
-    try {
-      const userId = req.user!.id;
-      await markMessageAsRead(userId);
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Failed to mark message as read:", error);
-      res.status(500).json({ error: "Failed to mark message as read" });
-    }
-  });
-
-  app.post("/api/future-message/generate", requireAuth, async (req, res) => {
-    try {
-      const userId = req.user!.id;
-      const message = await generateDailyMessage(userId);
-      res.json(message);
-    } catch (error) {
-      console.error("Failed to generate future message:", error);
-      res.status(500).json({ 
-        error: "Failed to generate future message",
-        message: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Notes API
-  app.get("/api/goals/:goalId/notes", requireAuth, async (req, res) => {
-    try {
-      const { goalId } = req.params;
-      const userId = req.user!.id;
-
-      // Verify the goal belongs to the user
-      const goal = await db.query.goals.findFirst({
-        where: and(
-          eq(goals.id, parseInt(goalId)),
-          eq(goals.userId, userId)
-        )
-      });
-
-      if (!goal) {
-        return res.status(404).json({ error: "Goal not found or unauthorized" });
-      }
-
-      // Fetch notes for this goal
-      const goalNotes = await db.select()
-        .from(notes)
-        .where(and(
-          eq(notes.goalId, parseInt(goalId)),
-          eq(notes.userId, userId)
-        ))
-        .orderBy(desc(notes.createdAt));
-
-      res.json(goalNotes);
-    } catch (error) {
-      console.error("Failed to fetch notes:", error);
-      res.status(500).json({ error: "Failed to fetch notes" });
-    }
-  });
-
-  app.post("/api/goals/:goalId/notes", requireAuth, async (req, res) => {
-    try {
-      const { goalId } = req.params;
-      const { title, content, taskId } = req.body;
-      const userId = req.user!.id;
-
-      console.log('Creating note:', { goalId, title, content, taskId, userId });
-
-      // Verify the goal belongs to the user
-      const goal = await db.query.goals.findFirst({
-        where: and(
-          eq(goals.id, parseInt(goalId)),
-          eq(goals.userId, userId)
-        )
-      });
-
-      if (!goal) {
-        return res.status(404).json({ error: "Goal not found or unauthorized" });
-      }
-
-      // If taskId is provided, verify it belongs to the user and goal
-      if (taskId) {
-        const task = await db.query.tasks.findFirst({
-          where: and(
-            eq(tasks.id, taskId),
-            eq(tasks.userId, userId),
-            eq(tasks.goalId, parseInt(goalId))
-          )
-        });
-
-        if (!task) {
-          return res.status(404).json({ error: "Task not found or unauthorized" });
-        }
-      }
-
-      // Create the note
-      const [newNote] = await db.insert(notes)
-        .values({
-          userId,
-          goalId: parseInt(goalId),
-          taskId: taskId || null,
-          title,
-          content,
-        })
-        .returning();
-
-      if (!newNote) {
-        throw new Error("Failed to create note");
-      }
-
-      // Verify the note was created
-      const createdNote = await db.query.notes.findFirst({
-        where: and(
-          eq(notes.id, newNote.id),
-          eq(notes.userId, userId)
-        )
-      });
-
-      if (!createdNote) {
-        throw new Error("Note verification failed");
-      }
-
-      console.log('Note created successfully:', createdNote);
-      res.json(createdNote);
-    } catch (error) {
-      console.error("Failed to create note:", error);
-      res.status(500).json({ 
-        error: "Failed to create note",
-        details: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  app.delete("/api/goals/:goalId/notes/:noteId", requireAuth, async (req, res) => {
-    try {
-      const { goalId, noteId } = req.params;
-      const userId = req.user!.id;
-
-      // Verify the note exists and belongs to the user
-      const note = await db.query.notes.findFirst({
-        where: and(
-          eq(notes.id, parseInt(noteId)),
-          eq(notes.goalId, parseInt(goalId)),
-          eq(notes.userId, userId)
-        ),
-      });
-
-      if (!note) {
-        return res.status(404).json({ error: "Note not found or unauthorized" });
-      }
-
-      // Delete the note
-      await db.delete(notes)
-        .where(and(
-          eq(notes.id, parseInt(noteId)),
-          eq(notes.userId, userId)
-        ));
-
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Failed to delete note:", error);
-      res.status(500).json({ error: "Failed to delete note" });
-    }
-  });
-
-  app.patch("/api/goals/:goalId/notes/:noteId", requireAuth, async (req, res) => {
-    try {
-      const { goalId, noteId } = req.params;
-      const { title, content, taskId } = req.body;
-      const userId = req.user!.id;
-
-      // Verify the note exists and belongs to the user
-      const note = await db.query.notes.findFirst({
-        where: and(
-          eq(notes.id, parseInt(noteId)),
-          eq(notes.goalId, parseInt(goalId)),
-          eq(notes.userId, userId)
-        ),
-      });
-
-      if (!note) {
-        return res.status(404).json({ error: "Note not found or unauthorized" });
-      }
-
-      // Update the note
-      const [updatedNote] = await db.update(notes)
-        .set({
-          title,
-          content,
-          taskId: taskId || null,
-          updatedAt: new Date(),
-        })
-        .where(and(
-          eq(notes.id, parseInt(noteId)),
-          eq(notes.userId, userId)
-        ))
-        .returning();
-
-      res.json(updatedNote);
-    } catch (error) {
-      console.error("Failed to update note:", error);
-      res.status(500).json({ error: "Failed to update note" });
-    }
-  });
-
-  // Vision Board API
-  app.get("/api/vision-board", requireAuth, async (req, res) => {
-    try {
-      const userId = req.user!.id;
-      const images = await db.select()
-        .from(visionBoardImages)
-        .where(eq(visionBoardImages.userId, userId))
-        .orderBy(visionBoardImages.position);
-      res.json(images);
-    } catch (error) {
-      console.error("Failed to fetch vision board images:", error);
-      res.status(500).json({ error: "Failed to fetch vision board images" });
-    }
-  });
-
-  app.post("/api/vision-board/upload", requireAuth, upload.single('image'), async (req, res) => {
-    try {
-      console.log('Processing image upload request');
-      const userId = req.user!.id;
-
-      // Check if user already has 12 images
-      const imageCount = await db.select({ count: sql<number>`count(*)` })
-        .from(visionBoardImages)
-        .where(eq(visionBoardImages.userId, userId));
-
-      console.log('Current image count:', imageCount[0].count);
-
-      if (imageCount[0].count >= 12) {
-        return res.status(400).json({ error: "Maximum number of images (12) reached" });
-      }
-
-      // Find the next available position
-      const existingPositions = await db.select({ position: visionBoardImages.position })
-        .from(visionBoardImages)
-        .where(eq(visionBoardImages.userId, userId));
-
-      const usedPositions = existingPositions.map(img => img.position);
-      let nextPosition = 0;
-      while (usedPositions.includes(nextPosition)) {
-        nextPosition++;
-      }
-
-      console.log('Using position:', nextPosition);
-
-      if (!req.file) {
-        console.error('No file uploaded');
-        return res.status(400).json({ error: "No image file provided" });
-      }
-
-      // Upload file to Supabase Storage
-      const imageUrl = await uploadFileToSupabase(req.file);
-      console.log('Supabase Image URL:', imageUrl);
-
-      const [newImage] = await db.insert(visionBoardImages)
-        .values({
-          userId,
-          imageUrl,
-          position: nextPosition,
-        })
-        .returning();
-
-      res.json(newImage);
-    } catch (error) {
-      console.error("Failed to upload image:", error);
-      res.status(500).json({ 
-        error: "Failed to upload image",
-        details: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  app.delete("/api/vision-board/:id", requireAuth, async (req, res) => {
-    try {
-      const userId = req.user!.id;
-      const imageId = parseInt(req.params.id);
-
-      const [deletedImage] = await db.delete(visionBoardImages)
-        .where(
-          and(
-            eq(visionBoardImages.id, imageId),
-            eq(visionBoardImages.userId, userId)
-          )
-        )
-        .returning();
-
-      if (!deletedImage) {
-        return res.status(404).json({ error: "Image not found" });
-      }
-
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Failed to delete image:", error);
-      res.status(500).json({ error: "Failed to delete image" });
     }
   });
 
