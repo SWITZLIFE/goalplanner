@@ -95,9 +95,73 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.post("/api/vision-board/upload", requireAuth, upload.single('image'), async (req, res) => {
+    try {
+      if (!req.file) {
+        console.error('No file uploaded');
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const userId = req.user!.id;
+
+      console.log('Processing file upload:', {
+        filename: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size
+      });
+
+      // Upload to Supabase storage with error handling
+      let imageUrl;
+      try {
+        imageUrl = await uploadFileToSupabase(req.file);
+      } catch (uploadError) {
+        console.error('Supabase upload failed:', uploadError);
+        return res.status(500).json({ error: "Failed to upload image to storage" });
+      }
+
+      if (!imageUrl) {
+        console.error('No image URL returned from upload');
+        return res.status(500).json({ error: "Failed to get image URL" });
+      }
+
+      console.log('File uploaded, saving to database:', { imageUrl });
+
+      // Find the next available position
+      const existingImages = await db.select()
+        .from(visionBoardImages)
+        .where(eq(visionBoardImages.userId, userId));
+
+      const usedPositions = new Set(existingImages.map(img => img.position));
+      let position = 0;
+      while (usedPositions.has(position)) {
+        position++;
+      }
+
+      // Save to database
+      const [newImage] = await db.insert(visionBoardImages)
+        .values({
+          userId,
+          imageUrl,
+          position,
+        })
+        .returning();
+
+      if (!newImage) {
+        console.error('Failed to save image to database');
+        return res.status(500).json({ error: "Failed to save image" });
+      }
+
+      console.log('Vision board image created:', newImage);
+      res.json(newImage);
+    } catch (error) {
+      console.error("Failed to process vision board upload:", error);
+      res.status(500).json({ error: "Failed to process upload" });
+    }
+  });
+
   // Configure CORS headers for Supabase Storage URLs
   app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', process.env.SUPABASE_URL);
+    res.header('Access-Control-Allow-Origin', process.env.SUPABASE_URL || '*'); // Added default '*' for development
     res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH');
     res.header('Access-Control-Allow-Headers', 'Content-Type');
     next();
