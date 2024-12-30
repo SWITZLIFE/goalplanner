@@ -3,22 +3,22 @@ import { useGoals } from "@/hooks/use-goals";
 import { useQuery } from "@tanstack/react-query";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { format, subDays } from "date-fns";
-import { Trophy, Target, Clock, TrendingUp, Award, Coins } from "lucide-react";
+import { Trophy, Target, Clock, TrendingUp, Award } from "lucide-react";
 import { motion } from "framer-motion";
 
 const cardVariants = {
-  hidden: {
+  hidden: { 
     opacity: 0,
     y: 20
   },
-  visible: {
+  visible: { 
     opacity: 1,
     y: 0,
     transition: {
       type: "spring",
-      stiffness: 300,
-      damping: 25,
-      duration: 0.5
+      stiffness: 300,    // Reduced stiffness
+      damping: 25,       // Adjusted damping
+      duration: 0.5      // Added minimum duration
     }
   }
 };
@@ -28,8 +28,8 @@ const containerVariants = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.2,
-      delayChildren: 0.1
+      staggerChildren: 0.2,   // Increased delay between children
+      delayChildren: 0.1      // Added initial delay
     }
   }
 };
@@ -40,46 +40,17 @@ const chartVariants = {
     opacity: 1,
     scale: 1,
     transition: {
-      duration: 0.7,
-      delay: 0.6,
+      duration: 0.7,        // Increased duration
+      delay: 0.6,          // Added delay to start after cards
       ease: "easeOut"
     }
   }
 };
 
-interface TimeTrackingData {
-  date: string;
-  totalMinutes: number;
-}
-
-interface CoinHistory {
-  date: string;
-  coins: number;
-}
-
-interface LeaderboardEntry {
-  username: string;
-  totalCoins: number;
-  rank: number;
-}
-
 export function AnalyticsDashboard() {
   const { goals } = useGoals();
   const { data: rewards } = useQuery<{ coins: number }>({
     queryKey: ["/api/rewards"],
-  });
-
-  // New queries for analytics data
-  const { data: coinHistory = [] } = useQuery<CoinHistory[]>({
-    queryKey: ["/api/analytics/coin-history"],
-  });
-
-  const { data: leaderboard = [] } = useQuery<LeaderboardEntry[]>({
-    queryKey: ["/api/analytics/leaderboard"],
-  });
-
-  const { data: timeTracking = [] } = useQuery<TimeTrackingData[]>({
-    queryKey: ["/api/analytics/time-tracking"],
   });
 
   // Calculate stats
@@ -91,9 +62,27 @@ export function AnalyticsDashboard() {
   const completedTasks = allTasks.filter(t => t.completed).length;
   const totalTaskTime = allTasks.reduce((sum, task) => sum + (task.estimatedMinutes || 0), 0);
 
+  const progressData = goals.map(goal => ({
+    name: format(new Date(goal.targetDate), "MMM d"),
+    progress: goal.progress,
+  })).sort((a, b) => new Date(a.name).getTime() - new Date(b.name).getTime());
+
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const date = subDays(new Date(), i);
+    const formattedDate = format(date, "MMM d");
+    const dailyCompletedTasks = allTasks.filter(t => 
+      t.completed && 
+      format(new Date(t.createdAt), "MMM d") === formattedDate
+    ).length;
+    return {
+      date: formattedDate,
+      completed: dailyCompletedTasks,
+    };
+  }).reverse();
+
   return (
     <div className="space-y-8">
-      <motion.div
+      <motion.div 
         variants={containerVariants}
         initial="hidden"
         animate="visible"
@@ -102,20 +91,20 @@ export function AnalyticsDashboard() {
         <motion.div variants={cardVariants}>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Current Coins</CardTitle>
-              <Coins className="h-4 w-4 text-yellow-500" />
+              <CardTitle className="text-sm font-medium">Goals Overview</CardTitle>
+              <Target className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <motion.div
+              <motion.div 
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
                 className="text-2xl font-bold"
               >
-                {rewards?.coins || 0}
+                {totalGoals}
               </motion.div>
               <p className="text-xs text-muted-foreground">
-                Total coins earned
+                {completedGoals} completed • {totalGoals - completedGoals} in progress
               </p>
             </CardContent>
           </Card>
@@ -128,7 +117,7 @@ export function AnalyticsDashboard() {
               <Trophy className="h-4 w-4 text-yellow-500" />
             </CardHeader>
             <CardContent>
-              <motion.div
+              <motion.div 
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.1 }}
@@ -150,7 +139,7 @@ export function AnalyticsDashboard() {
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <motion.div
+              <motion.div 
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.2 }}
@@ -170,20 +159,20 @@ export function AnalyticsDashboard() {
         <motion.div variants={chartVariants} initial="hidden" animate="visible">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-base">Coin Earning Trends</CardTitle>
-              <Coins className="h-4 w-4 text-yellow-500" />
+              <CardTitle className="text-base">Progress Trends</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={coinHistory} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <LineChart data={progressData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
+                    <XAxis dataKey="name" />
+                    <YAxis unit="%" />
                     <Tooltip />
                     <Line
                       type="monotone"
-                      dataKey="coins"
+                      dataKey="progress"
                       stroke="hsl(var(--primary))"
                       strokeWidth={2}
                     />
@@ -197,18 +186,18 @@ export function AnalyticsDashboard() {
         <motion.div variants={chartVariants} initial="hidden" animate="visible">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-base">Daily Work Time</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-base">Daily Task Completion</CardTitle>
+              <Award className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={timeTracking} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <BarChart data={last7Days} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
-                    <YAxis unit="min" />
+                    <YAxis />
                     <Tooltip />
-                    <Bar dataKey="totalMinutes" fill="hsl(var(--primary))" />
+                    <Bar dataKey="completed" fill="hsl(var(--primary))" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -216,34 +205,6 @@ export function AnalyticsDashboard() {
           </Card>
         </motion.div>
       </div>
-
-      <motion.div variants={chartVariants} initial="hidden" animate="visible">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-base">Top Earners Leaderboard</CardTitle>
-            <Award className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {leaderboard.map((entry) => (
-                <div
-                  key={entry.username}
-                  className="flex items-center justify-between border-b border-border pb-2 last:border-0 last:pb-0"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-muted-foreground">#{entry.rank}</span>
-                    <span className="font-medium">{entry.username}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Coins className="h-4 w-4 text-yellow-500" />
-                    <span>{entry.totalCoins}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
     </div>
   );
 }
