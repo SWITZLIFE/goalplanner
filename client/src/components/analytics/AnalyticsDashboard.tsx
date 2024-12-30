@@ -6,6 +6,13 @@ import { format, subDays, parseISO } from "date-fns";
 import { Trophy, Target, Clock, TrendingUp, Award, Coins } from "lucide-react";
 import { motion } from "framer-motion";
 
+interface LeaderboardEntry {
+  id: number;
+  username: string;
+  coins: number;
+  lastUpdated: string;
+}
+
 const cardVariants = {
   hidden: { 
     opacity: 0,
@@ -54,6 +61,9 @@ export function AnalyticsDashboard() {
   });
   const { data: coinHistory } = useQuery<Array<{ amount: number; balance: number; timestamp: string }>>({
     queryKey: ["/api/rewards/history"],
+  });
+  const { data: leaderboard } = useQuery<LeaderboardEntry[]>({
+    queryKey: ["/api/rewards/leaderboard"],
   });
 
   // Calculate stats
@@ -228,6 +238,48 @@ export function AnalyticsDashboard() {
           </Card>
         </motion.div>
       </div>
+
+      <motion.div
+        variants={chartVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-base">Top Earners</CardTitle>
+            <Trophy className="h-4 w-4 text-yellow-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {leaderboard?.map((entry, index) => (
+                <motion.div
+                  key={entry.id}
+                  className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
+                      index === 0 ? 'bg-yellow-500 text-black' :
+                      index === 1 ? 'bg-gray-300 text-black' :
+                      index === 2 ? 'bg-amber-600 text-white' :
+                      'bg-muted-foreground/20'
+                    }`}>
+                      {index + 1}
+                    </div>
+                    <span className="font-medium">{entry.username}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Coins className="h-4 w-4 text-yellow-500" />
+                    <span>{entry.coins}</span>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   );
 }

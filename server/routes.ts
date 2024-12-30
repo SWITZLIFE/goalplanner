@@ -922,7 +922,8 @@ Remember to:
         const verifiedGoal = await db.query.goals.findFirst({
           where: and(
             eq(goals.id, parseInt(goalId)),
-            eq(goals.userId, userId)          )
+            eq(goals.userId, userId)
+          )
         });
 
         if (!verifiedGoal || verifiedGoal.visionStatement !== visionStatement) {
@@ -1311,6 +1312,28 @@ Remember to:
         error: "Failed to process purchase",
         message: error instanceof Error ? error.message : "An unexpected error occurred"
       });
+    }
+  });
+
+  // Add new endpoint for leaderboard
+  app.get("/api/rewards/leaderboard", requireAuth, async (req, res) => {
+    try {
+      // Get top 10 users by coin balance
+      const leaderboard = await db.select({
+        id: users.id,
+        username: users.username,
+        coins: rewards.coins,
+        lastUpdated: rewards.lastUpdated,
+      })
+      .from(rewards)
+      .innerJoin(users, eq(rewards.userId, users.id))
+      .orderBy(desc(rewards.coins))
+      .limit(10);
+
+      res.json(leaderboard);
+    } catch (error) {
+      console.error("Failed to fetch leaderboard:", error);
+      res.status(500).json({ error: "Failed to fetch leaderboard" });
     }
   });
 
