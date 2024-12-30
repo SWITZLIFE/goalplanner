@@ -153,6 +153,12 @@ export function VisionBoard() {
 
   const { data: images = [], isLoading } = useQuery<VisionBoardImage[]>({
     queryKey: ["/api/vision-board"],
+    onSuccess: (data) => {
+      console.log('Fetched vision board images:', data);
+    },
+    onError: (error) => {
+      console.error('Error fetching vision board images:', error);
+    }
   });
 
   // Get all tasks from all goals

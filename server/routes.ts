@@ -159,6 +159,29 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Add vision board GET endpoint
+  app.get("/api/vision-board", requireAuth, async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      console.log('Fetching vision board images for user:', userId);
+
+      const images = await db.select({
+        id: visionBoardImages.id,
+        imageUrl: visionBoardImages.imageUrl,
+        position: visionBoardImages.position,
+      })
+      .from(visionBoardImages)
+      .where(eq(visionBoardImages.userId, userId))
+      .orderBy(visionBoardImages.position);
+
+      console.log('Found vision board images:', images);
+      res.json(images);
+    } catch (error) {
+      console.error("Failed to fetch vision board:", error);
+      res.status(500).json({ error: "Failed to fetch vision board" });
+    }
+  });
+
   // Configure CORS headers for Supabase Storage URLs
   app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', process.env.SUPABASE_URL || '*'); // Added default '*' for development
