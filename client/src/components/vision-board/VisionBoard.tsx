@@ -487,6 +487,20 @@ export function VisionBoard() {
               <div className="bg-primary/5 p-4">
                 <h2 className="text-xl font-semibold">Task Calendar</h2>
                 <div className="flex justify-between items-center mt-2">
+                  {/* Check if we need to advance to next month based on calendar grid layout */}
+                  {(() => {
+                    const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+                    const firstDayPosition = firstDayOfMonth.getDay(); // 0 = Sunday
+                    const adjustedPosition = firstDayPosition === 0 ? 6 : firstDayPosition - 1;
+                    const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
+                    
+                    if (adjustedPosition + daysInMonth > 35) {
+                      const nextMonth = new Date(currentMonth);
+                      nextMonth.setMonth(nextMonth.getMonth() + 1);
+                      setCurrentMonth(nextMonth);
+                    }
+                  })()}
+                  
                   <button
                     className="p-1 hover:bg-gray-200 rounded"
                     onClick={() => {
