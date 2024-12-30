@@ -8,7 +8,6 @@ import {
   DrawerTitle,
   DrawerDescription,
 } from "@/components/ui/drawer";
-import { motion, AnimatePresence } from "framer-motion";
 import { useEffect } from "react";
 
 export function Tutorial() {

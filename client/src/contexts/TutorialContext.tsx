@@ -16,28 +16,34 @@ const tutorialSteps: TutorialStep[] = [
     placement: "bottom",
   },
   {
-    title: "Vision Board",
-    description: "Add images to your vision board to visualize your goals and aspirations.",
-    target: "[data-tutorial='vision-board']",
+    title: "Create New Goals",
+    description: "Start by creating new goals to track your progress. Click the 'Create Goal' button to get started.",
+    target: "[data-tutorial='create-goal']",
     placement: "right",
+  },
+  {
+    title: "Your Vision Board",
+    description: "Visualize your goals by adding images to your vision board. This helps keep you motivated and focused.",
+    target: "[data-tutorial='vision-board']",
+    placement: "left",
   },
   {
     title: "Goal Tracking",
-    description: "Set and track your goals with our powerful goal management system.",
-    target: "[data-tutorial='goals']",
+    description: "Track your goals and update your progress regularly to stay on target.",
+    target: "[data-tutorial='goal-list']",
     placement: "right",
   },
   {
-    title: "Analytics",
-    description: "View detailed analytics of your progress and achievements.",
-    target: "[data-tutorial='analytics']",
-    placement: "right",
+    title: "Analytics Dashboard",
+    description: "View detailed analytics of your progress in the Analytics section.",
+    target: "[data-tutorial='analytics-button']",
+    placement: "bottom",
   },
   {
-    title: "Rewards",
-    description: "Earn coins and rewards as you achieve your goals!",
-    target: "[data-tutorial='rewards']",
-    placement: "right",
+    title: "Reward Store",
+    description: "Earn coins and spend them in the reward store as you achieve your goals!",
+    target: "[data-tutorial='rewards-button']",
+    placement: "bottom",
   }
 ];
 
