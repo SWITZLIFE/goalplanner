@@ -569,7 +569,7 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                         const nextMonth = new Date(currentMonth);
                         nextMonth.setMonth(nextMonth.getMonth() + 1);
                         setCurrentMonth(nextMonth);
-                      }te);
+                      }
 
                         return (
                           <div
