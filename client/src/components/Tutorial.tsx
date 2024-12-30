@@ -23,10 +23,13 @@ export function Tutorial() {
         targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         // Add highlight class
         targetElement.classList.add('tutorial-highlight');
+        // Add dim effect to other elements
+        document.body.classList.add('tutorial-active');
 
         return () => {
-          // Clean up highlight
+          // Clean up highlight and dim effect
           targetElement.classList.remove('tutorial-highlight');
+          document.body.classList.remove('tutorial-active');
         };
       }
     }
@@ -37,12 +40,25 @@ export function Tutorial() {
     const styleSheet = document.createElement("style");
     styleSheet.textContent = `
       .tutorial-highlight {
-        outline: 3px solid hsl(var(--primary)) !important;
-        outline-offset: 4px;
-        border-radius: 4px;
-        transition: outline-offset 0.2s ease;
         position: relative;
-        z-index: 50;
+        z-index: 60 !important;
+        box-shadow: 0 0 0 4px hsl(var(--primary)) !important;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+      }
+
+      .tutorial-active > *:not(.tutorial-highlight):not([role="dialog"]) {
+        transition: opacity 0.2s ease;
+        opacity: 0.3;
+      }
+
+      .tutorial-highlight::after {
+        content: '';
+        position: absolute;
+        inset: -8px;
+        background: hsl(var(--primary) / 0.1);
+        border-radius: 8px;
+        z-index: -1;
       }
     `;
     document.head.appendChild(styleSheet);
