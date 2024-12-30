@@ -10,10 +10,11 @@ import { Link } from "wouter";
 export function HelpMenu() {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="inline-flex items-center justify-center rounded-full w-8 h-8 hover:bg-accent">
-        <HelpCircle className="w-5 h-5" />
+      <DropdownMenuTrigger className="flex items-center gap-2 text-white hover:text-white/80 transition-colors">
+        <HelpCircle className="h-4 w-4" />
+        <span className="text-sm lg:text-base font-semibold">Tutorial</span>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="start" className="w-56">
         <DropdownMenuItem asChild>
           <Link href="/help/walkthrough" className="flex items-center gap-2">
             <BookOpen className="w-4 h-4" />

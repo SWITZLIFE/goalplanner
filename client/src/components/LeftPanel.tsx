@@ -8,6 +8,7 @@ import { useGoals } from "@/hooks/use-goals";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/hooks/use-user";
+import { HelpMenu } from "./HelpMenu";
 
 export function LeftPanel() {
   const { goals } = useGoals();
@@ -74,8 +75,7 @@ export function LeftPanel() {
 
       {/* Footer Section */}
       <div className="flex-none px-4 py-4">
-        <h1 className="text-sm lg:text-base font-semibold text-white">Tutorial</h1>
-        {/* Footer content if needed */}
+        <HelpMenu />
       </div>
     </div>
   );
