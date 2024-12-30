@@ -161,6 +161,101 @@ export function VisionBoard() {
     }
   });
 
+  // Create array of 12 slots with proper position tracking
+  const slots = Array.from({ length: 12 }, (_, i) => {
+    return images.find(img => img.position === i) || null;
+  });
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Error",
+        description: "Please select an image file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Only check total number of images, not slots length
+    if (images.length >= 12) {
+      toast({
+        title: "Error",
+        description: "Maximum 12 images allowed. Please delete some images first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      await uploadMutation.mutateAsync(file);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const uploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const response = await fetch("/api/vision-board/upload", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to upload image");
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/vision-board"] });
+      toast({
+        title: "Success",
+        description: "Image uploaded successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to upload image",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (imageId: number) => {
+      const response = await fetch(`/api/vision-board/${imageId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete image");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/vision-board"] });
+      toast({
+        title: "Success",
+        description: "Image deleted successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete image",
+        variant: "destructive",
+      });
+    },
+  });
   // Get all tasks from all goals
   const allTasks = goals.reduce<Task[]>((acc, g) => {
     if (g.tasks) {
@@ -265,101 +360,6 @@ export function VisionBoard() {
       });
     }
   };
-
-  const uploadMutation = useMutation({
-    mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append("image", file);
-
-      const response = await fetch("/api/vision-board/upload", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to upload image");
-      }
-
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/vision-board"] });
-      toast({
-        title: "Success",
-        description: "Image uploaded successfully",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to upload image",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (imageId: number) => {
-      const response = await fetch(`/api/vision-board/${imageId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete image");
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/vision-board"] });
-      toast({
-        title: "Success",
-        description: "Image deleted successfully",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to delete image",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      toast({
-        title: "Error",
-        description: "Please select an image file",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (images.length >= 12) {
-      toast({
-        title: "Error",
-        description: "Maximum 12 images allowed. Please delete some images first.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setUploading(true);
-    try {
-      await uploadMutation.mutateAsync(file);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  // Create array of 12 slots
-  const slots = Array.from({ length: 12 }, (_, i) => {
-    return images.find(img => img.position === i) || null;
-  });
 
   if (isLoading) {
     return <div>Loading...</div>;
