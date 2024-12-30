@@ -16,6 +16,7 @@ import { uploadFileToSupabase } from './supabase';
 import { getTodayQuote, markQuoteAsRead } from "./goal-quotes";
 import { registerGoogleOAuthRoutes } from "./google-oauth";
 import { coinHistory } from "@db/schema"; // Import coinHistory schema
+import { supabase } from './supabase'; // Import supabase client
 
 
 // Configure multer for handling file uploads
@@ -85,9 +86,9 @@ export function registerRoutes(app: Express): Server {
         throw new Error("Failed to update user profile");
       }
 
-      res.json({ 
+      res.json({
         message: "Profile photo updated successfully",
-        profilePhotoUrl: imageUrl 
+        profilePhotoUrl: imageUrl
       });
     } catch (error) {
       console.error("Failed to upload profile photo:", error);
@@ -170,15 +171,65 @@ export function registerRoutes(app: Express): Server {
         imageUrl: visionBoardImages.imageUrl,
         position: visionBoardImages.position,
       })
-      .from(visionBoardImages)
-      .where(eq(visionBoardImages.userId, userId))
-      .orderBy(visionBoardImages.position);
+        .from(visionBoardImages)
+        .where(eq(visionBoardImages.userId, userId))
+        .orderBy(visionBoardImages.position);
 
       console.log('Found vision board images:', images);
       res.json(images);
     } catch (error) {
       console.error("Failed to fetch vision board:", error);
       res.status(500).json({ error: "Failed to fetch vision board" });
+    }
+  });
+
+  // Add vision board DELETE endpoint
+  app.delete("/api/vision-board/:imageId", requireAuth, async (req, res) => {
+    try {
+      const { imageId } = req.params;
+      const userId = req.user!.id;
+
+      // First get the image details to get the URL
+      const [image] = await db.select()
+        .from(visionBoardImages)
+        .where(and(
+          eq(visionBoardImages.id, parseInt(imageId)),
+          eq(visionBoardImages.userId, userId)
+        ));
+
+      if (!image) {
+        return res.status(404).json({ error: "Image not found or unauthorized" });
+      }
+
+      // Extract file name from URL
+      const fileName = image.imageUrl.split('/').pop();
+
+      if (!fileName) {
+        console.error('Could not extract filename from URL:', image.imageUrl);
+        return res.status(500).json({ error: "Invalid image URL format" });
+      }
+
+      // Delete from Supabase storage
+      const { error: deleteStorageError } = await supabase.storage
+        .from('vision-board')
+        .remove([fileName]);
+
+      if (deleteStorageError) {
+        console.error('Error deleting from storage:', deleteStorageError);
+        return res.status(500).json({ error: "Failed to delete image from storage" });
+      }
+
+      // Delete from database
+      await db.delete(visionBoardImages)
+        .where(and(
+          eq(visionBoardImages.id, parseInt(imageId)),
+          eq(visionBoardImages.userId, userId)
+        ));
+
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete image:", error);
+      res.status(500).json({ error: "Failed to delete image" });
     }
   });
 
@@ -193,10 +244,10 @@ export function registerRoutes(app: Express): Server {
   // Protect all /api routes except auth routes with enhanced session verification
   app.use('/api', (req, res, next) => {
     // Skip auth for public routes
-    if (req.path.startsWith('/login') || 
-        req.path.startsWith('/register') || 
-        req.path.startsWith('/logout') || 
-        req.path.startsWith('/user')) {
+    if (req.path.startsWith('/login') ||
+      req.path.startsWith('/register') ||
+      req.path.startsWith('/logout') ||
+      req.path.startsWith('/user')) {
       return next();
     }
 
@@ -266,9 +317,9 @@ export function registerRoutes(app: Express): Server {
         visionResponses: goals.visionResponses,
         userId: goals.userId, // Explicitly select userId to verify ownership
       })
-      .from(goals)
-      .where(eq(goals.userId, userId))
-      .orderBy(desc(goals.createdAt));
+        .from(goals)
+        .where(eq(goals.userId, userId))
+        .orderBy(desc(goals.createdAt));
 
       // Double check that all goals belong to the current user
       if (userGoals.some(goal => goal.userId !== userId)) {
@@ -485,7 +536,7 @@ export function registerRoutes(app: Express): Server {
       res.json({ success: true });
     } catch (error) {
       console.error("Failed to delete goal:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to delete goal",
         details: error instanceof Error ? error.message : "Unknown error"
       });
@@ -514,7 +565,7 @@ export function registerRoutes(app: Express): Server {
 
       // Update the goal
       const [updatedGoal] = await db.update(goals)
-        .set({ 
+        .set({
           visionStatement: visionStatement
         })
         .where(and(
@@ -530,7 +581,7 @@ export function registerRoutes(app: Express): Server {
       res.json(updatedGoal);
     } catch (error) {
       console.error("Failed to update goal:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to update goal",
         details: error instanceof Error ? error.message : "Unknown error"
       });
@@ -726,7 +777,7 @@ export function registerRoutes(app: Express): Server {
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting task:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to delete task",
         details: error instanceof Error ? error.message : "Unknown error"
       });
@@ -822,7 +873,7 @@ Remember to:
 
         // Update the goal with the new vision statement
         const [updatedGoal] = await db.update(goals)
-          .set({ 
+          .set({
             visionStatement: visionStatement,
             visionResponses: JSON.stringify(answers)
           })
@@ -849,22 +900,22 @@ Remember to:
         }
 
         // Return both the vision statement and the updated goal
-        res.json({ 
+        res.json({
           visionStatement,
           goal: verifiedGoal
         });
       } catch (dbError) {
         console.error("Failed to update goal in database:", dbError);
-        res.status(500).json({ 
+        res.status(500).json({
           error: "Failed to save vision statement",
           details: dbError instanceof Error ? dbError.message : "Unknown database error"
         });
       }
     } catch (error) {
       console.error("Failed to generate vision statement:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to generate vision statement",
-        details: error instanceof Error ? error.message : "Unknown error" 
+        details: error instanceof Error ? error.message : "Unknown error"
       });
     }
   });
@@ -878,7 +929,7 @@ Remember to:
   });
 
   app.post("/api/goals/:goalId/coaching/chat", requireAuth, async (req, res) => {
-    try {
+    try{
       const { goalId } = req.params;
       const { message } = req.body;
       const userId = req.user!.id;
@@ -949,9 +1000,9 @@ Remember to:
         timestamp: coinHistory.timestamp,
         reason: coinHistory.reason
       })
-      .from(coinHistory)
-      .where(eq(coinHistory.userId, userId))
-      .orderBy(coinHistory.timestamp);
+        .from(coinHistory)
+        .where(eq(coinHistory.userId, userId))
+        .orderBy(coinHistory.timestamp);
 
       res.json(history);
     } catch (error) {
@@ -1165,7 +1216,7 @@ Remember to:
 
       const item = items[0];
       if (!item) {
-        return res.status(404).json({ 
+        return res.status(404).json({
           error: "Reward item not found",
           message: "The requested reward item could not be found"
         });
@@ -1178,7 +1229,7 @@ Remember to:
 
       const userRewards = userRewardsResult[0];
       if (!userRewards) {
-        return res.status(404).json({ 
+        return res.status(404).json({
           error: "User rewards not found",
           message: "Could not find rewards record for user"
         });
@@ -1195,7 +1246,7 @@ Remember to:
 
       // Update user's coins with validation
       const [updatedRewards] = await db.update(rewards)
-        .set({ 
+        .set({
           coins: userRewards.coins - item.cost,
           lastUpdated: new Date()
         })
@@ -1215,7 +1266,7 @@ Remember to:
         })
         .returning();
 
-      res.json({ 
+      res.json({
         message: "Purchase successful",
         item: {
           name: item.name,
@@ -1226,7 +1277,7 @@ Remember to:
       });
     } catch (error) {
       console.error("Purchase error:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Failed to process purchase",
         message: error instanceof Error ? error.message : "An unexpected error occurred"
       });
