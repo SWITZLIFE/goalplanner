@@ -40,7 +40,7 @@ const upload = multer({
     cb(null, true);
   },
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
+    fileSize: 10 * 1024 * 1024 // 10MB limit
   }
 });
 
@@ -919,7 +919,7 @@ Remember to:
             visionStatement: visionStatement,
             visionResponses: JSON.stringify(answers)
           })
-          .where(and(
+                    .where(and(
             eq(goals.id, parseInt(goalId)),
             eq(goals.userId, userId)
           ))
