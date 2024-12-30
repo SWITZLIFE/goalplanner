@@ -8,18 +8,16 @@ import { useGoals } from "@/hooks/use-goals";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/hooks/use-user";
-import { useTutorial } from "@/contexts/TutorialContext";
 
 export function LeftPanel() {
   const { goals } = useGoals();
   const { user } = useUser();
-  const { startTutorial } = useTutorial();
   const [isGoalsOpen, setIsGoalsOpen] = useState(true);
 
   return (
     <div className="w-[clamp(16rem,20vw,30rem)] bg-primary h-screen flex flex-col">
       {/* User Profile Section */}
-      <div className="flex-none p-4 border-b border-white/10" data-tutorial="welcome">
+      <div className="flex-none p-4 border-b border-white/10">
         <div className="flex flex-col items-center mt-14">
           <div className="w-16 h-16 lg:w-24 lg:h-24 rounded-full overflow-hidden mb-3">
             <img 
@@ -76,13 +74,8 @@ export function LeftPanel() {
 
       {/* Footer Section */}
       <div className="flex-none px-4 py-4">
-        <Button 
-          variant="ghost" 
-          className="w-full text-white hover:text-white/80 hover:bg-white/10"
-          onClick={startTutorial}
-        >
-          Start Tutorial
-        </Button>
+        <h1 className="text-sm lg:text-base font-semibold text-white">Tutorial</h1>
+        {/* Footer content if needed */}
       </div>
     </div>
   );
