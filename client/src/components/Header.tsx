@@ -1,5 +1,5 @@
-
 import { UserMenu } from "./UserMenu";
+import { HelpMenu } from "./HelpMenu";
 
 export function Header() {
   return (
@@ -8,7 +8,10 @@ export function Header() {
         <div className="flex items-center gap-2 font-semibold">
           Goal Navigator
         </div>
-        <UserMenu />
+        <div className="flex items-center gap-2">
+          <HelpMenu />
+          <UserMenu />
+        </div>
       </div>
     </header>
   );
