@@ -75,7 +75,9 @@ export function LeftPanel() {
 
       {/* Footer Section */}
       <div className="flex-none px-4 py-4">
-        <HelpMenu />
+        <div className="[&_button:focus:not(:focus-visible)]:ring-0">
+          <HelpMenu />
+        </div>
       </div>
     </div>
   );
