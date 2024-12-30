@@ -46,9 +46,9 @@ export function DailyQuote({ goalId }: DailyQuoteProps) {
     )}>
       <div className="flex gap-3">
         <Quote className="h-5 w-5 text-primary shrink-0 mt-1" />
-        <p className="text-sm italic">
-          {quoteData.quote}
-        </p>
+        <div>
+          <p className="text-sm italic">{quoteData.quote}</p>
+        </div>
       </div>
     </Card>
   );
