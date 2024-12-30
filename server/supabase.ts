@@ -1,13 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_KEY) {
   throw new Error('Missing Supabase credentials');
 }
 
 // Create two clients - one for public operations and one for admin operations
 export const supabase = createClient(
   process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!, // Use service role key for admin operations
+  process.env.SUPABASE_KEY!, // Use the environment variable that matches our secret
   {
     auth: {
       persistSession: false, // Don't persist sessions on the server
