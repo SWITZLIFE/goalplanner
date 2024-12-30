@@ -5,9 +5,9 @@ import session from "express-session";
 import createMemoryStore from "memorystore";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { users, insertUserSchema, type SelectUser, userTokens } from "@db/schema";
+import { users, insertUserSchema, type SelectUser } from "@db/schema";
 import { db } from "@db";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 const scryptAsync = promisify(scrypt);
@@ -32,7 +32,7 @@ const crypto = {
 // extend express user object with our schema
 declare global {
   namespace Express {
-    interface User extends SelectUser {}
+    interface User extends SelectUser { }
   }
 }
 
@@ -49,7 +49,7 @@ export function setupAuth(app: Express) {
     },
     store: new MemoryStore({
       checkPeriod: 86400000, // prune expired entries every 24h
-      stale: false, // Don't serve stale sessions
+      stale: false,
     }),
   };
 
@@ -72,6 +72,7 @@ export function setupAuth(app: Express) {
       },
       async (email, password, done) => {
         try {
+          // Find user by email
           const [user] = await db
             .select()
             .from(users)
@@ -81,10 +82,12 @@ export function setupAuth(app: Express) {
           if (!user) {
             return done(null, false, { message: "Incorrect email." });
           }
+
           const isMatch = await crypto.compare(password, user.password);
           if (!isMatch) {
             return done(null, false, { message: "Incorrect password." });
           }
+
           return done(null, user);
         } catch (err) {
           return done(err);
@@ -141,6 +144,7 @@ export function setupAuth(app: Express) {
         .values({
           email,
           password: hashedPassword,
+          username: email.split('@')[0], // Set default username from email
         })
         .returning();
 
@@ -160,7 +164,6 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    // Use a simpler schema for login that only validates email format
     const loginSchema = z.object({
       email: z.string().email("Invalid email format"),
       password: z.string()
@@ -173,7 +176,7 @@ export function setupAuth(app: Express) {
         .send("Invalid input: " + result.error.issues.map(i => i.message).join(", "));
     }
 
-    const cb = (err: any, user: Express.User, info: IVerifyOptions) => {
+    passport.authenticate("local", (err: any, user: Express.User | false, info: IVerifyOptions) => {
       if (err) {
         return next(err);
       }
@@ -192,142 +195,32 @@ export function setupAuth(app: Express) {
           user: { id: user.id, email: user.email },
         });
       });
-    };
-    passport.authenticate("local", cb)(req, res, next);
+    })(req, res, next);
   });
 
   app.post("/api/logout", (req, res) => {
-    // First logout the user
     req.logout((err) => {
       if (err) {
         return res.status(500).send("Logout failed");
       }
 
-      // Then destroy the session
       req.session.destroy((err) => {
         if (err) {
           console.error("Session destruction failed:", err);
           return res.status(500).send("Logout partially failed");
         }
 
-        // Clear session cookie
         res.clearCookie('connect.sid');
         res.json({ message: "Logout successful" });
       });
     });
   });
 
-  app.get("/api/user", async (req, res) => {
-    try {
-      if (!req.isAuthenticated()) {
-        return res.status(401).send("Not logged in");
-      }
-  
-      const userId = req.user!.id;
-  
-      // Fetch the user details
-      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-  
-      // Check if the user has a valid Google token
-      const googleToken = await db.query.userTokens.findFirst({
-        where: and(eq(userTokens.userId, userId), eq(userTokens.provider, "google")),
-      });
-  
-       // Safely determine Google connection status
-    const googleConnected = googleToken && googleToken.accessToken ? true : false;
-  
-      // Respond with user details and Google connection status
-      res.json({
-        ...user,
-        googleConnected,
-      });
-    } catch (error) {
-      console.error("Error fetching user data:", error);
-      res.status(500).json({ error: "Failed to fetch user data" });
+  app.get("/api/user", (req, res) => {
+    if (req.isAuthenticated()) {
+      return res.json(req.user);
     }
-  });
 
-  app.post("/api/forgot-password", async (req, res) => {
-    try {
-      const { email } = req.body;
-      
-      // Find user
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.email, email))
-        .limit(1);
-
-      if (!user) {
-        return res.status(404).send("User not found");
-      }
-
-      // Generate reset token (a random string)
-      const resetToken = randomBytes(32).toString("hex");
-      const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour from now
-
-      // Save to database
-      await db
-        .update(users)
-        .set({
-          resetToken,
-          resetTokenExpiry,
-        })
-        .where(eq(users.id, user.id));
-
-      // In a real app, you would send this via email
-      // For demo purposes, we'll return it in the response
-      res.json({
-        message: "Password reset token generated",
-        resetToken,
-      });
-    } catch (error) {
-      console.error("Failed to generate reset token:", error);
-      res.status(500).send("Failed to generate reset token");
-    }
-  });
-
-  app.post("/api/reset-password", async (req, res) => {
-    try {
-      const { token, newPassword } = req.body;
-
-      // Find user with this token
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.resetToken, token))
-        .limit(1);
-
-      if (!user) {
-        return res.status(400).send("Invalid or expired reset token");
-      }
-
-      // Check if token is expired
-      if (!user.resetTokenExpiry || user.resetTokenExpiry < new Date()) {
-        return res.status(400).send("Reset token has expired");
-      }
-
-      // Hash the new password
-      const hashedPassword = await crypto.hash(newPassword);
-
-      // Update the password and clear the reset token
-      await db
-        .update(users)
-        .set({
-          password: hashedPassword,
-          resetToken: null,
-          resetTokenExpiry: null,
-        })
-        .where(eq(users.id, user.id));
-
-      res.json({ message: "Password has been reset successfully" });
-    } catch (error) {
-      console.error("Failed to reset password:", error);
-      res.status(500).send("Failed to reset password");
-    }
+    res.status(401).send("Not logged in");
   });
 }

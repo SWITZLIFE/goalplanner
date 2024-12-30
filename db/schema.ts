@@ -6,7 +6,7 @@ import { z } from "zod";
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: text("email").unique().notNull(),
-  username: text("username").unique().notNull(), // Added username field
+  username: text("username").unique(), 
   password: text("password").notNull(),
   profilePhotoUrl: text("profile_photo_url"),
   resetToken: text("reset_token"),
@@ -41,7 +41,7 @@ export const tasks = pgTable("tasks", {
   isSubtask: boolean("is_subtask").default(false).notNull(),
   isAiGenerated: boolean("is_ai_generated").default(false).notNull(),
   order: integer("order"),
-  eventId: text("event_id"), // Add this line for Google Calendar event ID
+  eventId: text("event_id"), 
 });
 
 export const futureMessages = pgTable("future_messages", {
