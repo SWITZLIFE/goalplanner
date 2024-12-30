@@ -399,7 +399,14 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     checked={optimisticTaskStates[mainTask.id] ?? mainTask.completed}
                     onCheckedChange={(checked) => handleTaskToggle(mainTask.id, checked as boolean)}
                   />
-                  <div className="flex items-center gap-2 flex-grow">
+                  <div 
+                    className="flex items-center gap-2 flex-grow" 
+                    onClick={(e) => {
+                      if (e.target === e.currentTarget) {
+                        handleTaskTitleClick(mainTask.id, mainTask.title);
+                      }
+                    }}
+                  >
                     <EditableTaskTitle
                       task={mainTask}
                       onSave={(title) => handleTaskTitleChange(mainTask.id, title)}
