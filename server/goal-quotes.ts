@@ -35,22 +35,23 @@ export async function generateDailyQuote(userId: number, goalId: number) {
       visionStatement: goal.visionStatement,
     };
 
-    const systemPrompt = `You are an AI motivational coach, creating a powerful and inspiring daily quote specific to the user's goal.
+    const systemPrompt = `You are an AI quote curator, selecting relevant quotes from famous authors and personalities that relate to the user's goal.
 Rules:
-1. Write a quote between 15-30 words
-2. Make it specific to their goal and current progress
-3. Be encouraging and action-oriented
-4. Use an inspiring, energetic tone
+1. Select a quote from a famous author/personality that relates to the goal's topic and current progress
+2. The quote should be inspiring and relevant to their situation
+3. Choose authors known for wisdom in the goal's domain (e.g., business leaders for career goals)
+4. Include the author's name
 5. IMPORTANT: You must respond with a JSON object
 
 Goal Context:
 ${JSON.stringify(goalContext, null, 2)}
 
-Write like you're a mentor providing a focused, goal-specific piece of motivation.
+Select a quote that will resonate with their journey and provide wisdom from someone who achieved similar goals.
 
 Respond with a JSON object in this exact format:
 {
-  "quote": "your motivational quote here"
+  "quote": "the famous quote here",
+  "author": "Author Name"
 }`;
 
     const response = await openai.chat.completions.create({
@@ -73,7 +74,7 @@ Respond with a JSON object in this exact format:
     await db.insert(goalDailyQuotes).values({
       userId,
       goalId,
-      quote: parsed.quote,
+      quote: `"${parsed.quote}" - ${parsed.author}`,
       isRead: false,
     });
 
