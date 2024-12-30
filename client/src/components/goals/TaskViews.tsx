@@ -560,14 +560,14 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                         const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
                         const dayTasks = tasksForDate(date);
                       
-                      // Check if last days of current month appear in next month's grid section
-                      const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-                      const startDay = firstDayOfMonth.getDay(); // 0 = Sunday
-                      const mondayStartDay = startDay === 0 ? 6 : startDay - 1;
+                      // Check if we need to advance to next month based on calendar grid layout
                       const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
+                      const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+                      const firstDayPosition = firstDayOfMonth.getDay(); // 0 = Sunday
+                      const adjustedPosition = firstDayPosition === 0 ? 6 : firstDayPosition - 1;
                       
                       // If the total cells needed exceeds 35 (5 weeks * 7 days), advance to next month
-                      if (mondayStartDay + daysInMonth > 35) {
+                      if (adjustedPosition + daysInMonth > 35) {
                         const nextMonth = new Date(currentMonth);
                         nextMonth.setMonth(nextMonth.getMonth() + 1);
                         setCurrentMonth(nextMonth);
