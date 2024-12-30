@@ -10,9 +10,11 @@ import { Link } from "wouter";
 export function HelpMenu() {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex items-center gap-2 text-white hover:text-white/80 transition-colors">
-        <HelpCircle className="h-4 w-4" />
-        <span className="text-sm lg:text-base font-semibold">Tutorial</span>
+      <DropdownMenuTrigger asChild>
+        <button className="flex items-center gap-2 text-white hover:text-white/80 transition-colors">
+          <HelpCircle className="h-4 w-4" />
+          <span className="text-sm lg:text-base font-semibold">Tutorial</span>
+        </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56">
         <DropdownMenuItem asChild>
