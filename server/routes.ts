@@ -1321,7 +1321,7 @@ Remember to:
       // Get top 10 users by coin balance
       const leaderboard = await db.select({
         id: users.id,
-        username: users.username,
+        email: users.email,
         coins: rewards.coins,
         lastUpdated: rewards.lastUpdated,
       })
@@ -1330,7 +1330,15 @@ Remember to:
       .orderBy(desc(rewards.coins))
       .limit(10);
 
-      res.json(leaderboard);
+      // Map the response to use email as username
+      const mappedLeaderboard = leaderboard.map(entry => ({
+        id: entry.id,
+        username: entry.email.split('@')[0], // Show only the part before @ for privacy
+        coins: entry.coins,
+        lastUpdated: entry.lastUpdated,
+      }));
+
+      res.json(mappedLeaderboard);
     } catch (error) {
       console.error("Failed to fetch leaderboard:", error);
       res.status(500).json({ error: "Failed to fetch leaderboard" });
