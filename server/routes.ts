@@ -127,18 +127,49 @@ export function registerRoutes(app: Express): Server {
 
       console.log('File uploaded, saving to database:', { imageUrl });
 
-      // Find the next available position
+      // Get all existing images for the user
       const existingImages = await db.select()
         .from(visionBoardImages)
-        .where(eq(visionBoardImages.userId, userId));
+        .where(eq(visionBoardImages.userId, userId))
+        .orderBy(visionBoardImages.position);
 
+      // Find the first empty position from 0-11
       const usedPositions = new Set(existingImages.map(img => img.position));
       let position = 0;
-      while (usedPositions.has(position)) {
+      while (position < 12 && usedPositions.has(position)) {
         position++;
       }
 
-      // Save to database
+      // If no empty positions (position >= 12), shift all images up and use position 0
+      if (position >= 12) {
+        // Delete the image at position 11 if it exists
+        const lastImage = existingImages.find(img => img.position === 11);
+        if (lastImage) {
+          // Delete from storage
+          const fileName = lastImage.imageUrl.split('/').pop();
+          if (fileName) {
+            await supabase.storage
+              .from('vision-board')
+              .remove([fileName]);
+          }
+          // Delete from database
+          await db.delete(visionBoardImages)
+            .where(eq(visionBoardImages.id, lastImage.id));
+        }
+
+        // Shift all other images up one position
+        for (let i = 10; i >= 0; i--) {
+          const image = existingImages.find(img => img.position === i);
+          if (image) {
+            await db.update(visionBoardImages)
+              .set({ position: i + 1 })
+              .where(eq(visionBoardImages.id, image.id));
+          }
+        }
+        position = 0;
+      }
+
+      // Save to database with the determined position
       const [newImage] = await db.insert(visionBoardImages)
         .values({
           userId,
@@ -891,8 +922,7 @@ Remember to:
         const verifiedGoal = await db.query.goals.findFirst({
           where: and(
             eq(goals.id, parseInt(goalId)),
-            eq(goals.userId, userId)
-          ),
+            eq(goals.userId, userId)          )
         });
 
         if (!verifiedGoal || verifiedGoal.visionStatement !== visionStatement) {

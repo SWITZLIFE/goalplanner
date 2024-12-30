@@ -179,16 +179,6 @@ export function VisionBoard() {
       return;
     }
 
-    // Only check total number of images, not slots length
-    if (images.length >= 12) {
-      toast({
-        title: "Error",
-        description: "Maximum 12 images allowed. Please delete some images first.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setUploading(true);
     try {
       await uploadMutation.mutateAsync(file);
@@ -389,7 +379,7 @@ export function VisionBoard() {
             variant="outline"
             size="sm"
             className="h-7 text-xs"
-            disabled={images.length >= 12 || uploading}
+            disabled={uploading}
             onClick={() => document.getElementById("image-upload")?.click()}
           >
             <ImagePlus className="w-3.5 h-3.5 mr-1.5" />
