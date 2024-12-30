@@ -11,9 +11,9 @@ export function HelpMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center gap-2 text-white hover:text-white/80 transition-colors">
+        <button className="flex items-center gap-2 text-white hover:text-white/80 transition-colors focus:outline-none">
           <HelpCircle className="h-4 w-4" />
-          <span className="text-sm lg:text-base font-semibold">Tutorial</span>
+          <span className="text-sm lg:text-base font-semibold">Info</span>
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56">
