@@ -23,9 +23,20 @@ import { supabase } from './supabase'; // Import supabase client
 const upload = multer({
   storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
-    if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
-      return cb(new Error('Only image files are allowed!'));
+    // Add proper MIME type checking
+    const allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+    if (!allowedMimes.includes(file.mimetype)) {
+      console.error('Invalid file type:', file.mimetype);
+      return cb(new Error('Only image files (JPEG, PNG, GIF, WEBP) are allowed!'));
     }
+
+    console.log('Accepting file:', {
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size
+    });
+
     cb(null, true);
   },
   limits: {
