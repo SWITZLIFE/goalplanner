@@ -559,6 +559,17 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                         const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
                         const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
                         const dayTasks = tasksForDate(date);
+                      
+                      // Check if today's date is beyond this month's view
+                      const today = new Date();
+                      const lastVisibleDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+                      
+                      // If today is after the last visible day, advance to next month
+                      if (today > lastVisibleDay) {
+                        const nextMonth = new Date(currentMonth);
+                        nextMonth.setMonth(nextMonth.getMonth() + 1);
+                        setCurrentMonth(nextMonth);
+                      }te);
 
                         return (
                           <div
