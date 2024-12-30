@@ -83,11 +83,18 @@ export function AnalyticsDashboard() {
     };
   }).reverse();
 
-  // Format coin history data for chart
-  const coinData = coinHistory?.map(entry => ({
-    date: format(parseISO(entry.timestamp), "MMM d"),
-    balance: entry.balance,
-  })) ?? [];
+  // Transform coin history data to show daily earnings
+  const dailyEarnings = coinHistory?.reduce<Record<string, number>>((acc, entry) => {
+    const date = format(parseISO(entry.timestamp), "MMM d");
+    acc[date] = (acc[date] || 0) + entry.amount;
+    return acc;
+  }, {}) ?? {};
+
+  // Convert to array format for chart
+  const coinData = Object.entries(dailyEarnings).map(([date, earnings]) => ({
+    date,
+    earnings,
+  })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   return (
     <div className="space-y-8">
@@ -168,7 +175,7 @@ export function AnalyticsDashboard() {
         <motion.div variants={chartVariants} initial="hidden" animate="visible">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-base">Coin Balance Trend</CardTitle>
+              <CardTitle className="text-base">Daily Coin Earnings</CardTitle>
               <Coins className="h-4 w-4 text-yellow-500" />
             </CardHeader>
             <CardContent>
@@ -176,7 +183,7 @@ export function AnalyticsDashboard() {
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={coinData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <defs>
-                      <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
+                      <linearGradient id="colorEarnings" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.1}/>
                         <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.01}/>
                       </linearGradient>
@@ -187,9 +194,9 @@ export function AnalyticsDashboard() {
                     <Tooltip />
                     <Area 
                       type="monotone" 
-                      dataKey="balance" 
+                      dataKey="earnings" 
                       stroke="hsl(var(--primary))" 
-                      fill="url(#colorBalance)"
+                      fill="url(#colorEarnings)"
                       strokeWidth={2}
                     />
                   </AreaChart>
