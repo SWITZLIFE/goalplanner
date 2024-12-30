@@ -562,13 +562,11 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                       
                       // Check if today's date is beyond this month's view
                       const today = new Date();
-                      const lastVisibleDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+                      const lastDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
                       
-                      // If today is after the last visible day, advance to next month
-                      if (today > lastVisibleDay) {
-                        const nextMonth = new Date(currentMonth);
-                        nextMonth.setMonth(nextMonth.getMonth() + 1);
-                        setCurrentMonth(nextMonth);
+                      // If today is after the last day of current month, show next month
+                      if (format(today, 'yyyyMM') > format(currentMonth, 'yyyyMM')) {
+                        setCurrentMonth(new Date(today.getFullYear(), today.getMonth(), 1));
                       }
 
                         return (
