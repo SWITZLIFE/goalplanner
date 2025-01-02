@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2, ChevronRight, StickyNote, ArrowUpCircle } from "lucide-react";
 import * as Collapsible from "@radix-ui/react-collapsible";
-import type { Task } from "@db/schema";
+import type { Task, Note } from "@db/schema";
 import { useGoals } from "@/hooks/use-goals";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -105,11 +105,19 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
   const [showNoteCreator, setShowNoteCreator] = useState<{ taskId: number; title: string } | null>(null);
   const [viewingTaskNotes, setViewingTaskNotes] = useState<{ taskId: number; title: string } | null>(null);
 
-  const { data: notes = [] } = useQuery<{ taskId: number | null }[]>({
+  const { data: notes = [] } = useQuery<Note[]>({
     queryKey: [`/api/goals/${goalId}/notes`],
+    select: (data) => {
+      // Ensure we're getting the proper note structure from the API
+      return data.map(note => ({
+        ...note,
+        createdAt: new Date(note.createdAt).toISOString(),
+        updatedAt: new Date(note.updatedAt).toISOString(),
+      }));
+    },
   });
 
-  const tasksWithNotes = new Set(notes.map(note => note.taskId).filter(Boolean));
+  const tasksWithNotes = new Set(notes.filter(note => note.taskId !== null).map(note => note.taskId));
 
   const handleDelete = async (taskId: number) => {
     try {
@@ -399,8 +407,8 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     checked={optimisticTaskStates[mainTask.id] ?? mainTask.completed}
                     onCheckedChange={(checked) => handleTaskToggle(mainTask.id, checked as boolean)}
                   />
-                  <div 
-                    className="flex items-center gap-2 flex-grow" 
+                  <div
+                    className="flex items-center gap-2 flex-grow"
                     onClick={(e) => {
                       if (e.target === e.currentTarget) {
                         handleTaskTitleClick(mainTask.id, mainTask.title);

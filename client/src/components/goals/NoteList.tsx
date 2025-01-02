@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import type { Task } from "@db/schema";
+import type { Task, Note } from "@db/schema";
 import { Input } from "@/components/ui/input";
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -21,15 +21,6 @@ const formSchema = z.object({
   content: z.string().min(1, "Note content is required"),
   taskId: z.number().optional(),
 });
-
-interface Note {
-  id: number;
-  title: string;
-  content: string;
-  taskId: number | null;
-  createdAt: string;
-  updatedAt: string;
-}
 
 interface NoteListProps {
   goalId: number;
@@ -132,6 +123,14 @@ export function NoteList({ goalId, tasks, initialTaskId, viewTaskId, onClose }: 
   // Fetch notes for this goal
   const { data: notes = [], isLoading, refetch } = useQuery<Note[]>({
     queryKey: [`/api/goals/${goalId}/notes`],
+    select: (data) => {
+      // Ensure we're getting the proper note structure from the API
+      return data.map(note => ({
+        ...note,
+        createdAt: new Date(note.createdAt).toISOString(),
+        updatedAt: new Date(note.updatedAt).toISOString(),
+      }));
+    },
   });
 
   // Filter notes if viewing task-specific notes
