@@ -17,8 +17,6 @@ interface VisionBoardImage {
   position: number;
 }
 
-import { FutureMessage } from "./FutureMessage";
-
 interface Task {
   id: number;
   title: string;
@@ -357,7 +355,6 @@ export function VisionBoard() {
 
   return (
     <div className="space-y-6 max-w-[calc(100vw-19rem)] mx-auto px-4">
-      <FutureMessage />
       <div className="h-px bg-border" />
 
       {/* Vision Board Section */}
@@ -493,14 +490,14 @@ export function VisionBoard() {
                     const firstDayPosition = firstDayOfMonth.getDay(); // 0 = Sunday
                     const adjustedPosition = firstDayPosition === 0 ? 6 : firstDayPosition - 1;
                     const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
-                    
+
                     if (adjustedPosition + daysInMonth > 35) {
                       const nextMonth = new Date(currentMonth);
                       nextMonth.setMonth(nextMonth.getMonth() + 1);
                       setCurrentMonth(nextMonth);
                     }
                   })()}
-                  
+
                   <button
                     className="p-1 hover:bg-gray-200 rounded"
                     onClick={() => {
