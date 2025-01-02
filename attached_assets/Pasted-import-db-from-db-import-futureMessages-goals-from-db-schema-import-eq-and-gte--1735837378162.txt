@@ -47,6 +47,13 @@ export async function generateDailyMessage(userId: number) {
       return { message: "No goals found to generate a message.", isRead: false };
     }
 
+    // Debug log before making API request
+    console.log("OpenAI Configuration:", {
+      apiKey: `${process.env.OPENAI_API_KEY_2?.slice(0, 5)}...`,
+      timeout: 30000,
+      maxRetries: 3
+    });
+
     const systemPrompt = `You are an AI writing a motivational message. Respond ONLY with a JSON object in this exact format:
 
 {
@@ -63,6 +70,8 @@ Message requirements:
 Goals data:
 ${JSON.stringify(goalsContext, null, 2)}`;
 
+    console.log("Making OpenAI API request...");
+
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
@@ -71,6 +80,8 @@ ${JSON.stringify(goalsContext, null, 2)}`;
       temperature: 0.7,
       response_format: { type: "json_object" }
     });
+
+    console.log("OpenAI API Response status:", response.choices ? "Success" : "No choices");
 
     const content = response.choices[0].message.content;
 
@@ -94,10 +105,27 @@ ${JSON.stringify(goalsContext, null, 2)}`;
 
       return { message: validatedContent.message, isRead: false };
     } catch (error) {
-      console.error("Failed to parse OpenAI response:", error);
+      // Enhanced error logging
+      if (error instanceof SyntaxError) {
+        console.error("JSON Parsing Error:", {
+          error: error.message,
+          content: content.slice(0, 200), // Log first 200 chars of content
+          contentType: typeof content,
+          startsWithHTML: content.trim().toLowerCase().startsWith('<!doctype')
+        });
+      }
       throw error;
     }
   } catch (error) {
+    // Enhanced error logging for API errors
+    if (error.response) {
+      console.error("OpenAI API Error:", {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data,
+        headers: error.response.headers
+      });
+    }
     console.error("Failed to generate daily message:", error);
     throw error;
   }
