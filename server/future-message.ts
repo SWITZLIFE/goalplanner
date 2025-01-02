@@ -45,56 +45,63 @@ export async function generateDailyMessage(userId: number) {
       messageStyle = "Write a gentle, supportive message that acknowledges their efforts and reminds them of their resilience. Share insights about self-compassion and steady progress.";
     }
 
-    const systemPrompt = `You are writing a heartfelt message to encourage and inspire. Create a personal, emotionally resonant message that feels like it's from a wise friend who deeply understands their journey.
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: `You are writing a heartfelt message to encourage and inspire. Create a personal, emotionally resonant message that feels like it's from a wise friend who deeply understands their journey.
 
-Rules:
-1. Write 2-3 short paragraphs (50-80 words total)
-2. Make it feel warm and personal, like a friend reaching out at just the right moment
-3. Focus on emotions, growth, and inner strength
-4. Use natural, conversational language
-5. Add line breaks between paragraphs
-6. ${messageStyle}
-7. IMPORTANT: Respond with a JSON object
+Write a message with these characteristics:
+- 2-3 short paragraphs (50-80 words total)
+- Warm and personal tone
+- Focus on emotions, growth, and inner strength
+- Natural, conversational language
+- ${messageStyle}
 
-Use this context to understand their journey (but don't explicitly mention these goals):
+Context about their journey (use as inspiration but don't mention specifically):
 ${JSON.stringify(goalsContext, null, 2)}
 
-Remember to:
-- Vary sentence structure and length for natural flow
-- Include sensory details and emotions
-- Focus on the journey and growth, not just outcomes
-- Make it feel like a personal conversation
-- Keep it concise but impactful
-
-Respond with a JSON object in this exact format:
+You MUST format your response as a valid JSON object with ONLY this structure:
 {
-  "message": "your message here"
-}`;
+  "message": "Your message here with \n for line breaks"
+}`
+          }
+        ],
+        temperature: 0.8,
+        response_format: { type: "json_object" }
+      });
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        { role: "system", content: systemPrompt }
-      ],
-      temperature: 0.8,
-      response_format: { type: "json_object" },
-    });
+      const content = response.choices[0].message.content;
+      if (!content) {
+        throw new Error("No content in OpenAI response");
+      }
 
-    const content = response.choices[0].message.content;
-    if (!content) {
-      throw new Error("No response generated");
+      let parsedContent;
+      try {
+        parsedContent = JSON.parse(content);
+      } catch (parseError) {
+        console.error("Failed to parse OpenAI response:", content);
+        throw new Error("Invalid JSON response from OpenAI");
+      }
+
+      if (!parsedContent.message) {
+        throw new Error("Message field missing in OpenAI response");
+      }
+
+      // Create a new message in the database
+      await db.insert(futureMessages).values({
+        userId,
+        message: parsedContent.message,
+        isRead: false,
+      });
+
+      return { message: parsedContent.message, isRead: false };
+    } catch (openAiError) {
+      console.error("OpenAI API error:", openAiError);
+      throw new Error("Failed to generate message with OpenAI");
     }
-
-    const parsed = JSON.parse(content);
-
-    // Create a new message in the database
-    await db.insert(futureMessages).values({
-      userId,
-      message: parsed.message,
-      isRead: false,
-    });
-
-    return { message: parsed.message, isRead: false };
   } catch (error) {
     console.error("Failed to generate daily message:", error);
     throw error;
