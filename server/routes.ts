@@ -1876,6 +1876,65 @@ Remember to:
     }
   });
 
+  app.get("/api/forum/posts/:postId", requireAuth, async (req, res) => {
+    try {
+      const { postId } = req.params;
+      const userId = req.user!.id;
+
+      // Get the post with author information
+      const [post] = await db.select({
+        id: forumPosts.id,
+        title: forumPosts.title,
+        content: forumPosts.content,
+        isPinned: forumPosts.isPinned,
+        isLocked: forumPosts.isLocked,
+        viewCount: forumPosts.viewCount,
+        createdAt: forumPosts.createdAt,
+        author: {
+          id: users.id,
+          email: users.email,
+          profilePhotoUrl: users.profilePhotoUrl,
+        },
+      })
+      .from(forumPosts)
+      .innerJoin(users, eq(forumPosts.userId, users.id))
+      .where(eq(forumPosts.id, parseInt(postId)));
+
+      if (!post) {
+        return res.status(404).json({ error: "Post not found" });
+      }
+
+      // Get comments for the post
+      const comments = await db.select({
+        id: forumComments.id,
+        content: forumComments.content,
+        createdAt: forumComments.createdAt,
+        author: {
+          id: users.id,
+          email: users.email,
+          profilePhotoUrl: users.profilePhotoUrl,
+        },
+      })
+      .from(forumComments)
+      .innerJoin(users, eq(forumComments.userId, users.id))
+      .where(eq(forumComments.postId, parseInt(postId)))
+      .orderBy(forumComments.createdAt);
+
+      // Increment view count
+      await db.update(forumPosts)
+        .set({ viewCount: (post.viewCount || 0) + 1 })
+        .where(eq(forumPosts.id, parseInt(postId)));
+
+      res.json({
+        ...post,
+        comments,
+      });
+    } catch (error) {
+      console.error("Failed to fetch forum post:", error);
+      res.status(500).json({ error: "Failed to fetch forum post" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
