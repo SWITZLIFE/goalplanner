@@ -47,7 +47,7 @@ export async function generateDailyMessage(userId: number) {
       return { message: "No goals found to generate a message.", isRead: false };
     }
 
-    const systemPrompt = `You are an AI writing a motivational message. Respond ONLY with a JSON object in this exact format, nothing else:
+    const systemPrompt = `You are an AI writing a motivational message. Respond ONLY with a JSON object in this exact format:
 
 {
   "message": "Your message here"
@@ -61,79 +61,42 @@ Message requirements:
 - Add paragraph breaks for readability
 
 Goals data:
-${JSON.stringify(goalsContext, null, 2)}
+${JSON.stringify(goalsContext, null, 2)}`;
 
-CRITICAL: Return only the JSON object, no other text or formatting.`;
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        { role: "system", content: systemPrompt }
+      ],
+      temperature: 0.7,
+      response_format: { type: "json_object" }
+    });
 
-    // Try up to 3 times with exponential backoff
-    let lastError;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        console.log(`Attempt ${attempt + 1} to generate message`);
+    const content = response.choices[0].message.content;
 
-        const response = await openai.chat.completions.create({
-          model: "gpt-3.5-turbo",
-          messages: [
-            { role: "system", content: systemPrompt }
-          ],
-          temperature: 0.5, // Lower temperature for more consistent outputs
-          response_format: { type: "json_object" },
-        });
+    // Log the raw response for debugging
+    console.log("Raw OpenAI response:", content);
 
-        const content = response.choices[0].message.content;
-
-        // Log the raw response for debugging
-        console.log("Raw OpenAI response:", content);
-
-        // Validate response exists
-        if (!content) {
-          throw new Error("Empty response from OpenAI");
-        }
-
-        // Validate the content is a string and starts with {
-        if (typeof content !== 'string' || !content.trim().startsWith("{")) {
-          console.error("Invalid response format:", content);
-          throw new Error("Response is not JSON format");
-        }
-
-        try {
-          // Parse and validate the JSON
-          const parsedContent = JSON.parse(content);
-          const validatedContent = messageResponseSchema.parse(parsedContent);
-
-          // Create a new message in the database
-          await db.insert(futureMessages).values({
-            userId,
-            message: validatedContent.message,
-            isRead: false,
-          });
-
-          return { message: validatedContent.message, isRead: false };
-        } catch (parseError) {
-          console.error("JSON parsing error:", parseError, "Raw content:", content);
-          throw new Error(`Failed to parse OpenAI response as JSON: ${parseError.message}`);
-        }
-      } catch (error) {
-        console.error(`Attempt ${attempt + 1} failed:`, error);
-        lastError = error;
-
-        // Check if it's an OpenAI API error
-        if (error.response?.status) {
-          console.error(`OpenAI API Error - Status: ${error.response.status}, Message:`, error.response.data);
-        }
-
-        // Wait before retrying (exponential backoff)
-        if (attempt < 2) {
-          const delay = Math.pow(2, attempt) * 1000;
-          console.log(`Waiting ${delay}ms before retry...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
-      }
+    if (!content) {
+      throw new Error("Empty response from OpenAI");
     }
 
-    // If we get here, all attempts failed
-    console.error("All attempts to generate message failed. Last error:", lastError);
-    throw new Error("Failed to generate message after multiple attempts");
+    try {
+      const parsedContent = JSON.parse(content);
+      const validatedContent = messageResponseSchema.parse(parsedContent);
+
+      // Create a new message in the database
+      await db.insert(futureMessages).values({
+        userId,
+        message: validatedContent.message,
+        isRead: false,
+      });
+
+      return { message: validatedContent.message, isRead: false };
+    } catch (error) {
+      console.error("Failed to parse OpenAI response:", error);
+      throw error;
+    }
   } catch (error) {
     console.error("Failed to generate daily message:", error);
     throw error;
