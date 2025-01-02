@@ -4,8 +4,10 @@ import { eq, and, gte, lte } from "drizzle-orm";
 import OpenAI from "openai";
 import { startOfDay, endOfDay } from "date-fns";
 
+// Initialize OpenAI client with configuration
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY_2,
+  dangerouslyAllowBrowser: false,
 });
 
 export async function generateDailyMessage(userId: number) {
@@ -13,6 +15,11 @@ export async function generateDailyMessage(userId: number) {
     // Validate OpenAI API key
     if (!process.env.OPENAI_API_KEY_2) {
       throw new Error("OpenAI API key is not configured");
+    }
+
+    // Check if API key format is valid
+    if (!process.env.OPENAI_API_KEY_2.startsWith('sk-')) {
+      throw new Error("Invalid OpenAI API key format");
     }
 
     // Get all goals for context but we won't specifically mention them
@@ -79,26 +86,20 @@ You MUST format your response as a valid JSON object with ONLY this structure:
       });
 
       // Validate OpenAI response
-      if (!completion.choices || !completion.choices[0] || !completion.choices[0].message) {
+      if (!completion.choices?.[0]?.message?.content) {
         console.error("Invalid OpenAI response structure:", completion);
         throw new Error("Invalid response structure from OpenAI");
       }
 
-      const content = completion.choices[0].message.content;
-      if (!content) {
-        console.error("Empty content in OpenAI response");
-        throw new Error("No content in OpenAI response");
-      }
-
       let parsedContent;
       try {
-        parsedContent = JSON.parse(content);
+        parsedContent = JSON.parse(completion.choices[0].message.content);
       } catch (parseError) {
-        console.error("Failed to parse OpenAI response:", content);
+        console.error("Failed to parse OpenAI response:", completion.choices[0].message.content);
         throw new Error("Invalid JSON response from OpenAI");
       }
 
-      if (!parsedContent || typeof parsedContent !== 'object' || !parsedContent.message) {
+      if (!parsedContent?.message || typeof parsedContent.message !== 'string') {
         console.error("Invalid message format in response:", parsedContent);
         throw new Error("Invalid message format in OpenAI response");
       }
@@ -113,15 +114,15 @@ You MUST format your response as a valid JSON object with ONLY this structure:
       return { message: parsedContent.message, isRead: false };
     } catch (openAiError: any) {
       console.error("OpenAI API error:", openAiError);
-      // Log detailed error information for debugging
       if (openAiError.response) {
-        console.error("OpenAI error response:", {
+        console.error("OpenAI error details:", {
           status: openAiError.response.status,
+          statusText: openAiError.response.statusText,
           headers: openAiError.response.headers,
           data: openAiError.response.data
         });
       }
-      throw new Error(`Failed to generate message with OpenAI: ${openAiError.message}`);
+      throw new Error(`OpenAI API error: ${openAiError.message}`);
     }
   } catch (error) {
     console.error("Failed to generate daily message:", error);
