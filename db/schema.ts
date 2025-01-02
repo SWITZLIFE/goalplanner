@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 import { z } from "zod";
@@ -64,7 +64,6 @@ export const dailyInspirations = pgTable("daily_inspirations", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Relations configuration
 export const goalsRelations = relations(goals, ({ one, many }) => ({
   user: one(users, {
     fields: [goals.userId],
@@ -85,7 +84,7 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   }),
   timeTrackingSessions: many(timeTracking),
   subtasks: many(tasks, { relationName: 'parentChild' }),
-  parentTask: one(tasks, { 
+  parentTask: one(tasks, {
     fields: [tasks.parentTaskId],
     references: [tasks.id],
     relationName: 'parentChild'
@@ -103,7 +102,6 @@ export const dailyInspirationsRelations = relations(dailyInspirations, ({ one })
   }),
 }));
 
-// Schema validation
 export const insertDailyInspirationSchema = createInsertSchema(dailyInspirations);
 export const selectDailyInspirationSchema = createSelectSchema(dailyInspirations);
 export type DailyInspiration = typeof dailyInspirations.$inferSelect;
@@ -228,7 +226,6 @@ export const purchasedRewardsRelations = relations(purchasedRewards, ({ one }) =
     references: [rewardItems.id],
   }),
 }));
-
 
 export const visionBoardImages = pgTable("vision_board_images", {
   id: serial("id").primaryKey(),

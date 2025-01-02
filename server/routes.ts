@@ -1,25 +1,24 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { eq, and, desc, isNull, sql } from "drizzle-orm";
-import { notes, users, rewards, rewardItems, purchasedRewards } from "@db/schema";
+import { 
+  notes, users, rewards, rewardItems, purchasedRewards,
+  goals, tasks, timeTracking, visionBoardImages, 
+  dailyInspirations, coinHistory 
+} from "@db/schema";
 import { getTodayMessage, markMessageAsRead, generateDailyMessage } from "./future-message";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { goals, tasks, timeTracking, visionBoardImages } from "@db/schema";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { generateTaskBreakdown, generateShortTitle } from "./openai";
+import { generateTaskBreakdown, generateShortTitle, openai } from "./openai";
 import { getCoachingAdvice } from "./coaching";
 import { setupAuth } from "./auth";
-import { openai } from "./openai";
 import { uploadFileToSupabase } from './supabase';
 import { getTodayQuote, markQuoteAsRead } from "./goal-quotes";
 import { registerGoogleOAuthRoutes } from "./google-oauth";
-import { coinHistory } from "@db/schema"; // Import coinHistory schema
-import { supabase } from './supabase'; // Import supabase client
-import { dailyInspirations } from "@db/schema";
-import {format} from 'date-fns';
-
+import { supabase } from './supabase';
+import { format } from 'date-fns';
 
 // Configure multer for handling file uploads
 const upload = multer({
@@ -274,6 +273,108 @@ export function registerRoutes(app: Express): Server {
     } catch (error) {
       console.error("Failed to delete image:", error);
       res.status(500).json({ error: "Failed to delete image" });
+    }
+  });
+
+  // Daily Inspiration API
+  app.get("/api/goals/:goalId/inspiration", requireAuth, async (req, res) => {
+    try {
+      const { goalId } = req.params;
+      const { date } = req.query;
+      const userId = req.user!.id;
+
+      // Check if inspiration exists for today
+      const existingInspiration = await db.select()
+        .from(dailyInspirations)
+        .where(
+          and(
+            eq(dailyInspirations.userId, userId),
+            eq(dailyInspirations.goalId, parseInt(goalId)),
+            eq(dailyInspirations.date, date as string)
+          )
+        )
+        .limit(1);
+
+      if (existingInspiration.length > 0) {
+        return res.json(existingInspiration[0]);
+      }
+
+      res.json({ content: null });
+    } catch (error) {
+      console.error("Failed to fetch inspiration:", error);
+      res.status(500).json({ error: "Failed to fetch inspiration" });
+    }
+  });
+
+  app.post("/api/goals/:goalId/inspiration", requireAuth, async (req, res) => {
+    try {
+      const { goalId } = req.params;
+      const userId = req.user!.id;
+      const today = format(new Date(), 'yyyy-MM-dd');
+
+      // Get the goal details
+      const goal = await db.query.goals.findFirst({
+        where: and(
+          eq(goals.id, parseInt(goalId)),
+          eq(goals.userId, userId)
+        ),
+      });
+
+      if (!goal) {
+        return res.status(404).json({ error: "Goal not found" });
+      }
+
+      // Generate inspiration using OpenAI with a simpler, more relatable prompt
+      const prompt = `Write a short, encouraging message (about 100 words) for someone working on their goals. 
+The message should be:
+- Written at an 8th grade reading level
+- Warm and friendly, like advice from a mentor
+- Include a specific tip or insight about personal growth
+- Relate to their goal: "${goal.title}"
+
+Focus on:
+- Using simple, clear language
+- Being encouraging without being overly complex
+- Making the message feel personal and relatable
+- Including one practical suggestion they can try today
+
+Write it in a conversational tone, like you're talking to a friend.`;
+
+      const openaiResponse = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: "You are a supportive mentor who gives clear, practical advice."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+      });
+
+      const inspirationContent = openaiResponse.choices[0].message.content?.trim();
+
+      if (!inspirationContent) {
+        throw new Error("Failed to generate inspiration content");
+      }
+
+      // Save the inspiration
+      const [newInspiration] = await db.insert(dailyInspirations)
+        .values({
+          userId,
+          goalId: parseInt(goalId),
+          content: inspirationContent,
+          date: today,
+        })
+        .returning();
+
+      res.json(newInspiration);
+    } catch (error) {
+      console.error("Failed to generate inspiration:", error);
+      res.status(500).json({ error: "Failed to generate inspiration" });
     }
   });
 
@@ -840,7 +941,7 @@ export function registerRoutes(app: Express): Server {
         where: and(
           eq(goals.id, parseInt(goalId)),
           eq(goals.userId, userId)
-        ),
+        )
       });
 
       if (!goal) {
@@ -1553,38 +1654,46 @@ Remember to:
       }
 
       // Generate new inspiration using OpenAI
-      const prompt = `Write an inspiring and motivational letter (about 100 words) for someone working on this goal: "${goal.title}".
+      const prompt = `Write a short, inspiring story or message (about 100 words) that's simple and easy to understand - like you're writing for a young teenager.
 
-The letter should be:
-1. Warm and personal
-2. Focus on motivation and encouragement
-3. Acknowledge the challenges but emphasize growth
-4. Include specific references to their goal
-5. End with an uplifting message
+Pick from these everyday themes that most people can relate to:
+- Finding courage to try something new
+- Not giving up when things get hard
+- Learning from mistakes
+- Being patient with yourself
+- Making small progress each day
+- Finding joy in little things
+- Helping others along the way
+- Being proud of your effort
 
-Some key themes to consider:
-- Perseverance through challenges
-- Personal growth and learning
-- The journey being as important as the destination
-- Small steps leading to big changes
-- Building resilience and momentum
-- Celebrating progress
+Make it feel like:
+- A friend sharing a cool story
+- Something that happened in real life
+- A moment that changed someone's view
+- A lesson learned the fun way
 
-Make it feel like a heartfelt letter from a wise friend or mentor who deeply understands the journey of ${goal.title}.`;
+Tips:
+- Use simple, everyday words
+- Keep sentences short and clear
+- Tell it like you're talking to a friend
+- Add some fun details to make it real
+- End with something hopeful
+
+The goal this person is working on is "${goal.title}", but the story doesn't need to be directly about that - just something uplifting that might help them stay motivated.`;
 
       const completion = await openai.chat.completions.create({
         model: "gpt-4",
         messages: [
           {
             role: "system",
-            content: "You are an inspiring mentor who writes thoughtful, motivational letters to help people stay focused on their goals."
+            content: "You are a friendly storyteller who shares simple but meaningful stories that inspire people. Write like you're talking to a young teenager - clear, real, and encouraging."
           },
           {
             role: "user",
             content: prompt
           }
         ],
-        temperature: 0.7,
+        temperature: 0.8,
       });
 
       const content = completion.choices[0].message.content?.trim();

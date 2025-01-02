@@ -32,7 +32,7 @@ export function DailyInspiration({ goalId, goalTitle }: DailyInspirationProps) {
   const { data: inspiration, isLoading } = useQuery<Inspiration>({
     queryKey: [`/api/goals/${goalId}/inspiration`, today],
     queryFn: async () => {
-      const response = await fetch(`/api/goals/inspiration?goalId=${goalId}&date=${today}`, {
+      const response = await fetch(`/api/goals/${goalId}/inspiration?date=${today}`, {
         credentials: 'include'
       });
       if (!response.ok) {
@@ -99,9 +99,9 @@ export function DailyInspiration({ goalId, goalTitle }: DailyInspirationProps) {
           {isLoading ? (
             "Loading..."
           ) : inspiration?.content ? (
-            "Your Daily Inspiration Letter is Ready"
+            "Read Today's Inspiration"
           ) : (
-            "Open Your Daily Inspiration Letter"
+            "Get Today's Inspiration"
           )}
         </span>
         {isGenerating && (
@@ -119,7 +119,7 @@ export function DailyInspiration({ goalId, goalTitle }: DailyInspirationProps) {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
-              <span>Your Daily Inspiration</span>
+              <span>Today's Inspiration</span>
               <Button
                 variant="ghost"
                 size="icon"
