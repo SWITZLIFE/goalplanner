@@ -17,7 +17,7 @@ interface VisionBoardImage {
   position: number;
 }
 
-import { PersonalizedMessage } from "./PersonalizedMessage";
+import { FutureMessage } from "./FutureMessage";
 
 interface Task {
   id: number;
@@ -357,7 +357,7 @@ export function VisionBoard() {
 
   return (
     <div className="space-y-6 max-w-[calc(100vw-19rem)] mx-auto px-4">
-      <PersonalizedMessage />
+      <FutureMessage />
       <div className="h-px bg-border" />
 
       {/* Vision Board Section */}

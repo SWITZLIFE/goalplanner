@@ -1,5 +1,4 @@
 import OpenAI from "openai";
-import type { PersonalizedMessage, NewPersonalizedMessage } from "@db/schema";
 
 export const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY_2,
@@ -102,66 +101,4 @@ Output: "Launch Goal Planner App"`;
 
   const shortTitle = response.choices[0].message.content?.trim() || longTitle;
   return shortTitle.replace(/^"|"$/g, '').trim();
-}
-
-type MessageType = 'motivation' | 'reflection' | 'visualization';
-
-interface GeneratedMessage {
-  message: string;
-  messageType: MessageType;
-  isRead: boolean;
-}
-
-export async function generatePersonalizedMessage(userId: number, userGoals: any[] = []): Promise<NewPersonalizedMessage> {
-  try {
-    // Generate message type randomly
-    const messageTypes = ['motivation', 'reflection', 'visualization'] as const;
-    const messageType = messageTypes[Math.floor(Math.random() * messageTypes.length)];
-
-    // Create appropriate prompt based on message type
-    let prompt = '';
-    switch (messageType) {
-      case 'motivation':
-        prompt = `Write a short, personal motivational message (50-70 words) as if from my future self who has achieved great things. Focus on inner strength and potential. Keep it warm and encouraging.`;
-        break;
-      case 'reflection':
-        prompt = `Write a brief, thoughtful reflection (50-70 words) as if from my future self looking back on the journey of growth and change. Focus on the learning experiences and personal insights gained.`;
-        break;
-      case 'visualization':
-        prompt = `Create a vivid snapshot (50-70 words) from my successful future self, describing a moment of achievement and fulfillment. Paint a picture of the positive energy and satisfaction being experienced.`;
-        break;
-    }
-
-    const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content: `You are writing a personalized message from the future self to the current self. The message should be heartfelt and personal, written in first person. Don't mention specific goals, but draw inspiration from their overall direction.`
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      temperature: 0.9,
-      max_tokens: 150,
-    });
-
-    const generatedMessage = response.choices[0].message.content?.trim();
-
-    if (!generatedMessage) {
-      throw new Error("Empty response from OpenAI");
-    }
-
-    return {
-      userId,
-      message: generatedMessage,
-      messageType,
-      isRead: false,
-    };
-  } catch (error: any) {
-    console.error("Failed to generate personalized message:", error);
-    throw error;
-  }
 }

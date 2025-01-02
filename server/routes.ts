@@ -1,21 +1,23 @@
 import type { Express, Request, Response, NextFunction } from "express";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, isNull, sql } from "drizzle-orm";
 import { notes, users, rewards, rewardItems, purchasedRewards } from "@db/schema";
+import { getTodayMessage, markMessageAsRead, generateDailyMessage } from "./future-message";
 import { createServer, type Server } from "http";
 import { db } from "@db";
-import { goals, tasks, timeTracking, visionBoardImages, personalizedMessages } from "@db/schema";
+import { goals, tasks, timeTracking, visionBoardImages } from "@db/schema";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { generateTaskBreakdown, generateShortTitle, generatePersonalizedMessage } from "./openai";
+import { generateTaskBreakdown, generateShortTitle } from "./openai";
 import { getCoachingAdvice } from "./coaching";
 import { setupAuth } from "./auth";
 import { openai } from "./openai";
 import { uploadFileToSupabase } from './supabase';
 import { getTodayQuote, markQuoteAsRead } from "./goal-quotes";
 import { registerGoogleOAuthRoutes } from "./google-oauth";
-import { coinHistory } from "@db/schema";
-import { supabase } from './supabase';
+import { coinHistory } from "@db/schema"; // Import coinHistory schema
+import { supabase } from './supabase'; // Import supabase client
+
 
 // Configure multer for handling file uploads
 const upload = multer({
@@ -71,8 +73,8 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 export function registerRoutes(app: Express): Server {
   // Setup authentication middleware and routes first
   setupAuth(app);
-  registerGoogleOAuthRoutes(app);
 
+  registerGoogleOAuthRoutes(app);
   // Profile photo upload route
   app.post("/api/user/profile-photo", requireAuth, upload.single('photo'), async (req, res) => {
     try {
@@ -924,7 +926,7 @@ Remember to:
           .returning();
 
         if (!updatedGoal) {
-          throw new Error("Failed to update goalwith vision statement");
+          throw new Error("Failed to update goal with vision statement");
         }
 
         // Verify the update was successful
@@ -1515,146 +1517,6 @@ Remember to:
       console.error("Failed to delete note:", error);
       res.status(500).json({ error: "Failed to delete note" });
     }
-  });
-
-  // Add personalized message endpoints
-  app.post("/api/messages/generate", requireAuth, async (req, res) => {
-    try {
-      const userId = req.user!.id;
-
-      // Get user's goals for context
-      const userGoals = await db.select({
-        title: goals.title,
-        description: goals.description,
-        visionStatement: goals.visionStatement
-      })
-        .from(goals)
-        .where(eq(goals.userId, userId))
-        .orderBy(desc(goals.createdAt))
-        .limit(5);
-
-      // Generate message using OpenAI
-      const generatedMessage = await generatePersonalizedMessage(userId, userGoals);
-
-      // Save the message to the database
-      const [newMessage] = await db.insert(personalizedMessages)
-        .values(generatedMessage)
-        .returning();
-
-      if (!newMessage) {
-        throw new Error("Failed to save generated message");
-      }
-
-      res.json(newMessage);
-    } catch (error) {
-      console.error("Failed to generate message:", error);
-      res.status(500).json({ 
-        error: "Failed to generate message",
-        details: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  app.get("/api/messages/latest", requireAuth, async (req, res) => {
-    try {
-      const userId = req.user!.id;
-
-      // Get the latest message for the user, regardless of read status
-      const [latestMessage] = await db.select()
-        .from(personalizedMessages)
-        .where(eq(personalizedMessages.userId, userId))
-        .orderBy(desc(personalizedMessages.createdAt))
-        .limit(1);
-
-      res.json(latestMessage || null);
-    } catch (error) {
-      console.error("Failed to fetch latest message:", error);
-      res.status(500).json({ 
-        error: "Failed to fetch latest message",
-        details: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  app.patch("/api/messages/:messageId/read", requireAuth, async (req, res) => {
-    try {
-      const { messageId } = req.params;
-      const userId = req.user!.id;
-
-      const [updatedMessage] = await db.update(personalizedMessages)
-        .set({ isRead: true })
-        .where(and(
-          eq(personalizedMessages.id, parseInt(messageId)),
-          eq(personalizedMessages.userId, userId)
-        ))
-        .returning();
-
-      if (!updatedMessage) {
-        return res.status(404).json({ error: "Message not found or unauthorized" });
-      }
-
-      res.json(updatedMessage);
-    } catch (error) {
-      console.error("Failed to mark message as read:", error);
-      res.status(500).json({ 
-        error: "Failed to update message",
-        details: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Configure CORS headers for Supabase Storage URLs
-  app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', process.env.SUPABASE_URL || '*'); // Added default '*' for development
-    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH');
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
-    next();
-  });
-
-  // Protect all /api routes except auth routes with enhanced session verification
-  app.use('/api', (req, res, next) => {
-    // Skip auth for public routes
-    if (req.path.startsWith('/login') ||
-      req.path.startsWith('/register') ||
-      req.path.startsWith('/logout') ||
-      req.path.startsWith('/user')) {
-      return next();
-    }
-
-    // Enhanced session verification
-    if (!req.isAuthenticated() || !req.session) {
-      return res.status(401).json({ error: "You must be logged in to access this resource" });
-    }
-
-    // Strict user verification
-    const userId = req.user?.id;
-    if (!userId) {
-      // Clear invalid session
-      req.session.destroy((err) => {
-        if (err) console.error("Session destruction failed:", err);
-      });
-      return res.status(401).json({ error: "Invalid user session" });
-    }
-
-    // Store userId in res.locals for route handlers
-    res.locals.userId = userId;
-
-    // Add timestamp verification
-    const sessionStart = req.session.createdAt;
-    if (!sessionStart) {
-      req.session.createdAt = new Date();
-    } else {
-      // Check if session is too old (24 hours)
-      const sessionAge = Date.now() - new Date(sessionStart).getTime();
-      if (sessionAge > 24 * 60 * 60 * 1000) {
-        req.session.destroy((err) => {
-          if (err) console.error("Session destruction failed:", err);
-        });
-        return res.status(401).json({ error: "Session expired" });
-      }
-    }
-
-    next();
   });
 
   const httpServer = createServer(app);
