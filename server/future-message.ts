@@ -10,7 +10,7 @@ const openai = new OpenAI({
 
 export async function generateDailyMessage(userId: number) {
   try {
-    // Get all goals for context but we won't specifically mention them
+    // Get all goals and their progress for the user
     const userGoals = await db.query.goals.findMany({
       where: eq(goals.userId, userId),
       columns: {
@@ -30,56 +30,50 @@ export async function generateDailyMessage(userId: number) {
       totalTasks: goal.totalTasks,
     }));
 
-    // Generate a random number to determine the type of message
-    const messageType = Math.random();
+    const systemPrompt = `You are the user's future successful self, writing a heartfelt message back in time to motivate them.
+Rules:
+1. Write a message between 40-60 words
+2. Be specific about their current goals and aspirations
+3. Share insights about the journey and growth ahead
+4. Use an encouraging, warm, and optimistic tone
+5. Make it personal based on their goals
+6. Add line breaks between paragraphs
+7. IMPORTANT: You must respond with a JSON object
 
-    // Create a dynamic prompt based on the random message type
-    let messageStyle;
-    if (messageType < 0.25) {
-      messageStyle = "Write a visualization message, painting a vivid picture of a moment of achievement and growth. Focus on the feelings, the environment, and the inner satisfaction of progress.";
-    } else if (messageType < 0.5) {
-      messageStyle = "Write a reflective message that helps them understand their journey better. Share wisdom about personal growth, learning from challenges, and the beauty of the process.";
-    } else if (messageType < 0.75) {
-      messageStyle = "Write an energizing motivational message that ignites their drive. Focus on their inner strength, potential, and the exciting possibilities ahead.";
-    } else {
-      messageStyle = "Write a gentle, supportive message that acknowledges their efforts and reminds them of their resilience. Share insights about self-compassion and steady progress.";
-    }
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
-          content: `You are writing a heartfelt message to encourage and inspire. Create a personal, emotionally resonant message that feels like it's from a wise friend who deeply understands their journey.
-
-Write a message with these characteristics:
-- 2-3 short paragraphs (50-80 words total)
-- Warm and personal tone
-- Focus on emotions, growth, and inner strength
-- Natural, conversational language
-- ${messageStyle}
-
-Context about their journey (use as inspiration but don't mention specifically):
+Current Goals Context:
 ${JSON.stringify(goalsContext, null, 2)}
 
-You MUST format your response as a valid JSON object with ONLY this structure:
+Write like you're having a warm conversation with a friend who needs encouragement. Share specific details about their goals and the amazing progress they'll make.
+
+Respond with a JSON object in this exact format:
 {
-  "message": "Your message here with \\n for line breaks"
-}`
-        }
+  "message": "your motivational message here"
+}`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        { role: "system", content: systemPrompt }
       ],
-      temperature: 0.8,
-      response_format: { type: "json_object" }
+      temperature: 0.7,
+      response_format: { type: "json_object" },
     });
+
+    const content = response.choices[0].message.content;
+    if (!content) {
+      throw new Error("No response generated");
+    }
+
+    const parsed = JSON.parse(content);
 
     // Create a new message in the database
     await db.insert(futureMessages).values({
       userId,
-      message: JSON.parse(completion.choices[0].message.content).message,
+      message: parsed.message,
       isRead: false,
     });
 
-    return { message: JSON.parse(completion.choices[0].message.content).message, isRead: false };
+    return { message: parsed.message, isRead: false };
   } catch (error) {
     console.error("Failed to generate daily message:", error);
     throw error;
