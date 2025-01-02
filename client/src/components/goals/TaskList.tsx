@@ -295,7 +295,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
   };
 
   const mainTasks = tasks
-    .filter(task => !task.isSubtask && (!optimisticTaskStates[task.id] || !task.completed))
+    .filter(task => !task.isSubtask && !task.completed) // Only hide completed main tasks
     .sort((a, b) => {
       const aHasDate = !!a.plannedDate;
       const bHasDate = !!b.plannedDate;
@@ -326,7 +326,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
 
   const getOrderedSubtasks = (parentId: number) => {
     return tasks
-      .filter(task => task.parentTaskId === parentId && (!optimisticTaskStates[task.id] || !task.completed))
+      .filter(task => task.parentTaskId === parentId) // Remove completed filter to show all subtasks
       .sort((a, b) => a.id - b.id);
   };
 
