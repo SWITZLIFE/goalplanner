@@ -157,12 +157,50 @@ export default function ForumCategoryPage() {
                 <Card>
                   <CardContent className="p-8 text-center">
                     <p className="text-muted-foreground mb-4">No posts yet. Be the first to start a discussion!</p>
-                    <DialogTrigger asChild>
-                      <Button>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Create New Post
-                      </Button>
-                    </DialogTrigger>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button>
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          Create New Post
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Create a New Post</DialogTitle>
+                        </DialogHeader>
+                        <Form {...form}>
+                          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                            <FormField
+                              control={form.control}
+                              name="title"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Title</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name="content"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Content</FormLabel>
+                                  <FormControl>
+                                    <Textarea {...field} rows={5} />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                            <div className="flex justify-end">
+                              <Button type="submit">Post</Button>
+                            </div>
+                          </form>
+                        </Form>
+                      </DialogContent>
+                    </Dialog>
                   </CardContent>
                 </Card>
               ) : (
