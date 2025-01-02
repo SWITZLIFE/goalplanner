@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, ArrowLeft } from "lucide-react";
+import { PlusCircle, ArrowLeft, MessageSquare } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { LeftPanel } from "@/components/LeftPanel";
 import { useState } from "react";
@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface ForumPost {
   id: number;
@@ -23,8 +24,11 @@ interface ForumPost {
   viewCount: number;
   isPinned: boolean;
   isLocked: boolean;
+  commentCount: number;
   author: {
+    id: number;
     email: string;
+    profilePhotoUrl: string | null;
   };
 }
 
@@ -151,8 +155,13 @@ export default function ForumCategoryPage() {
                   {[...Array(3)].map((_, i) => (
                     <Card key={i} className="animate-pulse">
                       <CardContent className="p-6">
-                        <div className="h-6 bg-muted rounded w-3/4 mb-4" />
-                        <div className="h-4 bg-muted rounded w-1/4" />
+                        <div className="flex gap-4 items-center">
+                          <div className="h-10 w-10 rounded-full bg-muted" />
+                          <div>
+                            <div className="h-6 bg-muted rounded w-48 mb-2" />
+                            <div className="h-4 bg-muted rounded w-32" />
+                          </div>
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
@@ -213,23 +222,41 @@ export default function ForumCategoryPage() {
                     <Link key={post.id} href={`/forum/${slug}/${post.id}`}>
                       <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
                         <CardContent className="p-4">
-                          <h3 className="text-lg font-semibold mb-2">{post.title}</h3>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <span>{post.author.email}</span>
-                            <span>•</span>
-                            <span>{format(new Date(post.createdAt), 'MMM d, yyyy')}</span>
-                            {post.viewCount > 0 && (
-                              <>
+                          <div className="flex items-start gap-4">
+                            <Avatar className="h-10 w-10">
+                              {post.author.profilePhotoUrl ? (
+                                <AvatarImage src={post.author.profilePhotoUrl} />
+                              ) : (
+                                <AvatarFallback>
+                                  {post.author.email.substring(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              )}
+                            </Avatar>
+                            <div className="flex-1">
+                              <h3 className="text-lg font-semibold mb-1">{post.title}</h3>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <span>{post.author.email}</span>
                                 <span>•</span>
-                                <span>{post.viewCount} views</span>
-                              </>
-                            )}
-                            {post.isPinned && (
-                              <>
+                                <span>{format(new Date(post.createdAt), 'MMM d, yyyy')}</span>
                                 <span>•</span>
-                                <span className="text-primary">Pinned</span>
-                              </>
-                            )}
+                                <span className="flex items-center gap-1">
+                                  <MessageSquare className="h-4 w-4" />
+                                  {post.commentCount}
+                                </span>
+                                {post.viewCount > 0 && (
+                                  <>
+                                    <span>•</span>
+                                    <span>{post.viewCount} views</span>
+                                  </>
+                                )}
+                                {post.isPinned && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="text-primary">Pinned</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </CardContent>
                       </Card>

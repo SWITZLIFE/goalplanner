@@ -1713,16 +1713,28 @@ Remember to:
         return res.status(404).json({ error: "Category not found" });
       }
 
-      const posts = await db.query.forumPosts.findMany({
-        where: eq(forumPosts.categoryId, category.id),
-        with: {
-          author: true,
+      // Get posts with author information and comment counts
+      const posts = await db.select({
+        id: forumPosts.id,
+        title: forumPosts.title,
+        content: forumPosts.content,
+        isPinned: forumPosts.isPinned,
+        isLocked: forumPosts.isLocked,
+        viewCount: forumPosts.viewCount,
+        createdAt: forumPosts.createdAt,
+        author: {
+          id: users.id,
+          email: users.email,
+          profilePhotoUrl: users.profilePhotoUrl,
         },
-        orderBy: [
-          desc(forumPosts.isPinned),
-          desc(forumPosts.createdAt),
-        ],
-      });
+        commentCount: sql<number>`CAST(COUNT(DISTINCT ${forumComments.id}) AS integer)`,
+      })
+      .from(forumPosts)
+      .innerJoin(users, eq(forumPosts.userId, users.id))
+      .leftJoin(forumComments, eq(forumComments.postId, forumPosts.id))
+      .where(eq(forumPosts.categoryId, category.id))
+      .groupBy(forumPosts.id, users.id, users.email, users.profilePhotoUrl)
+      .orderBy(desc(forumPosts.isPinned), desc(forumPosts.createdAt));
 
       res.json(posts);
     } catch (error) {
