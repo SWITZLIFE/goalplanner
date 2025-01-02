@@ -13,6 +13,15 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const personalizedMessages = pgTable("personalized_messages", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  message: text("message").notNull(),
+  messageType: text("message_type").notNull(), // 'motivation', 'reflection', 'visualization'
+  isRead: boolean("is_read").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const goals = pgTable("goals", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -42,14 +51,6 @@ export const tasks = pgTable("tasks", {
   isAiGenerated: boolean("is_ai_generated").default(false).notNull(),
   order: integer("order"),
   eventId: text("event_id"),
-});
-
-export const futureMessages = pgTable("future_messages", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  message: text("message").notNull(),
-  isRead: boolean("is_read").default(false).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const goalDailyQuotes = pgTable("goal_daily_quotes", {
@@ -99,13 +100,6 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
     references: [tasks.parentTaskId],
   }),
   timeTrackingSessions: many(timeTracking),
-}));
-
-export const futureMessagesRelations = relations(futureMessages, ({ one }) => ({
-  user: one(users, {
-    fields: [futureMessages.userId],
-    references: [users.id],
-  }),
 }));
 
 export const goalDailyQuotesRelations = relations(goalDailyQuotes, ({ one }) => ({
@@ -171,8 +165,6 @@ export type Task = typeof tasks.$inferSelect;
 export type NewTask = typeof tasks.$inferInsert;
 export type UpdateTask = z.infer<typeof updateTaskSchema>;
 export type Goal = BaseGoal & { tasks?: Task[] };
-export type FutureMessage = typeof futureMessages.$inferSelect;
-export type NewFutureMessage = typeof futureMessages.$inferInsert;
 export type GoalDailyQuote = typeof goalDailyQuotes.$inferSelect;
 export type NewGoalDailyQuote = typeof goalDailyQuotes.$inferInsert;
 
