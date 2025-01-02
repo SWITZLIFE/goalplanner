@@ -3,9 +3,19 @@ import { futureMessages, goals } from "@db/schema";
 import { eq, and, gte, lte } from "drizzle-orm";
 import OpenAI from "openai";
 import { startOfDay, endOfDay } from "date-fns";
+import { z } from "zod";
+
+if (!process.env.OPENAI_API_KEY_2) {
+  throw new Error("OPENAI_API_KEY_2 is not set in environment variables");
+}
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY_2,
+});
+
+// Schema for validating OpenAI response
+const messageResponseSchema = z.object({
+  message: z.string().min(1),
 });
 
 export async function generateDailyMessage(userId: number) {
@@ -35,51 +45,60 @@ export async function generateDailyMessage(userId: number) {
       return { message: "No goals found to generate a message.", isRead: false };
     }
 
-    const systemPrompt = `You are the user's future successful self, writing a heartfelt message back in time to motivate them.
-Rules:
-1. Write a message between 40-60 words
-2. Be specific about their current goals and aspirations
-3. Share insights about the journey and growth ahead
-4. Use an encouraging, warm, and optimistic tone
-5. Make it personal based on their goals
-6. Add line breaks between paragraphs
-7. IMPORTANT: You must respond with a JSON object
-
-Current Goals Context:
-${JSON.stringify(goalsContext, null, 2)}
-
-Write like you're having a warm conversation with a friend who needs encouragement. Share specific details about their goals and the amazing progress they'll make.
-
-Respond with a JSON object in this exact format:
-{
-  "message": "your motivational message here"
-}`;
-
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
-        { role: "system", content: systemPrompt }
+        {
+          role: "system",
+          content: `Generate a motivational message about these goals: ${JSON.stringify(goalsContext, null, 2)}. The message should be 40-60 words, encouraging, and reference specific goals. Format your entire response as a JSON object with a 'message' field containing the motivational text.`
+        }
       ],
       temperature: 0.7,
-      response_format: { type: "json_object" },
+      response_format: { type: "json_object" }
     });
 
-    const content = response.choices[0].message.content;
+    console.log("OpenAI API Response:", {
+      status: "success",
+      choices: response.choices?.length ?? 0
+    });
+
+    const content = response.choices[0]?.message?.content;
+
     if (!content) {
-      throw new Error("No response generated");
+      throw new Error("Empty response from OpenAI");
     }
 
-    const parsed = JSON.parse(content);
+    // Log the raw response for debugging
+    console.log("Raw OpenAI response content:", content);
 
-    // Create a new message in the database
-    await db.insert(futureMessages).values({
-      userId,
-      message: parsed.message,
-      isRead: false,
-    });
+    try {
+      const parsedContent = JSON.parse(content);
+      const validatedContent = messageResponseSchema.parse(parsedContent);
 
-    return { message: parsed.message, isRead: false };
+      // Create a new message in the database
+      await db.insert(futureMessages).values({
+        userId,
+        message: validatedContent.message,
+        isRead: false,
+      });
+
+      return { message: validatedContent.message, isRead: false };
+    } catch (parseError) {
+      console.error("JSON Parsing Error:", {
+        error: parseError.message,
+        content: content.slice(0, 200),
+        contentType: typeof content
+      });
+      throw parseError;
+    }
   } catch (error) {
+    if (error.response) {
+      console.error("OpenAI API Error:", {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data
+      });
+    }
     console.error("Failed to generate daily message:", error);
     throw error;
   }
@@ -97,7 +116,6 @@ export async function getTodayMessage(userId: number) {
     ),
   });
 
-  // Only return the existing message if it exists, don't generate a new one
   return existingMessage ? {
     message: existingMessage.message,
     isRead: existingMessage.isRead,
