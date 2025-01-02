@@ -10,7 +10,7 @@ const openai = new OpenAI({
 
 export async function generateDailyMessage(userId: number) {
   try {
-    // Get all goals and their progress for the user
+    // Get all goals for context but we won't specifically mention them
     const userGoals = await db.query.goals.findMany({
       where: eq(goals.userId, userId),
       columns: {
@@ -30,32 +30,53 @@ export async function generateDailyMessage(userId: number) {
       totalTasks: goal.totalTasks,
     }));
 
-    const systemPrompt = `You are the user's future successful self, writing a heartfelt message back in time to motivate them.
-Rules:
-1. Write a message between 40-60 words
-2. Be specific about their current goals and aspirations
-3. Share insights about the journey and growth ahead
-4. Use an encouraging, warm, and optimistic tone
-5. Make it personal based on their goals
-6. Add line breaks between paragraphs
-7. IMPORTANT: You must respond with a JSON object
+    // Generate a random number to determine the type of message
+    const messageType = Math.random();
 
-Current Goals Context:
+    // Create a dynamic prompt based on the random message type
+    let messageStyle;
+    if (messageType < 0.25) {
+      messageStyle = "Write a visualization message, painting a vivid picture of a moment of achievement and growth. Focus on the feelings, the environment, and the inner satisfaction of progress.";
+    } else if (messageType < 0.5) {
+      messageStyle = "Write a reflective message that helps them understand their journey better. Share wisdom about personal growth, learning from challenges, and the beauty of the process.";
+    } else if (messageType < 0.75) {
+      messageStyle = "Write an energizing motivational message that ignites their drive. Focus on their inner strength, potential, and the exciting possibilities ahead.";
+    } else {
+      messageStyle = "Write a gentle, supportive message that acknowledges their efforts and reminds them of their resilience. Share insights about self-compassion and steady progress.";
+    }
+
+    const systemPrompt = `You are writing a heartfelt message to encourage and inspire. Create a personal, emotionally resonant message that feels like it's from a wise friend who deeply understands their journey.
+
+Rules:
+1. Write 2-3 short paragraphs (50-80 words total)
+2. Make it feel warm and personal, like a friend reaching out at just the right moment
+3. Focus on emotions, growth, and inner strength
+4. Use natural, conversational language
+5. Add line breaks between paragraphs
+6. ${messageStyle}
+7. IMPORTANT: Respond with a JSON object
+
+Use this context to understand their journey (but don't explicitly mention these goals):
 ${JSON.stringify(goalsContext, null, 2)}
 
-Write like you're having a warm conversation with a friend who needs encouragement. Share specific details about their goals and the amazing progress they'll make.
+Remember to:
+- Vary sentence structure and length for natural flow
+- Include sensory details and emotions
+- Focus on the journey and growth, not just outcomes
+- Make it feel like a personal conversation
+- Keep it concise but impactful
 
 Respond with a JSON object in this exact format:
 {
-  "message": "your motivational message here"
+  "message": "your message here"
 }`;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4",
       messages: [
         { role: "system", content: systemPrompt }
       ],
-      temperature: 0.7,
+      temperature: 0.8,
       response_format: { type: "json_object" },
     });
 
