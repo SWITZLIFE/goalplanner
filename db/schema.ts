@@ -292,3 +292,96 @@ export const timeTrackingRelations = relations(timeTracking, ({ one }) => ({
     references: [tasks.id],
   }),
 }));
+
+// Add new forum related tables
+export const forumCategories = pgTable("forum_categories", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  slug: text("slug").unique().notNull(),
+  icon: text("icon").notNull(),
+  order: integer("order").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const forumPosts = pgTable("forum_posts", {
+  id: serial("id").primaryKey(),
+  categoryId: integer("category_id").notNull().references(() => forumCategories.id),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  isPinned: boolean("is_pinned").default(false).notNull(),
+  isLocked: boolean("is_locked").default(false).notNull(),
+  viewCount: integer("view_count").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const forumComments = pgTable("forum_comments", {
+  id: serial("id").primaryKey(),
+  postId: integer("post_id").notNull().references(() => forumPosts.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const forumReactions = pgTable("forum_reactions", {
+  id: serial("id").primaryKey(),
+  postId: integer("post_id").references(() => forumPosts.id, { onDelete: "cascade" }),
+  commentId: integer("comment_id").references(() => forumComments.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: text("type").notNull(), 
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Add relations for forum tables
+export const forumCategoriesRelations = relations(forumCategories, ({ many }) => ({
+  posts: many(forumPosts),
+}));
+
+export const forumPostsRelations = relations(forumPosts, ({ one, many }) => ({
+  category: one(forumCategories, {
+    fields: [forumPosts.categoryId],
+    references: [forumCategories.id],
+  }),
+  author: one(users, {
+    fields: [forumPosts.userId],
+    references: [users.id],
+  }),
+  comments: many(forumComments),
+  reactions: many(forumReactions),
+}));
+
+export const forumCommentsRelations = relations(forumComments, ({ one, many }) => ({
+  post: one(forumPosts, {
+    fields: [forumComments.postId],
+    references: [forumPosts.id],
+  }),
+  author: one(users, {
+    fields: [forumComments.userId],
+    references: [users.id],
+  }),
+  reactions: many(forumReactions),
+}));
+
+// Add Zod schemas for the new tables
+export const insertForumCategorySchema = createInsertSchema(forumCategories);
+export const selectForumCategorySchema = createSelectSchema(forumCategories);
+export type ForumCategory = typeof forumCategories.$inferSelect;
+export type NewForumCategory = typeof forumCategories.$inferInsert;
+
+export const insertForumPostSchema = createInsertSchema(forumPosts);
+export const selectForumPostSchema = createSelectSchema(forumPosts);
+export type ForumPost = typeof forumPosts.$inferSelect;
+export type NewForumPost = typeof forumPosts.$inferInsert;
+
+export const insertForumCommentSchema = createInsertSchema(forumComments);
+export const selectForumCommentSchema = createSelectSchema(forumComments);
+export type ForumComment = typeof forumComments.$inferSelect;
+export type NewForumComment = typeof forumComments.$inferInsert;
+
+export const insertForumReactionSchema = createInsertSchema(forumReactions);
+export const selectForumReactionSchema = createSelectSchema(forumReactions);
+export type ForumReaction = typeof forumReactions.$inferSelect;
+export type NewForumReaction = typeof forumReactions.$inferInsert;

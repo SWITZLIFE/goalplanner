@@ -3,7 +3,8 @@ import { eq, and, desc, isNull, sql } from "drizzle-orm";
 import { 
   notes, users, rewards, rewardItems, purchasedRewards,
   goals, tasks, timeTracking, visionBoardImages, 
-  dailyInspirations, coinHistory 
+  dailyInspirations, coinHistory, forumCategories, forumPosts,
+  forumComments, forumReactions
 } from "@db/schema";
 import { getTodayMessage, markMessageAsRead, generateDailyMessage } from "./future-message";
 import { createServer, type Server } from "http";
@@ -938,7 +939,7 @@ Write it in a conversational tone, like you're talking to a friend.`;
   // Vision Statement Generation API
   app.post("/api/goals/:goalId/vision", requireAuth, async (req, res) => {
     try {
-      const { goalId } = reqparams;
+      const { goalId } = req.params;
       const { answers } = req.body;
       const userId = req.user!.id;
 
@@ -1658,6 +1659,212 @@ Remember to:
     } catch (error) {
       console.error("Failed to fetch inspiration:", error);
       res.status(500).json({ error: "Failed to fetch inspiration" });
+    }
+  });
+
+  // Forum API Routes
+  app.get("/api/forum/categories", async (req, res) => {
+    try {
+      const categories = await db.select({
+        id: forumCategories.id,
+        name: forumCategories.name,
+        description: forumCategories.description,
+        slug: forumCategories.slug,
+        icon: forumCategories.icon,
+        order: forumCategories.order,
+      })
+      .from(forumCategories)
+      .orderBy(forumCategories.order);
+
+      res.json(categories);
+    } catch (error) {
+      console.error("Failed to fetch forum categories:", error);
+      res.status(500).json({ error: "Failed to fetch forum categories" });
+    }
+  });
+
+  app.get("/api/forum/categories/:slug/posts", requireAuth, async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const userId = req.user!.id;
+
+      // Get category ID from slug
+      const category = await db.query.forumCategories.findFirst({
+        where: eq(forumCategories.slug, slug),
+      });
+
+      if (!category) {
+        return res.status(404).json({ error: "Category not found" });
+      }
+
+      // Get posts with author information
+      const posts = await db.select({
+        id: forumPosts.id,
+        title: forumPosts.title,
+        content: forumPosts.content,
+        isPinned: forumPosts.isPinned,
+        isLocked: forumPosts.isLocked,
+        viewCount: forumPosts.viewCount,
+        createdAt: forumPosts.createdAt,
+        updatedAt: forumPosts.updatedAt,
+        author: {
+          id: users.id,
+          email: users.email,
+          profilePhotoUrl: users.profilePhotoUrl,
+        },
+      })
+      .from(forumPosts)
+      .innerJoin(users, eq(forumPosts.userId, users.id))
+      .where(eq(forumPosts.categoryId, category.id))
+      .orderBy(desc(forumPosts.isPinned), desc(forumPosts.createdAt));
+
+      res.json(posts);
+    } catch (error) {
+      console.error("Failed to fetch category posts:", error);
+      res.status(500).json({ error: "Failed to fetch category posts" });
+    }
+  });
+
+  app.post("/api/forum/categories/:slug/posts", requireAuth, async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const { title, content } = req.body;
+      const userId = req.user!.id;
+
+      // Validate input
+      if (!title || !content) {
+        return res.status(400).json({ error: "Title and content are required" });
+      }
+
+      // Get category ID from slug
+      const category = await db.query.forumCategories.findFirst({
+        where: eq(forumCategories.slug, slug),
+      });
+
+      if (!category) {
+        return res.status(404).json({ error: "Category not found" });
+      }
+
+      // Create post
+      const [post] = await db.insert(forumPosts)
+        .values({
+          categoryId: category.id,
+          userId,
+          title,
+          content,
+        })
+        .returning();
+
+      // Return post with author information
+      const postWithAuthor = await db.select({
+        id: forumPosts.id,
+        title: forumPosts.title,
+        content: forumPosts.content,
+        isPinned: forumPosts.isPinned,
+        isLocked: forumPosts.isLocked,
+        viewCount: forumPosts.viewCount,
+        createdAt: forumPosts.createdAt,
+        updatedAt: forumPosts.updatedAt,
+        author: {
+          id: users.id,
+          email: users.email,
+          profilePhotoUrl: users.profilePhotoUrl,
+        },
+      })
+      .from(forumPosts)
+      .innerJoin(users, eq(forumPosts.userId, users.id))
+      .where(eq(forumPosts.id, post.id))
+      .limit(1);
+
+      res.json(postWithAuthor[0]);
+    } catch (error) {
+      console.error("Failed to create post:", error);
+      res.status(500).json({ error: "Failed to create post" });
+    }
+  });
+
+  app.get("/api/forum/posts/:postId/comments", requireAuth, async (req, res) => {
+    try {
+      const { postId } = req.params;
+      const userId = req.user!.id;
+
+      const comments = await db.select({
+        id: forumComments.id,
+        content: forumComments.content,
+        createdAt: forumComments.createdAt,
+        updatedAt: forumComments.updatedAt,
+        author: {
+          id: users.id,
+          email: users.email,
+          profilePhotoUrl: users.profilePhotoUrl,
+        },
+      })
+      .from(forumComments)
+      .innerJoin(users, eq(forumComments.userId, users.id))
+      .where(eq(forumComments.postId, parseInt(postId)))
+      .orderBy(forumComments.createdAt);
+
+      res.json(comments);
+    } catch (error) {
+      console.error("Failed to fetch post comments:", error);
+      res.status(500).json({ error: "Failed to fetch post comments" });
+    }
+  });
+
+  app.post("/api/forum/posts/:postId/comments", requireAuth, async (req, res) => {
+    try {
+      const { postId } = req.params;
+      const { content } = req.body;
+      const userId = req.user!.id;
+
+      // Validate input
+      if (!content) {
+        return res.status(400).json({ error: "Content is required" });
+      }
+
+      // Check if post exists and is not locked
+      const post = await db.query.forumPosts.findFirst({
+        where: eq(forumPosts.id, parseInt(postId)),
+      });
+
+      if (!post) {
+        return res.status(404).json({ error: "Post not found" });
+      }
+
+      if (post.isLocked) {
+        return res.status(403).json({ error: "This post is locked" });
+      }
+
+      // Create comment
+      const [comment] = await db.insert(forumComments)
+        .values({
+          postId: parseInt(postId),
+          userId,
+          content,
+        })
+        .returning();
+
+      // Return comment with author information
+      const commentWithAuthor = await db.select({
+        id: forumComments.id,
+        content: forumComments.content,
+        createdAt: forumComments.createdAt,
+        updatedAt: forumComments.updatedAt,
+        author: {
+          id: users.id,
+          email: users.email,
+          profilePhotoUrl: users.profilePhotoUrl,
+        },
+      })
+      .from(forumComments)
+      .innerJoin(users, eq(forumComments.userId, users.id))
+      .where(eq(forumComments.id, comment.id))
+      .limit(1);
+
+      res.json(commentWithAuthor[0]);
+    } catch (error) {
+      console.error("Failed to create comment:", error);
+      res.status(500).json({ error: "Failed to create comment" });
     }
   });
 
