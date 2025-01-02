@@ -81,9 +81,18 @@ export async function generateDailyMessage(userId: number) {
     console.log("Raw OpenAI response content:", content);
 
     try {
-      const parsedContent = JSON.parse(content);
-      const validatedContent = messageResponseSchema.parse(parsedContent);
+      // Handle potential non-JSON responses
+      let parsedContent;
+      try {
+        parsedContent = JSON.parse(content);
+      } catch (parseError) {
+        // If content is not valid JSON, try to extract message directly
+        console.warn("Invalid JSON response, attempting to parse as raw message");
+        parsedContent = { message: content.replace(/^"|"$/g, '').trim() };
+      }
 
+      const validatedContent = messageResponseSchema.parse(parsedContent);
+      
       // Create a new message in the database
       await db.insert(futureMessages).values({
         userId,
@@ -92,13 +101,13 @@ export async function generateDailyMessage(userId: number) {
       });
 
       return { message: validatedContent.message, isRead: false };
-    } catch (parseError) {
-      console.error("JSON Parsing Error:", {
-        error: parseError.message,
-        content: content.slice(0, 200),
+    } catch (error) {
+      console.error("Message Processing Error:", {
+        error: error.message,
+        content: content?.slice(0, 200),
         contentType: typeof content
       });
-      throw parseError;
+      throw new Error("Failed to process the generated message");
     }
   } catch (error) {
     if (error.response) {
