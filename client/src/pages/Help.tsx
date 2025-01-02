@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { Compass, GraduationCap, Users, Settings } from "lucide-react";
 import { LeftPanel } from "@/components/LeftPanel";
 import { PageHeader } from "@/components/PageHeader";
+import { motion } from "framer-motion";
 
 const helpResources = [
   {
@@ -35,6 +36,34 @@ const helpResources = [
   }
 ];
 
+const cardVariants = {
+  hidden: { 
+    opacity: 0,
+    y: 20
+  },
+  visible: { 
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: "spring",
+      stiffness: 300,
+      damping: 25,
+      duration: 0.5
+    }
+  }
+};
+
+const containerVariants = {
+  hidden: { opacity: 1 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.2,
+      delayChildren: 0.1
+    }
+  }
+};
+
 const Help = () => {
   return (
     <div className="flex h-screen bg-primary">
@@ -48,34 +77,41 @@ const Help = () => {
 
               <div className="mb-8">
                 <h2 className="text-lg font-medium text-muted-foreground mb-4">Onboarding and best practices</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <motion.div 
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="grid grid-cols-1 md:grid-cols-2 gap-6"
+                >
                   {helpResources.map((resource, index) => {
                     const Icon = resource.icon;
                     return (
-                      <Card key={index} className="group hover:shadow-md transition-shadow duration-200">
-                        <CardHeader className="pb-4">
-                          <div className="flex items-start gap-4">
-                            <div className="p-2 rounded-lg bg-primary/5 group-hover:bg-primary/10 transition-colors">
-                              <Icon className="h-6 w-6 text-primary" />
+                      <motion.div key={index} variants={cardVariants}>
+                        <Card className="group hover:shadow-md transition-shadow duration-200">
+                          <CardHeader className="pb-4">
+                            <div className="flex items-start gap-4">
+                              <div className="p-2 rounded-lg bg-primary/5 group-hover:bg-primary/10 transition-colors">
+                                <Icon className="h-6 w-6 text-primary" />
+                              </div>
+                              <div>
+                                <CardTitle className="text-lg mb-2">{resource.title}</CardTitle>
+                                <CardDescription>{resource.description}</CardDescription>
+                              </div>
                             </div>
-                            <div>
-                              <CardTitle className="text-lg mb-2">{resource.title}</CardTitle>
-                              <CardDescription>{resource.description}</CardDescription>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <Link 
-                            href={resource.link}
-                            className="text-primary hover:underline font-medium inline-flex items-center gap-2"
-                          >
-                            {resource.action}
-                          </Link>
-                        </CardContent>
-                      </Card>
+                          </CardHeader>
+                          <CardContent>
+                            <Link 
+                              href={resource.link}
+                              className="text-primary hover:underline font-medium inline-flex items-center gap-2"
+                            >
+                              {resource.action}
+                            </Link>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
                     );
                   })}
-                </div>
+                </motion.div>
               </div>
             </div>
           </div>
