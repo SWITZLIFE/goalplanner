@@ -9,6 +9,7 @@ import ProfilePage from "./pages/ProfilePage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import Help from "./pages/Help";
 import ForumPage from "./pages/ForumPage";
+import ForumCategoryPage from "./pages/ForumCategoryPage";
 import { useUser } from "@/hooks/use-user";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -71,6 +72,7 @@ function App() {
             <Route path="/profile" component={ProfilePage} />
             <Route path="/help" component={Help} />
             <Route path="/forum" component={ForumPage} />
+            <Route path="/forum/:slug" component={ForumCategoryPage} />
           </Switch>
         </motion.main>
       </AnimatePresence>

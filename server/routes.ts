@@ -1683,12 +1683,28 @@ Remember to:
     }
   });
 
+  app.get("/api/forum/categories/:slug", requireAuth, async (req, res) => {
+    try {
+      const { slug } = req.params;
+      const [category] = await db.select()
+        .from(forumCategories)
+        .where(eq(forumCategories.slug, slug))
+        .limit(1);
+
+      if (!category) {
+        return res.status(404).json({ error: "Category not found" });
+      }
+
+      res.json(category);
+    } catch (error) {
+      console.error("Failed to fetch forum category:", error);
+      res.status(500).json({ error: "Failed to fetch forum category" });
+    }
+  });
+
   app.get("/api/forum/categories/:slug/posts", requireAuth, async (req, res) => {
     try {
       const { slug } = req.params;
-      const userId = req.user!.id;
-
-      // Get category ID from slug
       const category = await db.query.forumCategories.findFirst({
         where: eq(forumCategories.slug, slug),
       });
@@ -1697,31 +1713,21 @@ Remember to:
         return res.status(404).json({ error: "Category not found" });
       }
 
-      // Get posts with author information
-      const posts = await db.select({
-        id: forumPosts.id,
-        title: forumPosts.title,
-        content: forumPosts.content,
-        isPinned: forumPosts.isPinned,
-        isLocked: forumPosts.isLocked,
-        viewCount: forumPosts.viewCount,
-        createdAt: forumPosts.createdAt,
-        updatedAt: forumPosts.updatedAt,
-        author: {
-          id: users.id,
-          email: users.email,
-          profilePhotoUrl: users.profilePhotoUrl,
+      const posts = await db.query.forumPosts.findMany({
+        where: eq(forumPosts.categoryId, category.id),
+        with: {
+          author: true,
         },
-      })
-      .from(forumPosts)
-      .innerJoin(users, eq(forumPosts.userId, users.id))
-      .where(eq(forumPosts.categoryId, category.id))
-      .orderBy(desc(forumPosts.isPinned), desc(forumPosts.createdAt));
+        orderBy: [
+          desc(forumPosts.isPinned),
+          desc(forumPosts.createdAt),
+        ],
+      });
 
       res.json(posts);
     } catch (error) {
-      console.error("Failed to fetch category posts:", error);
-      res.status(500).json({ error: "Failed to fetch category posts" });
+      console.error("Failed to fetch forum posts:", error);
+      res.status(500).json({ error: "Failed to fetch forum posts" });
     }
   });
 
@@ -1736,7 +1742,7 @@ Remember to:
         return res.status(400).json({ error: "Title and content are required" });
       }
 
-      // Get category ID from slug
+      // Find category
       const category = await db.query.forumCategories.findFirst({
         where: eq(forumCategories.slug, slug),
       });
@@ -1752,34 +1758,24 @@ Remember to:
           userId,
           title,
           content,
+          isPinned: false,
+          isLocked: false,
+          viewCount: 0,
         })
         .returning();
 
       // Return post with author information
-      const postWithAuthor = await db.select({
-        id: forumPosts.id,
-        title: forumPosts.title,
-        content: forumPosts.content,
-        isPinned: forumPosts.isPinned,
-        isLocked: forumPosts.isLocked,
-        viewCount: forumPosts.viewCount,
-        createdAt: forumPosts.createdAt,
-        updatedAt: forumPosts.updatedAt,
-        author: {
-          id: users.id,
-          email: users.email,
-          profilePhotoUrl: users.profilePhotoUrl,
+      const postWithAuthor = await db.query.forumPosts.findFirst({
+        where: eq(forumPosts.id, post.id),
+        with: {
+          author: true,
         },
-      })
-      .from(forumPosts)
-      .innerJoin(users, eq(forumPosts.userId, users.id))
-      .where(eq(forumPosts.id, post.id))
-      .limit(1);
+      });
 
-      res.json(postWithAuthor[0]);
+      res.json(postWithAuthor);
     } catch (error) {
-      console.error("Failed to create post:", error);
-      res.status(500).json({ error: "Failed to create post" });
+      console.error("Failed to create forum post:", error);
+      res.status(500).json({ error: "Failed to create forum post" });
     }
   });
 
