@@ -331,14 +331,6 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
     setViewingTaskNotes({ taskId, title });
   };
 
-  const handleCreateNote = (taskId: number, title: string) => {
-    setShowNoteCreator({ taskId, title });
-  };
-
-  const handleViewNotes = (taskId: number, title: string) => {
-    setViewingTaskNotes({ taskId, title });
-  };
-
   return (
     <>
       <div className="space-y-6 bg-white p-4 rounded-md">
@@ -426,21 +418,25 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                     <div className="flex items-center gap-1">
                       {!readOnly && (
                         <>
-                          <Button
-                            variant="ghost"
-                            size="icon"
+                          {tasksWithNotes.has(mainTask.id) && (
+                            <button
+                              onClick={(e) => handleNoteIconClick(e, mainTask.id, mainTask.title)}
+                              className="text-muted-foreground hover:text-foreground transition-colors"
+                              title="View notes"
+                            >
+                              <StickyNote className="h-4 w-4" />
+                            </button>
+                          )}
+                          <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              tasksWithNotes.has(mainTask.id)
-                                ? handleViewNotes(mainTask.id, mainTask.title)
-                                : handleCreateNote(mainTask.id, mainTask.title);
+                              handleDelete(mainTask.id);
                             }}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:text-destructive"
+                            title="Delete task"
                           >
-                            <StickyNote className={cn("h-4 w-4", tasksWithNotes.has(mainTask.id) && "text-yellow-500 fill-yellow-500")} />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(mainTask.id)}>
                             <Trash2 className="h-4 w-4" />
-                          </Button>
+                          </button>
                         </>
                       )}
                     </div>
@@ -550,18 +546,15 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                               continuousCreate={true}
                             />
                             <div className="flex items-center gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  tasksWithNotes.has(subtask.id)
-                                    ? handleViewNotes(subtask.id, subtask.title)
-                                    : handleCreateNote(subtask.id, subtask.title);
-                                }}
-                              >
-                                <StickyNote className={cn("h-4 w-4", tasksWithNotes.has(subtask.id) && "text-yellow-500 fill-yellow-500")} />
-                              </Button>
+                              {tasksWithNotes.has(subtask.id) && (
+                                <button
+                                  onClick={(e) => handleNoteIconClick(e, subtask.id, subtask.title)}
+                                  className="text-muted-foreground hover:text-foreground transition-colors"
+                                  title="View notes"
+                                >
+                                  <StickyNote className="h-4 w-4" />
+                                </button>
+                              )}
                               {!readOnly && (
                                 <>
                                   <button
@@ -571,9 +564,13 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
                                   >
                                     <ArrowUpCircle className="h-4 w-4" />
                                   </button>
-                                  <Button variant="ghost" size="icon" onClick={() => handleDelete(subtask.id)}>
+                                  <button
+                                    onClick={() => handleDelete(subtask.id)}
+                                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:text-destructive"
+                                    title="Delete subtask"
+                                  >
                                     <Trash2 className="h-4 w-4" />
-                                  </Button>
+                                  </button>
                                 </>
                               )}
                             </div>
