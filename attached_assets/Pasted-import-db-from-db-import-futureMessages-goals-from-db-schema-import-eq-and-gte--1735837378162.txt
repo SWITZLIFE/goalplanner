@@ -36,59 +36,83 @@ export async function generateDailyMessage(userId: number) {
       totalTasks: goal.totalTasks,
     }));
 
-    const systemPrompt = `You are the user's future successful self, writing a heartfelt message back in time to motivate them.
+    // Simple validation to ensure we have goals to work with
+    if (goalsContext.length === 0) {
+      return { message: "No goals found to generate a message.", isRead: false };
+    }
 
-IMPORTANT: You must respond with ONLY a JSON object in this exact format, with no additional text or formatting:
+    const systemPrompt = `You are an AI writing a motivational message. Respond ONLY with a JSON object in this exact format, nothing else:
+
 {
   "message": "Your message here"
 }
 
-Follow these rules for the message content:
-1. Write 40-60 words
-2. Be specific about their current goals and aspirations
-3. Share insights about the journey and growth ahead
-4. Use an encouraging, warm, and optimistic tone
-5. Make it personal based on their goals
-6. Add line breaks between paragraphs
+Message requirements:
+- 40-60 words
+- Reference specific goals: ${goalsContext.map(g => g.title).join(", ")}
+- Encouraging and optimistic tone
+- Include progress insights
+- Add paragraph breaks for readability
 
-Current Goals Context:
+Goals data:
 ${JSON.stringify(goalsContext, null, 2)}
 
-Remember: Return ONLY valid JSON. No other text, no HTML, no markdown.`;
+CRITICAL: Return only the JSON object, no other text or formatting.`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        { role: "system", content: systemPrompt }
-      ],
-      temperature: 0.7,
-      response_format: { type: "json_object" },
-    });
+    // Try up to 3 times with exponential backoff
+    let lastError;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const response = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: systemPrompt }
+          ],
+          temperature: 0.5, // Lower temperature for more consistent outputs
+          response_format: { type: "json_object" },
+        });
 
-    const content = response.choices[0].message.content;
-    if (!content) {
-      throw new Error("No response generated from OpenAI");
+        const content = response.choices[0].message.content;
+
+        // Validate response exists
+        if (!content) {
+          throw new Error("Empty response from OpenAI");
+        }
+
+        // Log the raw response for debugging
+        console.log("Raw OpenAI response:", content);
+
+        // Check if content starts with {
+        if (!content.trim().startsWith("{")) {
+          throw new Error("Response is not JSON format");
+        }
+
+        // Parse and validate the JSON
+        const parsedContent = JSON.parse(content);
+        const validatedContent = messageResponseSchema.parse(parsedContent);
+
+        // Create a new message in the database
+        await db.insert(futureMessages).values({
+          userId,
+          message: validatedContent.message,
+          isRead: false,
+        });
+
+        return { message: validatedContent.message, isRead: false };
+      } catch (error) {
+        console.error(`Attempt ${attempt + 1} failed:`, error);
+        lastError = error;
+
+        // Wait before retrying (exponential backoff)
+        if (attempt < 2) {
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        }
+      }
     }
 
-    let parsedContent;
-    try {
-      parsedContent = JSON.parse(content);
-    } catch (error) {
-      console.error("JSON parsing error:", error, "Raw content:", content);
-      throw new Error("Failed to parse OpenAI response as JSON");
-    }
-
-    // Validate the parsed content against our schema
-    const validatedContent = messageResponseSchema.parse(parsedContent);
-
-    // Create a new message in the database
-    await db.insert(futureMessages).values({
-      userId,
-      message: validatedContent.message,
-      isRead: false,
-    });
-
-    return { message: validatedContent.message, isRead: false };
+    // If we get here, all attempts failed
+    console.error("All attempts to generate message failed. Last error:", lastError);
+    throw new Error("Failed to generate message after multiple attempts");
   } catch (error) {
     console.error("Failed to generate daily message:", error);
     throw error;
