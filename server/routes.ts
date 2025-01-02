@@ -325,7 +325,7 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Generate inspiration using OpenAI with a simpler, more relatable prompt
-      const prompt = `Write a short, encouraging message (about 100 words) for someone working on their goals. 
+      const prompt = `Write an encouraging message (100-150 words) for someone working on their goals. 
 The message should be:
 - Written at an 8th grade reading level
 - Warm and friendly, like advice from a mentor
@@ -338,6 +338,12 @@ Focus on:
 - Making the message feel personal and relatable
 - Including one practical suggestion they can try today
 
+The format should be:
+1. A warm opening that acknowledges their effort
+2. 2-3 paragraphs of encouragement and practical advice
+3. End with an uplifting closing line
+4. Always sign with "Your Goals Planner" on a new line
+
 Write it in a conversational tone, like you're talking to a friend.`;
 
       const openaiResponse = await openai.chat.completions.create({
@@ -345,7 +351,7 @@ Write it in a conversational tone, like you're talking to a friend.`;
         messages: [
           {
             role: "system",
-            content: "You are a supportive mentor who gives clear, practical advice."
+            content: "You are a supportive mentor who gives clear, practical advice. Always write messages that are 100-150 words long and sign them as 'Your Goals Planner'."
           },
           {
             role: "user",
@@ -932,7 +938,7 @@ Write it in a conversational tone, like you're talking to a friend.`;
   // Vision Statement Generation API
   app.post("/api/goals/:goalId/vision", requireAuth, async (req, res) => {
     try {
-      const { goalId } = req.params;
+      const { goalId } = reqparams;
       const { answers } = req.body;
       const userId = req.user!.id;
 
@@ -1622,105 +1628,8 @@ Remember to:
     }
   });
 
-  app.post("/api/goals/:goalId/inspiration", requireAuth, async (req, res) => {
-    try {
-      const { goalId } = req.params;
-      const userId = req.user!.id;
-      const today = format(new Date(), 'yyyy-MM-dd');
-
-      // Verify goal ownership
-      const goal = await db.query.goals.findFirst({
-        where: and(
-          eq(goals.id, parseInt(goalId)),
-          eq(goals.userId, userId)
-        ),
-      });
-
-      if (!goal) {
-        return res.status(404).json({ error: "Goal not found or unauthorized" });
-      }
-
-      // Check if we already have an inspiration for today
-      const [existingInspiration] = await db.select()
-        .from(dailyInspirations)
-        .where(and(
-          eq(dailyInspirations.goalId, parseInt(goalId)),
-          eq(dailyInspirations.userId, userId),
-          eq(dailyInspirations.date, today)
-        ));
-
-      if (existingInspiration) {
-        return res.json({ content: existingInspiration.content });
-      }
-
-      // Generate new inspiration using OpenAI
-      const prompt = `Write a short, inspiring story or message (about 100 words) that's simple and easy to understand - like you're writing for a young teenager.
-
-Pick from these everyday themes that most people can relate to:
-- Finding courage to try something new
-- Not giving up when things get hard
-- Learning from mistakes
-- Being patient with yourself
-- Making small progress each day
-- Finding joy in little things
-- Helping others along the way
-- Being proud of your effort
-
-Make it feel like:
-- A friend sharing a cool story
-- Something that happened in real life
-- A moment that changed someone's view
-- A lesson learned the fun way
-
-Tips:
-- Use simple, everyday words
-- Keep sentences short and clear
-- Tell it like you're talking to a friend
-- Add some fun details to make it real
-- End with something hopeful
-
-The goal this person is working on is "${goal.title}", but the story doesn't need to be directly about that - just something uplifting that might help them stay motivated.`;
-
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [
-          {
-            role: "system",
-            content: "You are a friendly storyteller who shares simple but meaningful stories that inspire people. Write like you're talking to a young teenager - clear, real, and encouraging."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.8,
-      });
-
-      const content = completion.choices[0].message.content?.trim();
-
-      if (!content) {
-        throw new Error("Failed to generate inspiration content");
-      }
-
-      // Save the inspiration
-      const [newInspiration] = await db.insert(dailyInspirations)
-        .values({
-          userId,
-          goalId: parseInt(goalId),
-          content,
-          date: today,
-        })
-        .returning();
-
-      res.json({ content: newInspiration.content });
-    } catch (error) {
-      console.error("Failed to generate inspiration:", error);
-      res.status(500).json({
-        error: "Failed to generate inspiration",
-        details: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
+  // Daily Inspiration API - REMOVED ORIGINAL, using edited snippet above.
+  // app.post("/api/goals/:goalId/inspiration", requireAuth, async (req, res) => { ... });
 
   app.get("/api/goals/inspiration", requireAuth, async (req, res) => {
     try {
