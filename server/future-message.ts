@@ -11,6 +11,8 @@ if (!process.env.OPENAI_API_KEY_2) {
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY_2,
+  timeout: 30000, // 30 second timeout
+  maxRetries: 3,
 });
 
 // Schema for validating OpenAI response
@@ -44,6 +46,13 @@ export async function generateDailyMessage(userId: number) {
     if (goalsContext.length === 0) {
       return { message: "No goals found to generate a message.", isRead: false };
     }
+
+    // Debug log before making API request
+    console.log("OpenAI Configuration:", {
+      apiKey: `${process.env.OPENAI_API_KEY_2?.slice(0, 5)}...`,
+      timeout: 30000,
+      maxRetries: 3
+    });
 
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
