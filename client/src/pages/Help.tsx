@@ -1,6 +1,8 @@
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Link } from "wouter";
 import { Compass, GraduationCap, Users, Settings } from "lucide-react";
+import { LeftPanel } from "@/components/LeftPanel";
+import { PageHeader } from "@/components/PageHeader";
 
 const helpResources = [
   {
@@ -35,38 +37,48 @@ const helpResources = [
 
 const Help = () => {
   return (
-    <div className="container mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">Resources</h1>
+    <div className="flex h-screen bg-primary">
+      <LeftPanel />
+      <div className="flex-1 flex flex-col">
+        <PageHeader />
+        <div className="flex-1 m-4 bg-background rounded-[30px] overflow-hidden">
+          <div className="h-full overflow-auto scrollbar-hide py-14 px-14">
+            <div className="max-w-8xl mx-auto">
+              <h1 className="text-2xl font-bold mb-6">Resources</h1>
 
-      <div className="mb-8">
-        <h2 className="text-lg font-medium text-muted-foreground mb-4">Onboarding and best practices</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {helpResources.map((resource, index) => {
-            const Icon = resource.icon;
-            return (
-              <Card key={index} className="group hover:shadow-md transition-shadow duration-200">
-                <CardHeader className="pb-4">
-                  <div className="flex items-start gap-4">
-                    <div className="p-2 rounded-lg bg-primary/5 group-hover:bg-primary/10 transition-colors">
-                      <Icon className="h-6 w-6 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg mb-2">{resource.title}</CardTitle>
-                      <CardDescription>{resource.description}</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <Link 
-                    href={resource.link}
-                    className="text-primary hover:underline font-medium inline-flex items-center gap-2"
-                  >
-                    {resource.action}
-                  </Link>
-                </CardContent>
-              </Card>
-            );
-          })}
+              <div className="mb-8">
+                <h2 className="text-lg font-medium text-muted-foreground mb-4">Onboarding and best practices</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {helpResources.map((resource, index) => {
+                    const Icon = resource.icon;
+                    return (
+                      <Card key={index} className="group hover:shadow-md transition-shadow duration-200">
+                        <CardHeader className="pb-4">
+                          <div className="flex items-start gap-4">
+                            <div className="p-2 rounded-lg bg-primary/5 group-hover:bg-primary/10 transition-colors">
+                              <Icon className="h-6 w-6 text-primary" />
+                            </div>
+                            <div>
+                              <CardTitle className="text-lg mb-2">{resource.title}</CardTitle>
+                              <CardDescription>{resource.description}</CardDescription>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <Link 
+                            href={resource.link}
+                            className="text-primary hover:underline font-medium inline-flex items-center gap-2"
+                          >
+                            {resource.action}
+                          </Link>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
