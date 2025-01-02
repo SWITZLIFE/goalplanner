@@ -1,4 +1,3 @@
-
 import { Switch, Route, useLocation } from "wouter";
 import { Loader2 } from "lucide-react";
 import Dashboard from "./pages/Dashboard";
@@ -8,6 +7,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import AuthPage from "./pages/AuthPage";
 import ProfilePage from "./pages/ProfilePage";
 import AnalyticsPage from "./pages/AnalyticsPage";
+import Help from "./pages/Help";
 import { useUser } from "@/hooks/use-user";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -68,6 +68,7 @@ function App() {
             <Route path="/rewards" component={RewardPage} />
             <Route path="/analytics" component={AnalyticsPage} />
             <Route path="/profile" component={ProfilePage} />
+            <Route path="/help" component={Help} />
           </Switch>
         </motion.main>
       </AnimatePresence>
