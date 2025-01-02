@@ -17,6 +17,7 @@ import { getTodayQuote, markQuoteAsRead } from "./goal-quotes";
 import { registerGoogleOAuthRoutes } from "./google-oauth";
 import { coinHistory } from "@db/schema"; // Import coinHistory schema
 import { supabase } from './supabase'; // Import supabase client
+import { dailyInspirations } from "@db/schema";
 
 
 // Configure multer for handling file uploads
@@ -917,7 +918,7 @@ Remember to:
         const [updatedGoal] = await db.update(goals)
           .set({
             visionStatement: visionStatement,
-            visionResponses: JSON.stringify(answers)
+                        visionResponses: JSON.stringify(answers)
           })
           .where(and(
             eq(goals.id, parseInt(goalId)),
@@ -1516,6 +1517,153 @@ Remember to:
     } catch (error) {
       console.error("Failed to delete note:", error);
       res.status(500).json({ error: "Failed to delete note" });
+    }
+  });
+
+  app.post("/api/goals/:goalId/inspiration", requireAuth, async (req, res) => {
+    try {
+      const { goalId } = req.params;
+      const { goalTitle, date } = req.body;
+      const userId = req.user!.id;
+
+      // Verify goal ownership
+      const goal = await db.query.goals.findFirst({
+        where: and(
+          eq(goals.id, parseInt(goalId)),
+          eq(goals.userId, userId)
+        ),
+      });
+
+      if (!goal) {
+        return res.status(404).json({ error: "Goal not found or unauthorized" });
+      }
+
+      // Check if there's already an inspiration for today
+      const existingInspiration = await db.select()
+        .from(dailyInspirations)
+        .where(and(
+          eq(dailyInspirations.goalId, parseInt(goalId)),
+          eq(dailyInspirations.date, date)
+        ))
+        .limit(1);
+
+      if (existingInspiration.length > 0) {
+        return res.json({ content: existingInspiration[0].content });
+      }
+
+      // Generate new inspiration using OpenAI
+      const prompt = `Write an inspiring and motivational letter (around 100 words) for someone pursuing this goal: "${goalTitle}".
+
+The letter should be:
+- Personal and warm in tone
+- Include a unique perspective or insight
+- Incorporate an inspiring metaphor or story
+- End with an encouraging call to action
+
+Make it varied and different from previous letters. Focus on different aspects like:
+- Overcoming challenges
+- Finding inner strength
+- Learning from setbacks
+- Celebrating small wins
+- Building resilience
+- Finding joy in the journey
+- Building momentum
+- Trusting the process
+
+Today's theme could be about: ${[
+        "the power of small steps",
+        "embracing uncertainty",
+        "finding strength in vulnerability",
+        "the beauty of persistence",
+        "learning from nature",
+        "connecting with your why",
+        "building momentum",
+        "trusting the process"
+      ][Math.floor(Math.random() * 8)]}`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: "You are an insightful and encouraging mentor who writes personalized inspirational messages."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+      });
+
+      const content = completion.choices[0].message.content?.trim();
+
+      if (!content) {
+        throw new Error("Failed to generate inspiration");
+      }
+
+      // Save to database
+      const [newInspiration] = await db.insert(dailyInspirations)
+        .values({
+          goalId: parseInt(goalId),
+          userId,
+          date,
+          content
+        })
+        .returning();
+
+      res.json({ content });
+    } catch (error) {
+      console.error("Failed to generate inspiration:", error);
+      res.status(500).json({
+        error: "Failed to generate inspiration",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  app.get("/api/goals/inspiration", requireAuth, async (req, res) => {
+    try {
+      const { goalId, date } = req.query;
+      const userId = req.user!.id;
+
+      if (!goalId || !date) {
+        return res.status(400).json({ error: "Missing required parameters" });
+      }
+
+      // Verify goal ownership
+      const goal = await db.query.goals.findFirst({
+        where: and(
+          eq(goals.id, parseInt(goalId as string)),
+          eq(goals.userId, userId)
+        ),
+      });
+
+      if (!goal) {
+        return res.status(404).json({ error: "Goal not found or unauthorized" });
+      }
+
+      // Get today's inspiration if it exists
+      const [inspiration] = await db.select()
+        .from(dailyInspirations)
+        .where(and(
+          eq(dailyInspirations.goalId, parseInt(goalId as string)),
+          eq(dailyInspirations.userId, userId),
+          eq(dailyInspirations.date, date as string)
+        ))
+        .limit(1);
+
+      if (!inspiration) {
+        return res.json({ content: null });
+      }
+
+      res.json(inspiration);
+    } catch (error) {
+      console.error("Failed to fetch inspiration:", error);
+      res.status(500).json({
+        error: "Failed to fetch inspiration",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 

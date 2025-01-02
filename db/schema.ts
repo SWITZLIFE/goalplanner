@@ -44,6 +44,90 @@ export const tasks = pgTable("tasks", {
   eventId: text("event_id"),
 });
 
+export const timeTracking = pgTable("time_tracking", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time"),
+  coinsEarned: integer("coins_earned").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const dailyInspirations = pgTable("daily_inspirations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  goalId: integer("goal_id").notNull().references(() => goals.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  date: text("date").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Relations configuration
+export const goalsRelations = relations(goals, ({ one, many }) => ({
+  user: one(users, {
+    fields: [goals.userId],
+    references: [users.id],
+  }),
+  tasks: many(tasks),
+  dailyInspirations: many(dailyInspirations),
+}));
+
+export const tasksRelations = relations(tasks, ({ one, many }) => ({
+  goal: one(goals, {
+    fields: [tasks.goalId],
+    references: [goals.id],
+  }),
+  user: one(users, {
+    fields: [tasks.userId],
+    references: [users.id],
+  }),
+  timeTrackingSessions: many(timeTracking),
+  subtasks: many(tasks, { relationName: 'parentChild' }),
+  parentTask: one(tasks, { 
+    fields: [tasks.parentTaskId],
+    references: [tasks.id],
+    relationName: 'parentChild'
+  }),
+}));
+
+export const dailyInspirationsRelations = relations(dailyInspirations, ({ one }) => ({
+  user: one(users, {
+    fields: [dailyInspirations.userId],
+    references: [users.id],
+  }),
+  goal: one(goals, {
+    fields: [dailyInspirations.goalId],
+    references: [goals.id],
+  }),
+}));
+
+// Schema validation
+export const insertDailyInspirationSchema = createInsertSchema(dailyInspirations);
+export const selectDailyInspirationSchema = createSelectSchema(dailyInspirations);
+export type DailyInspiration = typeof dailyInspirations.$inferSelect;
+export type NewDailyInspiration = typeof dailyInspirations.$inferInsert;
+
+export const insertUserSchema = createInsertSchema(users, {
+  email: z.string().email("Invalid email format"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+export const selectUserSchema = createSelectSchema(users);
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type SelectUser = typeof users.$inferSelect;
+
+export const insertGoalSchema = createInsertSchema(goals);
+export const selectGoalSchema = createSelectSchema(goals);
+export type Goal = typeof goals.$inferSelect & { tasks?: typeof tasks.$inferSelect[] };
+export type NewGoal = typeof goals.$inferInsert;
+
+export const insertTaskSchema = createInsertSchema(tasks);
+export const selectTaskSchema = createSelectSchema(tasks);
+export type Task = typeof tasks.$inferSelect;
+export type NewTask = typeof tasks.$inferInsert;
+
 export const futureMessages = pgTable("future_messages", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -71,35 +155,6 @@ export const notes = pgTable("notes", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
-
-export const goalsRelations = relations(goals, ({ one, many }) => ({
-  user: one(users, {
-    fields: [goals.userId],
-    references: [users.id],
-  }),
-  tasks: many(tasks),
-  notes: many(notes),
-}));
-
-export const tasksRelations = relations(tasks, ({ one, many }) => ({
-  goal: one(goals, {
-    fields: [tasks.goalId],
-    references: [goals.id],
-  }),
-  user: one(users, {
-    fields: [tasks.userId],
-    references: [users.id],
-  }),
-  parentTask: one(tasks, {
-    fields: [tasks.parentTaskId],
-    references: [tasks.id],
-  }),
-  subtasks: many(tasks, {
-    fields: [tasks.id],
-    references: [tasks.parentTaskId],
-  }),
-  timeTrackingSessions: many(timeTracking),
-}));
 
 export const futureMessagesRelations = relations(futureMessages, ({ one }) => ({
   user: one(users, {
@@ -134,47 +189,6 @@ export const notesRelations = relations(notes, ({ one }) => ({
   }),
 }));
 
-const baseSchema = createInsertSchema(users);
-
-export const insertUserSchema = baseSchema.extend({
-  email: z.string().email("Invalid email format"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-});
-
-export const resetPasswordSchema = z.object({
-  token: z.string(),
-  newPassword: z.string().min(8, "Password must be at least 8 characters"),
-});
-
-export const forgotPasswordSchema = z.object({
-  email: z.string().email("Invalid email format"),
-});
-
-export const insertGoalSchema = createInsertSchema(goals);
-export const selectGoalSchema = createSelectSchema(goals);
-export const insertTaskSchema = createInsertSchema(tasks);
-export const selectTaskSchema = createSelectSchema(tasks);
-export const updateTaskSchema = selectTaskSchema.partial().extend({
-  completed: z.boolean().optional(),
-  title: z.string().optional(),
-  estimatedMinutes: z.number().optional().nullable(),
-  plannedDate: z.string().optional().nullable(),
-  notes: z.string().optional().nullable(),
-});
-
-export const selectUserSchema = createSelectSchema(users);
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type SelectUser = typeof users.$inferSelect;
-export type BaseGoal = typeof goals.$inferSelect;
-export type NewGoal = typeof goals.$inferInsert;
-export type Task = typeof tasks.$inferSelect;
-export type NewTask = typeof tasks.$inferInsert;
-export type UpdateTask = z.infer<typeof updateTaskSchema>;
-export type Goal = BaseGoal & { tasks?: Task[] };
-export type FutureMessage = typeof futureMessages.$inferSelect;
-export type NewFutureMessage = typeof futureMessages.$inferInsert;
-export type GoalDailyQuote = typeof goalDailyQuotes.$inferSelect;
-export type NewGoalDailyQuote = typeof goalDailyQuotes.$inferInsert;
 
 export const rewards = pgTable("rewards", {
   id: serial("id").primaryKey(),
@@ -200,25 +214,6 @@ export const purchasedRewards = pgTable("purchased_rewards", {
   purchasedAt: timestamp("purchased_at").defaultNow().notNull(),
 });
 
-export const timeTracking = pgTable("time_tracking", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
-  startTime: timestamp("start_time").notNull(),
-  endTime: timestamp("end_time"),
-  coinsEarned: integer("coins_earned").default(0),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export const visionBoardImages = pgTable("vision_board_images", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  imageUrl: text("image_url").notNull(),
-  position: integer("position").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
 export const rewardItemsRelations = relations(rewardItems, ({ many }) => ({
   purchases: many(purchasedRewards),
 }));
@@ -234,16 +229,14 @@ export const purchasedRewardsRelations = relations(purchasedRewards, ({ one }) =
   }),
 }));
 
-export const timeTrackingRelations = relations(timeTracking, ({ one }) => ({
-  user: one(users, {
-    fields: [timeTracking.userId],
-    references: [users.id],
-  }),
-  task: one(tasks, {
-    fields: [timeTracking.taskId],
-    references: [tasks.id],
-  }),
-}));
+
+export const visionBoardImages = pgTable("vision_board_images", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  imageUrl: text("image_url").notNull(),
+  position: integer("position").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 
 export const visionBoardRelations = relations(visionBoardImages, ({ one }) => ({
   user: one(users, {
@@ -291,3 +284,14 @@ export const insertCoinHistorySchema = createInsertSchema(coinHistory);
 export const selectCoinHistorySchema = createSelectSchema(coinHistory);
 export type CoinHistory = typeof coinHistory.$inferSelect;
 export type NewCoinHistory = typeof coinHistory.$inferInsert;
+
+export const timeTrackingRelations = relations(timeTracking, ({ one }) => ({
+  user: one(users, {
+    fields: [timeTracking.userId],
+    references: [users.id],
+  }),
+  task: one(tasks, {
+    fields: [timeTracking.taskId],
+    references: [tasks.id],
+  }),
+}));
