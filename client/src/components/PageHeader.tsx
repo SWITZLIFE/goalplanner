@@ -1,8 +1,7 @@
-
 import React from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Home, Gift, BarChart2, User } from "lucide-react";
+import { Home, Gift, BarChart2, User, MessageSquare } from "lucide-react";
 
 export function PageHeader() {
   return (
@@ -12,6 +11,12 @@ export function PageHeader() {
           <Button variant="ghost" className="text-sm font-medium hover:text/80">
             <Home className="mr-2 h-4 w-4" />
             Home
+          </Button>
+        </Link>
+        <Link href="/forum">
+          <Button variant="ghost" className="text-sm font-medium hover:text/80">
+            <MessageSquare className="mr-2 h-4 w-4" />
+            Forum
           </Button>
         </Link>
         <Link href="/rewards">

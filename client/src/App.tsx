@@ -8,7 +8,7 @@ import AuthPage from "./pages/AuthPage";
 import ProfilePage from "./pages/ProfilePage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import Help from "./pages/Help";
-import ForumPage from "./pages/Forum";
+import ForumPage from "./pages/ForumPage";
 import { useUser } from "@/hooks/use-user";
 import { AnimatePresence, motion } from "framer-motion";
 
