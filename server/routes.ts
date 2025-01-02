@@ -919,7 +919,7 @@ Remember to:
             visionStatement: visionStatement,
             visionResponses: JSON.stringify(answers)
           })
-                    .where(and(
+          .where(and(
             eq(goals.id, parseInt(goalId)),
             eq(goals.userId, userId)
           ))
@@ -1353,6 +1353,169 @@ Remember to:
     } catch (error) {
       console.error("Failed to fetch leaderboard:", error);
       res.status(500).json({ error: "Failed to fetch leaderboard" });
+    }
+  });
+
+  // Notes API
+  app.get("/api/goals/:goalId/notes", requireAuth, async (req, res) => {
+    try {
+      const { goalId } = req.params;
+      const userId = req.user!.id;
+
+      // Verify user has access to this goal
+      const goal = await db.query.goals.findFirst({
+        where: and(
+          eq(goals.id, parseInt(goalId)),
+          eq(goals.userId, userId)
+        ),
+      });
+
+      if (!goal) {
+        return res.status(404).json({ error: "Goal not found or unauthorized" });
+      }
+
+      // Fetch all notes for this goal, including task-specific notes
+      const goalNotes = await db.select({
+        id: notes.id,
+        title: notes.title,
+        content: notes.content,
+        taskId: notes.taskId,
+        createdAt: notes.createdAt,
+        updatedAt: notes.updatedAt,
+      })
+      .from(notes)
+      .where(and(
+        eq(notes.userId, userId),
+        eq(notes.goalId, parseInt(goalId))
+      ))
+      .orderBy(desc(notes.createdAt));
+
+      res.json(goalNotes);
+    } catch (error) {
+      console.error("Failed to fetch notes:", error);
+      res.status(500).json({ error: "Failed to fetch notes" });
+    }
+  });
+
+  app.post("/api/goals/:goalId/notes", requireAuth, async (req, res) => {
+    try {
+      const { goalId } = req.params;
+      const userId = req.user!.id;
+      const { title, content, taskId } = req.body;
+
+      // Verify user has access to this goal
+      const goal = await db.query.goals.findFirst({
+        where: and(
+          eq(goals.id, parseInt(goalId)),
+          eq(goals.userId, userId)
+        ),
+      });
+
+      if (!goal) {
+        return res.status(404).json({ error: "Goal not found or unauthorized" });
+      }
+
+      // If taskId is provided, verify it belongs to this goal
+      if (taskId) {
+        const task = await db.query.tasks.findFirst({
+          where: and(
+            eq(tasks.id, taskId),
+            eq(tasks.goalId, parseInt(goalId)),
+            eq(tasks.userId, userId)
+          ),
+        });
+
+        if (!task) {
+          return res.status(404).json({ error: "Task not found or unauthorized" });
+        }
+      }
+
+      const [note] = await db.insert(notes)
+        .values({
+          userId,
+          goalId: parseInt(goalId),
+          taskId: taskId || null,
+          title,
+          content,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      res.json(note);
+    } catch (error) {
+      console.error("Failed to create note:", error);
+      res.status(500).json({ error: "Failed to create note" });
+    }
+  });
+
+  app.patch("/api/goals/:goalId/notes/:noteId", requireAuth, async (req, res) => {
+    try {
+      const { goalId, noteId } = req.params;
+      const userId = req.user!.id;
+      const { title, content, taskId } = req.body;
+
+      // Verify note exists and belongs to user
+      const existingNote = await db.query.notes.findFirst({
+        where: and(
+          eq(notes.id, parseInt(noteId)),
+          eq(notes.userId, userId),
+          eq(notes.goalId, parseInt(goalId))
+        ),
+      });
+
+      if (!existingNote) {
+        return res.status(404).json({ error: "Note not found or unauthorized" });
+      }
+
+      const [updatedNote] = await db.update(notes)
+        .set({
+          title,
+          content,
+          taskId: taskId || null,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(notes.id, parseInt(noteId)),
+          eq(notes.userId, userId)
+        ))
+        .returning();
+
+      res.json(updatedNote);
+    } catch (error) {
+      console.error("Failed to update note:", error);
+      res.status(500).json({ error: "Failed to update note" });
+    }
+  });
+
+  app.delete("/api/goals/:goalId/notes/:noteId", requireAuth, async (req, res) => {
+    try {
+      const { goalId, noteId } = req.params;
+      const userId = req.user!.id;
+
+      // Verify note exists and belongs to user
+      const note = await db.query.notes.findFirst({
+        where: and(
+          eq(notes.id, parseInt(noteId)),
+          eq(notes.userId, userId),
+          eq(notes.goalId, parseInt(goalId))
+        ),
+      });
+
+      if (!note) {
+        return res.status(404).json({ error: "Note not found or unauthorized" });
+      }
+
+      await db.delete(notes)
+        .where(and(
+          eq(notes.id, parseInt(noteId)),
+          eq(notes.userId, userId)
+        ));
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to delete note:", error);
+      res.status(500).json({ error: "Failed to delete note" });
     }
   });
 

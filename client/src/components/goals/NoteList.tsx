@@ -120,11 +120,10 @@ export function NoteList({ goalId, tasks, initialTaskId, viewTaskId, onClose }: 
   // Only show incomplete tasks in the dropdown
   const incompleteTasks = tasks.filter(task => !task.completed);
 
-  // Fetch notes for this goal
-  const { data: notes = [], isLoading, refetch } = useQuery<Note[]>({
+  // Fetch notes for this goal with proper error handling
+  const { data: notes = [], isLoading, error, refetch } = useQuery<Note[]>({
     queryKey: [`/api/goals/${goalId}/notes`],
     select: (data) => {
-      // Ensure we're getting the proper note structure from the API
       return data.map(note => ({
         ...note,
         createdAt: new Date(note.createdAt).toISOString(),
@@ -132,6 +131,17 @@ export function NoteList({ goalId, tasks, initialTaskId, viewTaskId, onClose }: 
       }));
     },
   });
+
+  // Show error if notes fetch failed
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Error loading notes",
+        description: "Failed to load notes. Please try refreshing the page.",
+        variant: "destructive",
+      });
+    }
+  }, [error, toast]);
 
   // Filter notes if viewing task-specific notes
   const displayedNotes = viewTaskId ? notes.filter(note => note.taskId === viewTaskId) : notes;
@@ -180,10 +190,8 @@ export function NoteList({ goalId, tasks, initialTaskId, viewTaskId, onClose }: 
         description: "Your note has been created successfully.",
       });
 
-      // Fix the invalidateQueries call to use the proper type
       queryClient.invalidateQueries({ queryKey: [`/api/goals/${goalId}/notes`] });
 
-      // Close the panel immediately after successful creation if in task note creation mode
       if (onClose) {
         onClose();
       } else {
@@ -328,7 +336,9 @@ export function NoteList({ goalId, tasks, initialTaskId, viewTaskId, onClose }: 
       {/* Notes List */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-2">
-          {displayedNotes.length === 0 ? (
+          {isLoading ? (
+            <p className="text-muted-foreground text-center py-8">Loading notes...</p>
+          ) : displayedNotes.length === 0 ? (
             <p className="text-muted-foreground text-center py-8">
               No notes yet. {!viewTaskId && "Create one to get started!"}
             </p>
@@ -374,7 +384,6 @@ export function NoteList({ goalId, tasks, initialTaskId, viewTaskId, onClose }: 
         </div>
       </div>
 
-      {/* Right Panel for Note Creation/Editing */}
       {(isCreating || selectedNote) && (
         <div className="fixed inset-y-0 right-0 w-[600px] bg-background border-l shadow-xl">
           <div className="flex flex-col h-full">
