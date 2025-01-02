@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+import { format } from "date-fns";
 
 interface ForumPost {
   id: number;
@@ -89,7 +90,7 @@ export default function ForumCategoryPage() {
         <PageHeader />
         <div className="flex-1 m-4 bg-background rounded-[30px] overflow-hidden">
           <div className="h-full overflow-auto scrollbar-hide py-14 px-14">
-            <div className="max-w-8xl mx-auto">
+            <div className="max-w-5xl mx-auto">
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-4">
                   <Link href="/forum">
@@ -148,8 +149,11 @@ export default function ForumCategoryPage() {
               {isLoading ? (
                 <div className="space-y-4">
                   {[...Array(3)].map((_, i) => (
-                    <Card key={i} className="h-32 animate-pulse">
-                      <CardContent className="p-6" />
+                    <Card key={i} className="animate-pulse">
+                      <CardContent className="p-6">
+                        <div className="h-6 bg-muted rounded w-3/4 mb-4" />
+                        <div className="h-4 bg-muted rounded w-1/4" />
+                      </CardContent>
                     </Card>
                   ))}
                 </div>
@@ -204,17 +208,29 @@ export default function ForumCategoryPage() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {posts?.map((post) => (
                     <Link key={post.id} href={`/forum/${slug}/${post.id}`}>
                       <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
-                        <CardHeader>
-                          <CardTitle>{post.title}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-sm text-muted-foreground">
-                            Posted by {post.author.email} on {new Date(post.createdAt).toLocaleDateString()}
-                          </p>
+                        <CardContent className="p-4">
+                          <h3 className="text-lg font-semibold mb-2">{post.title}</h3>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <span>{post.author.email}</span>
+                            <span>•</span>
+                            <span>{format(new Date(post.createdAt), 'MMM d, yyyy')}</span>
+                            {post.viewCount > 0 && (
+                              <>
+                                <span>•</span>
+                                <span>{post.viewCount} views</span>
+                              </>
+                            )}
+                            {post.isPinned && (
+                              <>
+                                <span>•</span>
+                                <span className="text-primary">Pinned</span>
+                              </>
+                            )}
+                          </div>
                         </CardContent>
                       </Card>
                     </Link>
