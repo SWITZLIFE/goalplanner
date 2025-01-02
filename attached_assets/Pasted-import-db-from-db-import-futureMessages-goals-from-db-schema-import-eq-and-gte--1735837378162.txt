@@ -54,43 +54,31 @@ export async function generateDailyMessage(userId: number) {
       maxRetries: 3
     });
 
-    const systemPrompt = `You are an AI writing a motivational message. Respond ONLY with a JSON object in this exact format:
-
-{
-  "message": "Your message here"
-}
-
-Message requirements:
-- 40-60 words
-- Reference specific goals: ${goalsContext.map(g => g.title).join(", ")}
-- Encouraging and optimistic tone
-- Include progress insights
-- Add paragraph breaks for readability
-
-Goals data:
-${JSON.stringify(goalsContext, null, 2)}`;
-
-    console.log("Making OpenAI API request...");
-
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
-        { role: "system", content: systemPrompt }
+        {
+          role: "system",
+          content: `Generate a motivational message about these goals: ${JSON.stringify(goalsContext, null, 2)}. The message should be 40-60 words, encouraging, and reference specific goals. Format your entire response as a JSON object with a 'message' field containing the motivational text.`
+        }
       ],
       temperature: 0.7,
       response_format: { type: "json_object" }
     });
 
-    console.log("OpenAI API Response status:", response.choices ? "Success" : "No choices");
+    console.log("OpenAI API Response:", {
+      status: "success",
+      choices: response.choices?.length ?? 0
+    });
 
-    const content = response.choices[0].message.content;
-
-    // Log the raw response for debugging
-    console.log("Raw OpenAI response:", content);
+    const content = response.choices[0]?.message?.content;
 
     if (!content) {
       throw new Error("Empty response from OpenAI");
     }
+
+    // Log the raw response for debugging
+    console.log("Raw OpenAI response content:", content);
 
     try {
       const parsedContent = JSON.parse(content);
@@ -104,26 +92,20 @@ ${JSON.stringify(goalsContext, null, 2)}`;
       });
 
       return { message: validatedContent.message, isRead: false };
-    } catch (error) {
-      // Enhanced error logging
-      if (error instanceof SyntaxError) {
-        console.error("JSON Parsing Error:", {
-          error: error.message,
-          content: content.slice(0, 200), // Log first 200 chars of content
-          contentType: typeof content,
-          startsWithHTML: content.trim().toLowerCase().startsWith('<!doctype')
-        });
-      }
-      throw error;
+    } catch (parseError) {
+      console.error("JSON Parsing Error:", {
+        error: parseError.message,
+        content: content.slice(0, 200),
+        contentType: typeof content
+      });
+      throw parseError;
     }
   } catch (error) {
-    // Enhanced error logging for API errors
     if (error.response) {
       console.error("OpenAI API Error:", {
         status: error.response.status,
         statusText: error.response.statusText,
-        data: error.response.data,
-        headers: error.response.headers
+        data: error.response.data
       });
     }
     console.error("Failed to generate daily message:", error);
