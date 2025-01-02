@@ -10,6 +10,11 @@ const openai = new OpenAI({
 
 export async function generateDailyMessage(userId: number) {
   try {
+    // Validate OpenAI API key
+    if (!process.env.OPENAI_API_KEY_2) {
+      throw new Error("OpenAI API key is not configured");
+    }
+
     // Get all goals for context but we won't specifically mention them
     const userGoals = await db.query.goals.findMany({
       where: eq(goals.userId, userId),
@@ -46,7 +51,7 @@ export async function generateDailyMessage(userId: number) {
     }
 
     try {
-      const response = await openai.chat.completions.create({
+      const completion = await openai.chat.completions.create({
         model: "gpt-4",
         messages: [
           {
@@ -65,7 +70,7 @@ ${JSON.stringify(goalsContext, null, 2)}
 
 You MUST format your response as a valid JSON object with ONLY this structure:
 {
-  "message": "Your message here with \n for line breaks"
+  "message": "Your message here with \\n for line breaks"
 }`
           }
         ],
@@ -73,8 +78,15 @@ You MUST format your response as a valid JSON object with ONLY this structure:
         response_format: { type: "json_object" }
       });
 
-      const content = response.choices[0].message.content;
+      // Validate OpenAI response
+      if (!completion.choices || !completion.choices[0] || !completion.choices[0].message) {
+        console.error("Invalid OpenAI response structure:", completion);
+        throw new Error("Invalid response structure from OpenAI");
+      }
+
+      const content = completion.choices[0].message.content;
       if (!content) {
+        console.error("Empty content in OpenAI response");
         throw new Error("No content in OpenAI response");
       }
 
@@ -86,8 +98,9 @@ You MUST format your response as a valid JSON object with ONLY this structure:
         throw new Error("Invalid JSON response from OpenAI");
       }
 
-      if (!parsedContent.message) {
-        throw new Error("Message field missing in OpenAI response");
+      if (!parsedContent || typeof parsedContent !== 'object' || !parsedContent.message) {
+        console.error("Invalid message format in response:", parsedContent);
+        throw new Error("Invalid message format in OpenAI response");
       }
 
       // Create a new message in the database
@@ -98,9 +111,17 @@ You MUST format your response as a valid JSON object with ONLY this structure:
       });
 
       return { message: parsedContent.message, isRead: false };
-    } catch (openAiError) {
+    } catch (openAiError: any) {
       console.error("OpenAI API error:", openAiError);
-      throw new Error("Failed to generate message with OpenAI");
+      // Log detailed error information for debugging
+      if (openAiError.response) {
+        console.error("OpenAI error response:", {
+          status: openAiError.response.status,
+          headers: openAiError.response.headers,
+          data: openAiError.response.data
+        });
+      }
+      throw new Error(`Failed to generate message with OpenAI: ${openAiError.message}`);
     }
   } catch (error) {
     console.error("Failed to generate daily message:", error);
