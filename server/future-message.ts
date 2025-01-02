@@ -4,24 +4,12 @@ import { eq, and, gte, lte } from "drizzle-orm";
 import OpenAI from "openai";
 import { startOfDay, endOfDay } from "date-fns";
 
-// Initialize OpenAI client with configuration
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY_2,
-  dangerouslyAllowBrowser: false,
 });
 
 export async function generateDailyMessage(userId: number) {
   try {
-    // Validate OpenAI API key
-    if (!process.env.OPENAI_API_KEY_2) {
-      throw new Error("OpenAI API key is not configured");
-    }
-
-    // Check if API key format is valid
-    if (!process.env.OPENAI_API_KEY_2.startsWith('sk-')) {
-      throw new Error("Invalid OpenAI API key format");
-    }
-
     // Get all goals for context but we won't specifically mention them
     const userGoals = await db.query.goals.findMany({
       where: eq(goals.userId, userId),
@@ -57,13 +45,12 @@ export async function generateDailyMessage(userId: number) {
       messageStyle = "Write a gentle, supportive message that acknowledges their efforts and reminds them of their resilience. Share insights about self-compassion and steady progress.";
     }
 
-    try {
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [
-          {
-            role: "system",
-            content: `You are writing a heartfelt message to encourage and inspire. Create a personal, emotionally resonant message that feels like it's from a wise friend who deeply understands their journey.
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: `You are writing a heartfelt message to encourage and inspire. Create a personal, emotionally resonant message that feels like it's from a wise friend who deeply understands their journey.
 
 Write a message with these characteristics:
 - 2-3 short paragraphs (50-80 words total)
@@ -79,51 +66,20 @@ You MUST format your response as a valid JSON object with ONLY this structure:
 {
   "message": "Your message here with \\n for line breaks"
 }`
-          }
-        ],
-        temperature: 0.8,
-        response_format: { type: "json_object" }
-      });
+        }
+      ],
+      temperature: 0.8,
+      response_format: { type: "json_object" }
+    });
 
-      // Validate OpenAI response
-      if (!completion.choices?.[0]?.message?.content) {
-        console.error("Invalid OpenAI response structure:", completion);
-        throw new Error("Invalid response structure from OpenAI");
-      }
+    // Create a new message in the database
+    await db.insert(futureMessages).values({
+      userId,
+      message: JSON.parse(completion.choices[0].message.content).message,
+      isRead: false,
+    });
 
-      let parsedContent;
-      try {
-        parsedContent = JSON.parse(completion.choices[0].message.content);
-      } catch (parseError) {
-        console.error("Failed to parse OpenAI response:", completion.choices[0].message.content);
-        throw new Error("Invalid JSON response from OpenAI");
-      }
-
-      if (!parsedContent?.message || typeof parsedContent.message !== 'string') {
-        console.error("Invalid message format in response:", parsedContent);
-        throw new Error("Invalid message format in OpenAI response");
-      }
-
-      // Create a new message in the database
-      await db.insert(futureMessages).values({
-        userId,
-        message: parsedContent.message,
-        isRead: false,
-      });
-
-      return { message: parsedContent.message, isRead: false };
-    } catch (openAiError: any) {
-      console.error("OpenAI API error:", openAiError);
-      if (openAiError.response) {
-        console.error("OpenAI error details:", {
-          status: openAiError.response.status,
-          statusText: openAiError.response.statusText,
-          headers: openAiError.response.headers,
-          data: openAiError.response.data
-        });
-      }
-      throw new Error(`OpenAI API error: ${openAiError.message}`);
-    }
+    return { message: JSON.parse(completion.choices[0].message.content).message, isRead: false };
   } catch (error) {
     console.error("Failed to generate daily message:", error);
     throw error;
