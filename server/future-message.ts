@@ -73,7 +73,16 @@ Consider both goals and their associated tasks when crafting the message, but ke
       throw new Error("No response generated");
     }
 
-    const parsed = JSON.parse(content);
+    let parsed;
+    try {
+      parsed = JSON.parse(content.trim());
+      if (!parsed.message) {
+        throw new Error("Invalid response format");
+      }
+    } catch (error) {
+      console.error("Failed to parse OpenAI response:", content);
+      throw new Error("Failed to generate message");
+    }
 
     // Create a new message in the database
     await db.insert(futureMessages).values({
