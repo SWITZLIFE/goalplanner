@@ -39,7 +39,7 @@ Example order for a software project:
 Remember: The response MUST contain exactly ${numTasks} main tasks in chronological order.`;
 
   const response = await openai.chat.completions.create({
-    model: "gpt-3.5-turbo",
+    model: "gpt-4",
     messages: [
       {
         role: "system",
@@ -84,7 +84,7 @@ Input: "I want to finish my Goal Planner app and launch it on the market and hav
 Output: "Launch Goal Planner App"`;
 
   const response = await openai.chat.completions.create({
-    model: "gpt-3.5-turbo",
+    model: "gpt-4",
     messages: [
       {
         role: "system",
