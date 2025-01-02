@@ -30,6 +30,11 @@ export async function generateDailyMessage(userId: number) {
       totalTasks: goal.totalTasks,
     }));
 
+    // Simple validation to ensure we have goals to work with
+    if (goalsContext.length === 0) {
+      return { message: "No goals found to generate a message.", isRead: false };
+    }
+
     const systemPrompt = `You are the user's future successful self, writing a heartfelt message back in time to motivate them.
 Rules:
 1. Write a message between 40-60 words
