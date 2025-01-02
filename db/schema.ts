@@ -22,6 +22,19 @@ export const personalizedMessages = pgTable("personalized_messages", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const personalizedMessagesRelations = relations(personalizedMessages, ({ one }) => ({
+  user: one(users, {
+    fields: [personalizedMessages.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertPersonalizedMessageSchema = createInsertSchema(personalizedMessages);
+export const selectPersonalizedMessageSchema = createSelectSchema(personalizedMessages);
+
+export type PersonalizedMessage = typeof personalizedMessages.$inferSelect;
+export type NewPersonalizedMessage = typeof personalizedMessages.$inferInsert;
+
 export const goals = pgTable("goals", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),

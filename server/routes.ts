@@ -1,5 +1,5 @@
 import type { Express, Request, Response, NextFunction } from "express";
-import { eq, and, desc, isNull, sql } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { notes, users, rewards, rewardItems, purchasedRewards } from "@db/schema";
 import { createServer, type Server } from "http";
 import { db } from "@db";
@@ -7,7 +7,7 @@ import { goals, tasks, timeTracking, visionBoardImages, personalizedMessages } f
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { generateTaskBreakdown, generateShortTitle } from "./openai";
+import { generateTaskBreakdown, generateShortTitle, generatePersonalizedMessage } from "./openai";
 import { getCoachingAdvice } from "./coaching";
 import { setupAuth } from "./auth";
 import { openai } from "./openai";
@@ -1518,115 +1518,88 @@ Remember to:
   });
 
   // Add personalized message endpoints
-  app.get("/api/personalized-message/today", requireAuth, async (req, res) => {
-    try {
-      const userId = req.user!.id;
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      // Get today's message if it exists
-      const [message] = await db.select()
-        .from(personalizedMessages)
-        .where(and(
-          eq(personalizedMessages.userId, userId),
-          sql`DATE(${personalizedMessages.createdAt}) = CURRENT_DATE`
-        ))
-        .limit(1);
-
-      res.json(message || { message: null, messageType: null, isRead: false });
-    } catch (error) {
-      console.error("Failed to fetch today's message:", error);
-      res.status(500).json({ error: "Failed to fetch message" });
-    }
-  });
-
-  app.post("/api/personalized-message/generate", requireAuth, async (req, res) => {
+  app.post("/api/messages/generate", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
 
       // Get user's goals for context
-      const goals = await db.select({
+      const userGoals = await db.select({
         title: goals.title,
         description: goals.description,
         visionStatement: goals.visionStatement
       })
         .from(goals)
         .where(eq(goals.userId, userId))
+        .orderBy(desc(goals.createdAt))
         .limit(5);
 
       // Generate message using OpenAI
-      const messageTypes = ['motivation', 'reflection', 'visualization'];
-      const messageType = messageTypes[Math.floor(Math.random() * messageTypes.length)];
+      const generatedMessage = await generatePersonalizedMessage(userId, userGoals);
 
-      let prompt = '';
-      switch (messageType) {
-        case 'motivation':
-          prompt = `Write a short, personal motivational message (100-150 words) as if it's from my future self who has achieved great things. Make it warm, encouraging, and focused on inner strength and potential. Don't mention specific goals, but allude to positive changes and growth. The tone should be intimate and genuine, like a letter from a wiser version of myself.`;
-          break;
-        case 'reflection':
-          prompt = `Write a brief, thoughtful reflection (100-150 words) as if it's from my future self looking back on the journey of growth and change. Focus on the learning experiences, personal insights, and unexpected discoveries along the way. Keep it general but meaningful, avoiding specific goals but touching on universal themes of perseverance and self-discovery.`;
-          break;
-        case 'visualization':
-          prompt = `Create a vivid snapshot (100-150 words) from my successful future self, describing a moment of achievement and fulfillment. Paint a picture of the positive energy, confidence, and satisfaction I'm experiencing. Keep the details general enough to apply to various goals, but make the emotions and sensations specific and relatable.`;
-          break;
-      }
-
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [
-          {
-            role: "system",
-            content: "You are an empathetic and wise future version of the user, writing back to their present self. Your messages should be personal, encouraging, and focused on growth and potential."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 250,
-      });
-
-      const generatedMessage = completion.choices[0].message.content?.trim();
-
-      if (!generatedMessage) {
-        throw new Error("Failed to generate message");
-      }
-
-      // Save the message
+      // Save the message to the database
       const [newMessage] = await db.insert(personalizedMessages)
-        .values({
-          userId,
-          message: generatedMessage,
-          messageType,
-          isRead: false,
-        })
+        .values(generatedMessage)
         .returning();
+
+      if (!newMessage) {
+        throw new Error("Failed to save generated message");
+      }
 
       res.json(newMessage);
     } catch (error) {
       console.error("Failed to generate message:", error);
-      res.status(500).json({ error: "Failed to generate message" });
+      res.status(500).json({ 
+        error: "Failed to generate message",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
-  app.post("/api/personalized-message/read", requireAuth, async (req, res) => {
+  app.get("/api/messages/latest", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
 
-      // Mark today's message as read
+      // Get the latest message for the user, regardless of read status
+      const [latestMessage] = await db.select()
+        .from(personalizedMessages)
+        .where(eq(personalizedMessages.userId, userId))
+        .orderBy(desc(personalizedMessages.createdAt))
+        .limit(1);
+
+      res.json(latestMessage || null);
+    } catch (error) {
+      console.error("Failed to fetch latest message:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch latest message",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  app.patch("/api/messages/:messageId/read", requireAuth, async (req, res) => {
+    try {
+      const { messageId } = req.params;
+      const userId = req.user!.id;
+
       const [updatedMessage] = await db.update(personalizedMessages)
         .set({ isRead: true })
         .where(and(
-          eq(personalizedMessages.userId, userId),
-          sql`DATE(${personalizedMessages.createdAt}) = CURRENT_DATE`
+          eq(personalizedMessages.id, parseInt(messageId)),
+          eq(personalizedMessages.userId, userId)
         ))
         .returning();
+
+      if (!updatedMessage) {
+        return res.status(404).json({ error: "Message not found or unauthorized" });
+      }
 
       res.json(updatedMessage);
     } catch (error) {
       console.error("Failed to mark message as read:", error);
-      res.status(500).json({ error: "Failed to mark message as read" });
+      res.status(500).json({ 
+        error: "Failed to update message",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
