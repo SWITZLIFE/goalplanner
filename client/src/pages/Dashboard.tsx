@@ -3,9 +3,10 @@ import { LeftPanel } from "@/components/LeftPanel";
 import { PageHeader } from "@/components/PageHeader";
 import { useGoals } from "@/hooks/use-goals";
 import { Loader2 } from "lucide-react";
+import { DailyInspiration } from "@/components/goals/DailyInspiration";
 
 export default function Dashboard() {
-  const { isLoading } = useGoals();
+  const { isLoading, goals } = useGoals();
 
   if (isLoading) {
     return (
@@ -14,6 +15,9 @@ export default function Dashboard() {
       </div>
     );
   }
+
+  // Get the first active goal for daily inspiration
+  const activeGoal = goals[0];
 
   return (
     <div className="flex h-screen bg-primary">
@@ -24,7 +28,13 @@ export default function Dashboard() {
           className="flex-1 m-4 bg-background rounded-[30px] overflow-hidden mb-8"
         >
           <div className="h-full overflow-auto scrollbar-hide py-10 px-14">
-            <div className="max-w-8xl mx-auto">
+            <div className="max-w-8xl mx-auto space-y-6">
+              {activeGoal && (
+                <DailyInspiration 
+                  goalId={activeGoal.id} 
+                  goalTitle={activeGoal.title} 
+                />
+              )}
               <VisionBoard />
             </div>
           </div>
