@@ -24,11 +24,16 @@ export async function generateDailyMessage(userId: number) {
       },
     });
 
-    const goalsContext = userGoals.map(goal => ({
+    const goalsContext = await Promise.all(userGoals.map(async goal => ({
       title: goal.title,
       progress: goal.progress,
       totalTasks: goal.totalTasks,
-    }));
+      tasks: goal.tasks.map(task => ({
+        title: task.title,
+        completed: task.completed,
+        dueDate: task.dueDate,
+      }))
+    })));
 
     const systemPrompt = `You are the user's future successful self, writing a heartfelt message back in time to motivate them.
 Rules:
