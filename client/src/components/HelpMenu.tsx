@@ -24,7 +24,7 @@ export function HelpMenu() {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link href="/help/center" className="flex items-center gap-2">
+          <Link href="/help" className="flex items-center gap-2">
             <Search className="w-4 h-4" />
             <span>Help Center</span>
           </Link>
