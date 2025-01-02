@@ -18,8 +18,7 @@ interface DailyInspirationProps {
 }
 
 interface Inspiration {
-  content: string;
-  date: string;
+  content: string | null;
 }
 
 export function DailyInspiration({ goalId, goalTitle }: DailyInspirationProps) {
@@ -27,10 +26,20 @@ export function DailyInspiration({ goalId, goalTitle }: DailyInspirationProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const today = format(new Date(), 'yyyy-MM-dd');
 
   // Query to fetch today's inspiration if it exists
   const { data: inspiration, isLoading } = useQuery<Inspiration>({
-    queryKey: ["/api/goals/inspiration", goalId, format(new Date(), 'yyyy-MM-dd')],
+    queryKey: [`/api/goals/${goalId}/inspiration`, today],
+    queryFn: async () => {
+      const response = await fetch(`/api/goals/inspiration?goalId=${goalId}&date=${today}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch inspiration');
+      }
+      return response.json();
+    }
   });
 
   const handleGenerateInspiration = async () => {
@@ -43,10 +52,6 @@ export function DailyInspiration({ goalId, goalTitle }: DailyInspirationProps) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          goalTitle,
-          date: format(new Date(), 'yyyy-MM-dd')
-        }),
         credentials: 'include'
       });
 
@@ -56,8 +61,9 @@ export function DailyInspiration({ goalId, goalTitle }: DailyInspirationProps) {
 
       const data = await response.json();
 
-      queryClient.invalidateQueries({ 
-        queryKey: ["/api/goals/inspiration", goalId] 
+      // Invalidate the query to refetch the inspiration
+      await queryClient.invalidateQueries({ 
+        queryKey: [`/api/goals/${goalId}/inspiration`, today]
       });
 
       setIsOpen(true);
@@ -78,15 +84,25 @@ export function DailyInspiration({ goalId, goalTitle }: DailyInspirationProps) {
       <Button
         variant="outline"
         size="lg"
-        className="w-full gap-2 h-auto py-4 relative overflow-hidden group"
-        onClick={handleGenerateInspiration}
-        disabled={isGenerating}
+        className="w-full gap-2 h-auto py-4 relative overflow-hidden group border-2 hover:border-primary/50"
+        onClick={() => {
+          if (inspiration?.content) {
+            setIsOpen(true);
+          } else {
+            handleGenerateInspiration();
+          }
+        }}
+        disabled={isGenerating || isLoading}
       >
         <Mail className="h-5 w-5" />
         <span className="font-medium">
-          {inspiration?.content
-            ? "Your Daily Inspiration Letter is Ready"
-            : "Open Your Daily Inspiration Letter"}
+          {isLoading ? (
+            "Loading..."
+          ) : inspiration?.content ? (
+            "Your Daily Inspiration Letter is Ready"
+          ) : (
+            "Open Your Daily Inspiration Letter"
+          )}
         </span>
         {isGenerating && (
           <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">

@@ -18,6 +18,7 @@ import { registerGoogleOAuthRoutes } from "./google-oauth";
 import { coinHistory } from "@db/schema"; // Import coinHistory schema
 import { supabase } from './supabase'; // Import supabase client
 import { dailyInspirations } from "@db/schema";
+import {format} from 'date-fns';
 
 
 // Configure multer for handling file uploads
@@ -918,7 +919,7 @@ Remember to:
         const [updatedGoal] = await db.update(goals)
           .set({
             visionStatement: visionStatement,
-                        visionResponses: JSON.stringify(answers)
+            visionResponses: JSON.stringify(answers)
           })
           .where(and(
             eq(goals.id, parseInt(goalId)),
@@ -1523,8 +1524,8 @@ Remember to:
   app.post("/api/goals/:goalId/inspiration", requireAuth, async (req, res) => {
     try {
       const { goalId } = req.params;
-      const { goalTitle, date } = req.body;
       const userId = req.user!.id;
+      const today = format(new Date(), 'yyyy-MM-dd');
 
       // Verify goal ownership
       const goal = await db.query.goals.findFirst({
@@ -1538,55 +1539,45 @@ Remember to:
         return res.status(404).json({ error: "Goal not found or unauthorized" });
       }
 
-      // Check if there's already an inspiration for today
-      const existingInspiration = await db.select()
+      // Check if we already have an inspiration for today
+      const [existingInspiration] = await db.select()
         .from(dailyInspirations)
         .where(and(
           eq(dailyInspirations.goalId, parseInt(goalId)),
-          eq(dailyInspirations.date, date)
-        ))
-        .limit(1);
+          eq(dailyInspirations.userId, userId),
+          eq(dailyInspirations.date, today)
+        ));
 
-      if (existingInspiration.length > 0) {
-        return res.json({ content: existingInspiration[0].content });
+      if (existingInspiration) {
+        return res.json({ content: existingInspiration.content });
       }
 
       // Generate new inspiration using OpenAI
-      const prompt = `Write an inspiring and motivational letter (around 100 words) for someone pursuing this goal: "${goalTitle}".
+      const prompt = `Write an inspiring and motivational letter (about 100 words) for someone working on this goal: "${goal.title}".
 
 The letter should be:
-- Personal and warm in tone
-- Include a unique perspective or insight
-- Incorporate an inspiring metaphor or story
-- End with an encouraging call to action
+1. Warm and personal
+2. Focus on motivation and encouragement
+3. Acknowledge the challenges but emphasize growth
+4. Include specific references to their goal
+5. End with an uplifting message
 
-Make it varied and different from previous letters. Focus on different aspects like:
-- Overcoming challenges
-- Finding inner strength
-- Learning from setbacks
-- Celebrating small wins
-- Building resilience
-- Finding joy in the journey
-- Building momentum
-- Trusting the process
+Some key themes to consider:
+- Perseverance through challenges
+- Personal growth and learning
+- The journey being as important as the destination
+- Small steps leading to big changes
+- Building resilience and momentum
+- Celebrating progress
 
-Today's theme could be about: ${[
-        "the power of small steps",
-        "embracing uncertainty",
-        "finding strength in vulnerability",
-        "the beauty of persistence",
-        "learning from nature",
-        "connecting with your why",
-        "building momentum",
-        "trusting the process"
-      ][Math.floor(Math.random() * 8)]}`;
+Make it feel like a heartfelt letter from a wise friend or mentor who deeply understands the journey of ${goal.title}.`;
 
       const completion = await openai.chat.completions.create({
         model: "gpt-4",
         messages: [
           {
             role: "system",
-            content: "You are an insightful and encouraging mentor who writes personalized inspirational messages."
+            content: "You are an inspiring mentor who writes thoughtful, motivational letters to help people stay focused on their goals."
           },
           {
             role: "user",
@@ -1599,20 +1590,20 @@ Today's theme could be about: ${[
       const content = completion.choices[0].message.content?.trim();
 
       if (!content) {
-        throw new Error("Failed to generate inspiration");
+        throw new Error("Failed to generate inspiration content");
       }
 
-      // Save to database
+      // Save the inspiration
       const [newInspiration] = await db.insert(dailyInspirations)
         .values({
-          goalId: parseInt(goalId),
           userId,
-          date,
-          content
+          goalId: parseInt(goalId),
+          content,
+          date: today,
         })
         .returning();
 
-      res.json({ content });
+      res.json({ content: newInspiration.content });
     } catch (error) {
       console.error("Failed to generate inspiration:", error);
       res.status(500).json({
@@ -1631,18 +1622,6 @@ Today's theme could be about: ${[
         return res.status(400).json({ error: "Missing required parameters" });
       }
 
-      // Verify goal ownership
-      const goal = await db.query.goals.findFirst({
-        where: and(
-          eq(goals.id, parseInt(goalId as string)),
-          eq(goals.userId, userId)
-        ),
-      });
-
-      if (!goal) {
-        return res.status(404).json({ error: "Goal not found or unauthorized" });
-      }
-
       // Get today's inspiration if it exists
       const [inspiration] = await db.select()
         .from(dailyInspirations)
@@ -1657,13 +1636,10 @@ Today's theme could be about: ${[
         return res.json({ content: null });
       }
 
-      res.json(inspiration);
+      res.json({ content: inspiration.content });
     } catch (error) {
       console.error("Failed to fetch inspiration:", error);
-      res.status(500).json({
-        error: "Failed to fetch inspiration",
-        details: error instanceof Error ? error.message : "Unknown error"
-      });
+      res.status(500).json({ error: "Failed to fetch inspiration" });
     }
   });
 
