@@ -937,7 +937,7 @@ Write it in a conversational tone, like you're talking to a friend.`;
   });
 
   // Vision Statement Generation API
-  app.post("/api/goals/:goalId/vision", requireAuth, async (req, res) => {
+  app.post("/api/goals/:goalId/vision", requireAuth, async(req, res) => {
     try {
       const { goalId } = req.params;
       const { answers } = req.body;
@@ -1791,16 +1791,14 @@ Remember to:
     }
   });
 
-  app.get("/api/forum/posts/:postId/comments", requireAuth, async (req, res) => {
+  app.get("/api/forum/posts/:postId/comments", async (req, res) => {
     try {
       const { postId } = req.params;
-      const userId = req.user!.id;
 
       const comments = await db.select({
         id: forumComments.id,
         content: forumComments.content,
         createdAt: forumComments.createdAt,
-        updatedAt: forumComments.updatedAt,
         author: {
           id: users.id,
           email: users.email,
@@ -1814,8 +1812,11 @@ Remember to:
 
       res.json(comments);
     } catch (error) {
-      console.error("Failed to fetch post comments:", error);
-      res.status(500).json({ error: "Failed to fetch post comments" });
+      console.error("Failed to fetch comments:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch comments",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
@@ -1825,9 +1826,17 @@ Remember to:
       const { content } = req.body;
       const userId = req.user!.id;
 
-      // Verify the post exists
+      // Input validation
+      if (!content || typeof content !== 'string') {
+        return res.status(400).json({ error: "Content is required and must be a string" });
+      }
+
+      // Verify the post exists and get category info
       const post = await db.query.forumPosts.findFirst({
-        where: eq(forumPosts.id, parseInt(postId))
+        where: eq(forumPosts.id, parseInt(postId)),
+        with: {
+          category: true
+        }
       });
 
       if (!post) {
@@ -1838,7 +1847,7 @@ Remember to:
         return res.status(403).json({ error: "This post is locked" });
       }
 
-      // Create the comment
+      // Create the comment with proper error handling
       const [comment] = await db.insert(forumComments)
         .values({
           postId: parseInt(postId),
@@ -1846,6 +1855,10 @@ Remember to:
           content,
         })
         .returning();
+
+      if (!comment) {
+        throw new Error("Failed to create comment");
+      }
 
       // Get the complete comment data with author information
       const [commentWithAuthor] = await db.select({
@@ -1862,10 +1875,18 @@ Remember to:
       .innerJoin(users, eq(forumComments.userId, users.id))
       .where(eq(forumComments.id, comment.id));
 
+      if (!commentWithAuthor) {
+        throw new Error("Failed to retrieve comment data");
+      }
+
+      // Return the comment with author information
       res.json(commentWithAuthor);
     } catch (error) {
       console.error("Failed to create comment:", error);
-      res.status(500).json({ error: "Failed to create comment" });
+      res.status(500).json({ 
+        error: "Failed to create comment",
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
