@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,11 @@ import { PageHeader } from "@/components/PageHeader";
 import { LeftPanel } from "@/components/LeftPanel";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { format } from "date-fns";
+import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
 
 interface ForumPost {
   id: number;
@@ -35,10 +40,50 @@ interface ForumPost {
 
 export default function ForumPostPage() {
   const { slug, postId } = useParams();
+  const { toast } = useToast();
 
   const { data: post, isLoading } = useQuery<ForumPost>({
     queryKey: [`/api/forum/posts/${postId}`],
   });
+
+  const form = useForm({
+    defaultValues: {
+      content: "",
+    },
+  });
+
+  const commentMutation = useMutation({
+    mutationFn: async (values: { content: string }) => {
+      const res = await fetch(`/api/forum/posts/${postId}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+        credentials: "include",
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Your comment has been added.",
+      });
+      form.reset();
+      queryClient.invalidateQueries({ queryKey: [`/api/forum/posts/${postId}`] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to add comment",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmit = (values: { content: string }) => {
+    commentMutation.mutate(values);
+  };
 
   return (
     <div className="flex h-screen bg-primary">
@@ -120,6 +165,36 @@ export default function ForumPostPage() {
                       <MessageSquare className="h-5 w-5" />
                       Comments ({post.comments.length})
                     </h2>
+
+                    <Card>
+                      <CardContent className="p-4">
+                        <Form {...form}>
+                          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                            <FormField
+                              control={form.control}
+                              name="content"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormControl>
+                                    <Textarea
+                                      placeholder="Write a comment..."
+                                      className="min-h-[100px]"
+                                      {...field}
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                            <div className="flex justify-end">
+                              <Button type="submit" disabled={commentMutation.isPending}>
+                                {commentMutation.isPending ? "Posting..." : "Post Comment"}
+                              </Button>
+                            </div>
+                          </form>
+                        </Form>
+                      </CardContent>
+                    </Card>
+
                     {post.comments.map((comment) => (
                       <Card key={comment.id}>
                         <CardContent className="p-4">

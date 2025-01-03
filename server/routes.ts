@@ -1825,14 +1825,9 @@ Remember to:
       const { content } = req.body;
       const userId = req.user!.id;
 
-      // Validate input
-      if (!content) {
-        return res.status(400).json({ error: "Content is required" });
-      }
-
-      // Check if post exists and is not locked
+      // Verify the post exists
       const post = await db.query.forumPosts.findFirst({
-        where: eq(forumPosts.id, parseInt(postId)),
+        where: eq(forumPosts.id, parseInt(postId))
       });
 
       if (!post) {
@@ -1843,7 +1838,7 @@ Remember to:
         return res.status(403).json({ error: "This post is locked" });
       }
 
-      // Create comment
+      // Create the comment
       const [comment] = await db.insert(forumComments)
         .values({
           postId: parseInt(postId),
@@ -1852,12 +1847,11 @@ Remember to:
         })
         .returning();
 
-      // Return comment with author information
-      const commentWithAuthor = await db.select({
+      // Get the complete comment data with author information
+      const [commentWithAuthor] = await db.select({
         id: forumComments.id,
         content: forumComments.content,
         createdAt: forumComments.createdAt,
-        updatedAt: forumComments.updatedAt,
         author: {
           id: users.id,
           email: users.email,
@@ -1866,10 +1860,9 @@ Remember to:
       })
       .from(forumComments)
       .innerJoin(users, eq(forumComments.userId, users.id))
-      .where(eq(forumComments.id, comment.id))
-      .limit(1);
+      .where(eq(forumComments.id, comment.id));
 
-      res.json(commentWithAuthor[0]);
+      res.json(commentWithAuthor);
     } catch (error) {
       console.error("Failed to create comment:", error);
       res.status(500).json({ error: "Failed to create comment" });
@@ -1900,8 +1893,7 @@ Remember to:
       .innerJoin(users, eq(forumPosts.userId, users.id))
       .where(eq(forumPosts.id, parseInt(postId)));
 
-      if (!post) {
-        return res.status(404).json({ error: "Post not found" });
+      if (!post) {        return res.status(404).json({ error: "Post not found" });
       }
 
       // Get comments for the post
