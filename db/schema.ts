@@ -321,6 +321,7 @@ export const forumComments = pgTable("forum_comments", {
   id: serial("id").primaryKey(),
   postId: integer("post_id").notNull().references(() => forumPosts.id, { onDelete: "cascade" }),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  parentCommentId: integer("parent_comment_id").references(() => forumComments.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -331,7 +332,7 @@ export const forumReactions = pgTable("forum_reactions", {
   postId: integer("post_id").references(() => forumPosts.id, { onDelete: "cascade" }),
   commentId: integer("comment_id").references(() => forumComments.id, { onDelete: "cascade" }),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  type: text("type").notNull(), 
+  type: text("type").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -363,6 +364,15 @@ export const forumCommentsRelations = relations(forumComments, ({ one, many }) =
     references: [users.id],
   }),
   reactions: many(forumReactions),
+  // Add relations for nested comments
+  parentComment: one(forumComments, {
+    fields: [forumComments.parentCommentId],
+    references: [forumComments.id],
+    relationName: 'commentReplies'
+  }),
+  replies: many(forumComments, {
+    relationName: 'commentReplies'
+  }),
 }));
 
 // Add Zod schemas for the new tables
