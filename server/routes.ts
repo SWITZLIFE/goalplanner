@@ -1822,7 +1822,7 @@ Remember to:
   app.post("/api/forum/posts/:postId/comments", requireAuth, async (req, res) => {
     try {
       const { postId } = req.params;
-      const { content } = req.body;
+      const { content, parentCommentId } = req.body;
       const userId = req.user!.id;
 
       // Verify the post exists
@@ -1838,12 +1838,27 @@ Remember to:
         return res.status(403).json({ error: "This post is locked" });
       }
 
+      // If this is a reply, verify parent comment exists
+      if (parentCommentId) {
+        const parentComment = await db.query.forumComments.findFirst({
+          where: and(
+            eq(forumComments.id, parentCommentId),
+            eq(forumComments.postId, parseInt(postId))
+          )
+        });
+
+        if (!parentComment) {
+          return res.status(404).json({ error: "Parent comment not found" });
+        }
+      }
+
       // Create the comment
       const [comment] = await db.insert(forumComments)
         .values({
           postId: parseInt(postId),
           userId,
           content,
+          parentCommentId: parentCommentId || null,
         })
         .returning();
 
@@ -1852,6 +1867,7 @@ Remember to:
         id: forumComments.id,
         content: forumComments.content,
         createdAt: forumComments.createdAt,
+        parentCommentId: forumComments.parentCommentId,
         author: {
           id: users.id,
           email: users.email,
@@ -1893,14 +1909,16 @@ Remember to:
       .innerJoin(users, eq(forumPosts.userId, users.id))
       .where(eq(forumPosts.id, parseInt(postId)));
 
-      if (!post) {        return res.status(404).json({ error: "Post not found" });
+      if (!post) {
+        return res.status(404).json({ error: "Post not found" });
       }
 
-      // Get comments for the post
-      const comments = await db.select({
+      // Get all comments for the post
+      const allComments = await db.select({
         id: forumComments.id,
         content: forumComments.content,
         createdAt: forumComments.createdAt,
+        parentCommentId: forumComments.parentCommentId,
         author: {
           id: users.id,
           email: users.email,
@@ -1912,6 +1930,28 @@ Remember to:
       .where(eq(forumComments.postId, parseInt(postId)))
       .orderBy(forumComments.createdAt);
 
+      // Organize comments into a tree structure
+      const commentMap = new Map();
+      const rootComments = [];
+
+      // First pass: Create a map of all comments
+      allComments.forEach(comment => {
+        commentMap.set(comment.id, { ...comment, replies: [] });
+      });
+
+      // Second pass: Organize comments into hierarchy
+      allComments.forEach(comment => {
+        const commentWithReplies = commentMap.get(comment.id);
+        if (comment.parentCommentId === null) {
+          rootComments.push(commentWithReplies);
+        } else {
+          const parentComment = commentMap.get(comment.parentCommentId);
+          if (parentComment) {
+            parentComment.replies.push(commentWithReplies);
+          }
+        }
+      });
+
       // Increment view count
       await db.update(forumPosts)
         .set({ viewCount: (post.viewCount || 0) + 1 })
@@ -1919,11 +1959,77 @@ Remember to:
 
       res.json({
         ...post,
-        comments,
+        comments: rootComments,
       });
     } catch (error) {
       console.error("Failed to fetch forum post:", error);
       res.status(500).json({ error: "Failed to fetch forum post" });
+    }
+  });
+
+  app.post("/api/forum/posts/:postId/comments", requireAuth, async (req, res) => {
+    try {
+      const { postId } = req.params;
+      const { content, parentCommentId } = req.body;
+      const userId = req.user!.id;
+
+      // Verify the post exists
+      const post = await db.query.forumPosts.findFirst({
+        where: eq(forumPosts.id, parseInt(postId))
+      });
+
+      if (!post) {
+        return res.status(404).json({ error: "Post not found" });
+      }
+
+      if (post.isLocked) {
+        return res.status(403).json({ error: "This post is locked" });
+      }
+
+      // If this is a reply, verify parent comment exists
+      if (parentCommentId) {
+        const parentComment = await db.query.forumComments.findFirst({
+          where: and(
+            eq(forumComments.id, parentCommentId),
+            eq(forumComments.postId, parseInt(postId))
+          )
+        });
+
+        if (!parentComment) {
+          return res.status(404).json({ error: "Parent comment not found" });
+        }
+      }
+
+      // Create the comment
+      const [comment] = await db.insert(forumComments)
+        .values({
+          postId: parseInt(postId),
+          userId,
+          content,
+          parentCommentId: parentCommentId || null,
+        })
+        .returning();
+
+      // Get the complete comment data with author information
+      const [commentWithAuthor] = await db.select({
+        id: forumComments.id,
+        content: forumComments.content,
+        createdAt: forumComments.createdAt,
+        parentCommentId: forumComments.parentCommentId,
+        author: {
+          id: users.id,
+          email: users.email,
+          profilePhotoUrl: users.profilePhotoUrl,
+        },
+      })
+      .from(forumComments)
+      .innerJoin(users, eq(forumComments.userId, users.id))
+      .where(eq(forumComments.id, comment.id));
+
+      res.json(commentWithAuthor);
+    } catch (error) {
+      console.error("Failed to create comment:", error);
+      res.status(500).json({ error: "Failed to create comment" });
     }
   });
 

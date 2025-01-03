@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, MessageSquare } from "lucide-react";
+import { ArrowLeft, MessageSquare, Reply } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { LeftPanel } from "@/components/LeftPanel";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -12,6 +12,19 @@ import { useForm } from "react-hook-form";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+import { useState } from "react";
+
+interface Comment {
+  id: number;
+  content: string;
+  createdAt: string;
+  author: {
+    id: number;
+    email: string;
+    profilePhotoUrl: string | null;
+  };
+  replies?: Comment[];
+}
 
 interface ForumPost {
   id: number;
@@ -26,26 +39,19 @@ interface ForumPost {
     email: string;
     profilePhotoUrl: string | null;
   };
-  comments: {
-    id: number;
-    content: string;
-    createdAt: string;
-    author: {
-      id: number;
-      email: string;
-      profilePhotoUrl: string | null;
-    };
-  }[];
+  comments: Comment[];
 }
 
-export default function ForumPostPage() {
-  const { slug, postId } = useParams();
+interface CommentFormProps {
+  postId: string;
+  parentCommentId?: number;
+  onSuccess?: () => void;
+  onCancel?: () => void;
+  placeholder?: string;
+}
+
+function CommentForm({ postId, parentCommentId, onSuccess, onCancel, placeholder }: CommentFormProps) {
   const { toast } = useToast();
-
-  const { data: post, isLoading } = useQuery<ForumPost>({
-    queryKey: [`/api/forum/posts/${postId}`],
-  });
-
   const form = useForm({
     defaultValues: {
       content: "",
@@ -57,7 +63,10 @@ export default function ForumPostPage() {
       const res = await fetch(`/api/forum/posts/${postId}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify({
+          ...values,
+          parentCommentId,
+        }),
         credentials: "include",
       });
 
@@ -67,10 +76,11 @@ export default function ForumPostPage() {
     onSuccess: () => {
       toast({
         title: "Success",
-        description: "Your comment has been added.",
+        description: parentCommentId ? "Your reply has been added." : "Your comment has been added.",
       });
       form.reset();
       queryClient.invalidateQueries({ queryKey: [`/api/forum/posts/${postId}`] });
+      onSuccess?.();
     },
     onError: (error) => {
       toast({
@@ -84,6 +94,110 @@ export default function ForumPostPage() {
   const onSubmit = (values: { content: string }) => {
     commentMutation.mutate(values);
   };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="content"
+          render={({ field }) => (
+            <FormItem>
+              <FormControl>
+                <Textarea
+                  placeholder={placeholder || "Write a comment..."}
+                  className="min-h-[100px]"
+                  {...field}
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+        <div className="flex justify-end gap-2">
+          {onCancel && (
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+          )}
+          <Button type="submit" disabled={commentMutation.isPending}>
+            {commentMutation.isPending ? "Posting..." : parentCommentId ? "Post Reply" : "Post Comment"}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+}
+
+function CommentComponent({ comment, postId, level = 0 }: { comment: Comment; postId: string; level?: number }) {
+  const [showReplyForm, setShowReplyForm] = useState(false);
+
+  return (
+    <div className={`${level > 0 ? 'ml-8' : ''}`}>
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex gap-4 items-start">
+            <Avatar className="h-8 w-8">
+              {comment.author.profilePhotoUrl ? (
+                <AvatarImage src={comment.author.profilePhotoUrl} />
+              ) : (
+                <AvatarFallback>
+                  {comment.author.email.substring(0, 2).toUpperCase()}
+                </AvatarFallback>
+              )}
+            </Avatar>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                <span>{comment.author.email}</span>
+                <span>•</span>
+                <span>{format(new Date(comment.createdAt), 'MMM d, yyyy')}</span>
+              </div>
+              <div className="prose prose-sm max-w-none">
+                {comment.content}
+              </div>
+              <div className="mt-4">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground"
+                  onClick={() => setShowReplyForm(!showReplyForm)}
+                >
+                  <Reply className="h-4 w-4 mr-2" />
+                  Reply
+                </Button>
+              </div>
+              {showReplyForm && (
+                <div className="mt-4">
+                  <CommentForm
+                    postId={postId}
+                    parentCommentId={comment.id}
+                    onSuccess={() => setShowReplyForm(false)}
+                    onCancel={() => setShowReplyForm(false)}
+                    placeholder={`Reply to ${comment.author.email}...`}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      {comment.replies?.map((reply) => (
+        <CommentComponent
+          key={reply.id}
+          comment={reply}
+          postId={postId}
+          level={level + 1}
+        />
+      ))}
+    </div>
+  );
+}
+
+export default function ForumPostPage() {
+  const { slug, postId } = useParams();
+
+  const { data: post, isLoading } = useQuery<ForumPost>({
+    queryKey: [`/api/forum/posts/${postId}`],
+  });
 
   return (
     <div className="flex h-screen bg-primary">
@@ -168,59 +282,16 @@ export default function ForumPostPage() {
 
                     <Card>
                       <CardContent className="p-4">
-                        <Form {...form}>
-                          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                            <FormField
-                              control={form.control}
-                              name="content"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormControl>
-                                    <Textarea
-                                      placeholder="Write a comment..."
-                                      className="min-h-[100px]"
-                                      {...field}
-                                    />
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
-                            <div className="flex justify-end">
-                              <Button type="submit" disabled={commentMutation.isPending}>
-                                {commentMutation.isPending ? "Posting..." : "Post Comment"}
-                              </Button>
-                            </div>
-                          </form>
-                        </Form>
+                        <CommentForm postId={postId} />
                       </CardContent>
                     </Card>
 
                     {post.comments.map((comment) => (
-                      <Card key={comment.id}>
-                        <CardContent className="p-4">
-                          <div className="flex gap-4 items-start">
-                            <Avatar className="h-8 w-8">
-                              {comment.author.profilePhotoUrl ? (
-                                <AvatarImage src={comment.author.profilePhotoUrl} />
-                              ) : (
-                                <AvatarFallback>
-                                  {comment.author.email.substring(0, 2).toUpperCase()}
-                                </AvatarFallback>
-                              )}
-                            </Avatar>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                                <span>{comment.author.email}</span>
-                                <span>•</span>
-                                <span>{format(new Date(comment.createdAt), 'MMM d, yyyy')}</span>
-                              </div>
-                              <div className="prose prose-sm max-w-none">
-                                {comment.content}
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                      <CommentComponent 
+                        key={comment.id} 
+                        comment={comment} 
+                        postId={postId} 
+                      />
                     ))}
                   </div>
                 </div>
