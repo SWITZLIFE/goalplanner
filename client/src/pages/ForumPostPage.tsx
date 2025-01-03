@@ -166,34 +166,6 @@ export default function ForumPostPage() {
                       Comments ({post.comments.length})
                     </h2>
 
-                    {post.comments.map((comment) => (
-                      <Card key={comment.id}>
-                        <CardContent className="p-4">
-                          <div className="flex gap-4 items-start">
-                            <Avatar className="h-8 w-8">
-                              {comment.author.profilePhotoUrl ? (
-                                <AvatarImage src={comment.author.profilePhotoUrl} />
-                              ) : (
-                                <AvatarFallback>
-                                  {comment.author.email.substring(0, 2).toUpperCase()}
-                                </AvatarFallback>
-                              )}
-                            </Avatar>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                                <span>{comment.author.email}</span>
-                                <span>•</span>
-                                <span>{format(new Date(comment.createdAt), 'MMM d, yyyy')}</span>
-                              </div>
-                              <div className="prose prose-sm max-w-none">
-                                {comment.content}
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-
                     <Card>
                       <CardContent className="p-4">
                         <Form {...form}>
@@ -222,6 +194,34 @@ export default function ForumPostPage() {
                         </Form>
                       </CardContent>
                     </Card>
+
+                    {post.comments.map((comment) => (
+                      <Card key={comment.id}>
+                        <CardContent className="p-4">
+                          <div className="flex gap-4 items-start">
+                            <Avatar className="h-8 w-8">
+                              {comment.author.profilePhotoUrl ? (
+                                <AvatarImage src={comment.author.profilePhotoUrl} />
+                              ) : (
+                                <AvatarFallback>
+                                  {comment.author.email.substring(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              )}
+                            </Avatar>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                                <span>{comment.author.email}</span>
+                                <span>•</span>
+                                <span>{format(new Date(comment.createdAt), 'MMM d, yyyy')}</span>
+                              </div>
+                              <div className="prose prose-sm max-w-none">
+                                {comment.content}
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
                 </div>
               ) : (
