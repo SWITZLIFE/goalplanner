@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, MessageSquare, Reply, ThumbsUp, ThumbsDown } from "lucide-react";
+import { ArrowLeft, MessageSquare, Reply } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { LeftPanel } from "@/components/LeftPanel";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -55,12 +55,6 @@ interface CommentFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
   placeholder?: string;
-}
-
-// Add new interface for comment vote data
-interface VoteData {
-  upvotes: number;
-  downvotes: number;
 }
 
 function CommentForm({ postId, parentCommentId, onSuccess, onCancel, placeholder }: CommentFormProps) {
@@ -138,34 +132,7 @@ function CommentForm({ postId, parentCommentId, onSuccess, onCancel, placeholder
 }
 
 function CommentComponent({ comment, postId, level = 0 }: { comment: Comment; postId: number; level?: number }) {
-  const { toast } = useToast();
   const [showReplyForm, setShowReplyForm] = useState(false);
-  const [voteData, setVoteData] = useState<VoteData>({ upvotes: 0, downvotes: 0 });
-
-  // Add vote mutation
-  const voteMutation = useMutation({
-    mutationFn: async ({ commentId, type }: { commentId: number; type: 'upvote' | 'downvote' }) => {
-      const res = await fetch(`/api/forum/comments/${commentId}/vote`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type }),
-        credentials: 'include'
-      });
-
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
-    onSuccess: (data) => {
-      setVoteData(data);
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to vote",
-        variant: "destructive"
-      });
-    }
-  });
 
   return (
     <div className={`${level > 0 ? 'mt-4 ml-12 pl-4 border-l-2 border-gray-100' : 'mt-4'}`}>
@@ -192,27 +159,7 @@ function CommentComponent({ comment, postId, level = 0 }: { comment: Comment; po
             <div className="mt-2 text-gray-700 whitespace-pre-wrap">
               {comment.content}
             </div>
-            <div className="mt-3 flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-gray-500 hover:text-gray-700"
-                  onClick={() => voteMutation.mutate({ commentId: comment.id, type: 'upvote' })}
-                >
-                  <ThumbsUp className="h-4 w-4 mr-1" />
-                  {voteData.upvotes}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-gray-500 hover:text-gray-700"
-                  onClick={() => voteMutation.mutate({ commentId: comment.id, type: 'downvote' })}
-                >
-                  <ThumbsDown className="h-4 w-4 mr-1" />
-                  {voteData.downvotes}
-                </Button>
-              </div>
+            <div className="mt-3">
               <Button
                 variant="ghost"
                 size="sm"
