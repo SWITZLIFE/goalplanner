@@ -21,21 +21,6 @@ import { registerGoogleOAuthRoutes } from "./google-oauth";
 import { supabase } from './supabase';
 import { format } from 'date-fns';
 
-// Add this function after imports at the top
-function selectDailyGoal(goals: { id: number }[], date: string): number | null {
-  if (!goals || goals.length === 0) return null;
-
-  // Convert date string to timestamp for consistent hashing
-  const dateObj = new Date(date);
-  const timestamp = dateObj.getTime();
-
-  // Use the date's timestamp to select a goal index
-  // This ensures the same goal is selected for the same date
-  const selectedIndex = Math.floor((timestamp / (24 * 60 * 60 * 1000)) % goals.length);
-
-  return goals[selectedIndex].id;
-}
-
 // Configure multer for handling file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -292,70 +277,33 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Modify the GET inspiration endpoint
+  // Daily Inspiration API
   app.get("/api/goals/:goalId/inspiration", requireAuth, async (req, res) => {
     try {
-      const userId = req.user!.id;
+      const { goalId } = req.params;
       const { date } = req.query;
+      const userId = req.user!.id;
 
-      if (!date) {
-        return res.status(400).json({ 
-          error: "Date parameter is required",
-          content: null,
-          goalId: null
-        });
-      }
-
-      // Get all goals for the user
-      const userGoals = await db.select({
-        id: goals.id,
-        title: goals.title,
-      })
-        .from(goals)
-        .where(eq(goals.userId, userId))
-        .orderBy(goals.createdAt);
-
-      // Select the goal for today
-      const todayGoalId = selectDailyGoal(userGoals, date as string);
-
-      if (!todayGoalId) {
-        return res.status(404).json({ 
-          error: "No goals found",
-          content: null,
-          goalId: null
-        });
-      }
-
-      // Check if inspiration exists for today's selected goal
+      // Check if inspiration exists for today
       const existingInspiration = await db.select()
         .from(dailyInspirations)
         .where(
           and(
             eq(dailyInspirations.userId, userId),
-            eq(dailyInspirations.goalId, todayGoalId),
+            eq(dailyInspirations.goalId, parseInt(goalId)),
             eq(dailyInspirations.date, date as string)
           )
         )
         .limit(1);
 
       if (existingInspiration.length > 0) {
-        return res.json({
-          ...existingInspiration[0],
-          goalId: todayGoalId
-        });
+        return res.json(existingInspiration[0]);
       }
 
-      res.json({ 
-        content: null,
-        goalId: todayGoalId
-      });
+      res.json({ content: null });
     } catch (error) {
       console.error("Failed to fetch inspiration:", error);
-      res.status(500).json({ 
-        error: "Failed to fetch inspiration",
-        content: null,
-        goalId: null
-      });
+      res.status(500).json({ error: "Failed to fetch inspiration" });
     }
   });
 
@@ -377,7 +325,7 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ error: "Goal not found" });
       }
 
-      // Generate inspiration using OpenAI
+      // Generate inspiration using OpenAI with a simpler, more relatable prompt
       const prompt = `Write an encouraging message (100-150 words) for someone working on their goals. 
 The message should be:
 - Written at an 8th grade reading level
@@ -436,9 +384,6 @@ Write it in a conversational tone, like you're talking to a friend.`;
       res.status(500).json({ error: "Failed to generate inspiration" });
     }
   });
-
-  // Remove the duplicate inspiration endpoint
-  // app.get("/api/goals/inspiration", requireAuth, async (req, res) => { ... });
 
   // Configure CORS headers for Supabase Storage URLs
   app.use((req, res, next) => {
@@ -946,11 +891,12 @@ Write it in a conversational tone, like you're talking to a friend.`;
         .where(eq(tasks.parentTaskId, taskIdInt));
 
       // Finally delete the main task
-      await db.delete(tasks)
+      const [deletedTask] = await db.delete(tasks)
         .where(and(
           eq(tasks.id, taskIdInt),
           eq(tasks.userId, userId)
-        ));
+        ))
+        .returning();
 
       // Update goal progress
       const remainingTasks = await db.select()
@@ -1683,8 +1629,38 @@ Remember to:
     }
   });
 
-  // Daily Inspiration API 
-  // app.get("/api/goals/inspiration", requireAuth, async (req, res) => { ... });
+  // Daily Inspiration API - REMOVED ORIGINAL, using edited snippet above.
+  // app.post("/api/goals/:goalId/inspiration", requireAuth, async (req, res) => { ... });
+
+  app.get("/api/goals/inspiration", requireAuth, async (req, res) => {
+    try {
+      const { goalId, date } = req.query;
+      const userId = req.user!.id;
+
+      if (!goalId || !date) {
+        return res.status(400).json({ error: "Missing required parameters" });
+      }
+
+      // Get today's inspiration if it exists
+      const [inspiration] = await db.select()
+        .from(dailyInspirations)
+        .where(and(
+          eq(dailyInspirations.goalId, parseInt(goalId as string)),
+          eq(dailyInspirations.userId, userId),
+          eq(dailyInspirations.date, date as string)
+        ))
+        .limit(1);
+
+      if (!inspiration) {
+        return res.json({ content: null });
+      }
+
+      res.json({ content: inspiration.content });
+    } catch (error) {
+      console.error("Failed to fetch inspiration:", error);
+      res.status(500).json({ error: "Failed to fetch inspiration" });
+    }
+  });
 
   // Forum API Routes
   app.get("/api/forum/categories", async (req, res) => {
@@ -1904,7 +1880,7 @@ Remember to:
 
       res.json(commentWithAuthor);
     } catch (error) {
-      console.error(""Failed to create comment:", error);
+      console.error("Failed to create comment:", error);
       res.status(500).json({ error: "Failed to create comment" });
     }
   });
