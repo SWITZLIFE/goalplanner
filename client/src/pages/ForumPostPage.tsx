@@ -132,11 +132,11 @@ function CommentComponent({ comment, postId, level = 0 }: { comment: Comment; po
   const [showReplyForm, setShowReplyForm] = useState(false);
 
   return (
-    <div className={`${level > 0 ? 'mt-4 ml-8 pl-4 border-l border-border' : 'mt-4'}`}>
-      <Card className="group">
-        <CardContent className="p-4">
-          <div className="flex gap-4 items-start">
-            <Avatar className="h-8 w-8">
+    <div className={`${level > 0 ? 'mt-3 ml-8 pl-4 border-l border-border' : 'mt-3'}`}>
+      <Card className="group relative">
+        <CardContent className="p-3">
+          <div className="flex gap-3 items-start">
+            <Avatar className="h-6 w-6">
               {comment.author.profilePhotoUrl ? (
                 <AvatarImage src={comment.author.profilePhotoUrl} />
               ) : (
@@ -145,8 +145,8 @@ function CommentComponent({ comment, postId, level = 0 }: { comment: Comment; po
                 </AvatarFallback>
               )}
             </Avatar>
-            <div className="flex-1">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
                 <span>{comment.author.email}</span>
                 <span>•</span>
                 <span>{format(new Date(comment.createdAt), 'MMM d, yyyy')}</span>
@@ -154,32 +154,31 @@ function CommentComponent({ comment, postId, level = 0 }: { comment: Comment; po
               <div className="prose prose-sm max-w-none">
                 {comment.content}
               </div>
-              <div className="mt-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => setShowReplyForm(!showReplyForm)}
-                >
-                  <Reply className="h-4 w-4 mr-2" />
-                  Reply
-                </Button>
-              </div>
-              {showReplyForm && (
-                <div className="mt-4">
-                  <CommentForm
-                    postId={postId}
-                    parentCommentId={comment.id}
-                    onSuccess={() => setShowReplyForm(false)}
-                    onCancel={() => setShowReplyForm(false)}
-                    placeholder={`Reply to ${comment.author.email}...`}
-                  />
-                </div>
-              )}
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity absolute top-2 right-2"
+              onClick={() => setShowReplyForm(!showReplyForm)}
+            >
+              <Reply className="h-4 w-4" />
+            </Button>
           </div>
         </CardContent>
       </Card>
+
+      {showReplyForm && (
+        <div className="mt-2">
+          <CommentForm
+            postId={postId}
+            parentCommentId={comment.id}
+            onSuccess={() => setShowReplyForm(false)}
+            onCancel={() => setShowReplyForm(false)}
+            placeholder={`Reply to ${comment.author.email}...`}
+          />
+        </div>
+      )}
+
       {comment.replies?.map((reply) => (
         <CommentComponent
           key={reply.id}
