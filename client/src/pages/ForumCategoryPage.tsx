@@ -220,7 +220,7 @@ export default function ForumCategoryPage() {
                 <div className="space-y-8">
                   {posts?.map((post) => (
                     <Link key={post.id} href={`/forum/${slug}/${post.id}`}>
-                      <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
+                      <Card className="hover:bg-muted/50 transition-colors cursor-pointer mb-4">
                         <CardContent className="p-6">
                           <div className="flex items-start gap-4">
                             <Avatar className="h-10 w-10">
