@@ -337,7 +337,7 @@ export function registerRoutes(app: Express): Server {
       const allGoalTitles = userGoals.map(g => g.title).join("\n- ");
 
       // Generate inspiration using OpenAI with a prompt that includes all goals
-      const prompt = `Write an encouraging message (100-150 words) for someone working on multiple goals:
+      const prompt = `Write an encouraging message (100-150 words) for someone working on a list of goals:
 
 Their goals are:
 - ${allGoalTitles}
@@ -348,7 +348,6 @@ The message should be:
 - Written at an 8th grade reading level
 - Warm and friendly, like advice from a mentor
 - Include a specific tip or insight about personal growth
-- Acknowledge they are working on multiple goals, but focus on the selected goal
 
 Focus on:
 - Using simple, clear language
