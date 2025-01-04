@@ -914,7 +914,6 @@ Write it in a conversational tone, like you're talking to a friend.`;
         ))
         .returning();
 
-      // Update goal progress
       const remainingTasks = await db.select()
         .from(tasks)
         .where(and(
@@ -942,7 +941,8 @@ Write it in a conversational tone, like you're talking to a friend.`;
           ));
       }
 
-      res.json({ success: true });    } catch (error) {
+      res.json({ success: true });
+    } catch (error) {
       console.error("Error deleting task:", error);
       res.status(500).json({
         error: "Failed to delete task",
@@ -1895,94 +1895,101 @@ Remember to:
 
       res.json(commentWithAuthor);
     } catch (error) {
-      console.error("Failed to create comment:", error);
+      console.error(""Failed to create comment:", error);
       res.status(500).json({ error: "Failed to create comment" });
     }
   });
 
   app.get("/api/forum/posts/:postId", requireAuth, async (req, res) => {
     try {
-      const { postId } = req.params;
+      const postId = parseInt(req.params.postId);
       const userId = req.user!.id;
 
-      // Get the post with author information
-      const [post] = await db.select({
-        id: forumPosts.id,
-        title: forumPosts.title,
-        content: forumPosts.content,
-        isPinned: forumPosts.isPinned,
-        isLocked: forumPosts.isLocked,
-        viewCount: forumPosts.viewCount,
-        createdAt: forumPosts.createdAt,
-        author: {
-          id: users.id,
-          email: users.email,
-          profilePhotoUrl: users.profilePhotoUrl,
-        },
-      })
-      .from(forumPosts)
-      .innerJoin(users, eq(forumPosts.userId, users.id))
-      .where(eq(forumPosts.id, parseInt(postId)));
+      // Get the post with nested comments
+      const post = await db.query.forumPosts.findFirst({
+        where: eq(forumPosts.id, postId),
+        with: {
+          author: true,
+          comments: {
+            where: isNull(forumComments.parentCommentId),
+            with: {
+              author: true,
+              replies: {
+                // Get replies sorted by created time ascending
+                orderBy: [desc(forumComments.createdAt)],
+                with: {
+                  author: true
+                }
+              }
+            },
+            // Get top-level comments sorted by created time descending (newest first)
+            orderBy: [desc(forumComments.createdAt)]
+          }
+        }
+      });
 
       if (!post) {
         return res.status(404).json({ error: "Post not found" });
       }
 
-      // Get all comments for the post with parent comment info
-      const allComments = await db.select({
-        id: forumComments.id,
-        content: forumComments.content,
-        createdAt: forumComments.createdAt,
-        parentCommentId: forumComments.parentCommentId,
-        author: {
-          id: users.id,
-          email: users.email,
-          profilePhotoUrl: users.profilePhotoUrl,
-        },
-      })
-      .from(forumComments)
-      .innerJoin(users, eq(forumComments.userId, users.id))
-      .where(eq(forumComments.postId, parseInt(postId)))
-      .orderBy(forumComments.createdAt);
-
-      // Organize comments into a tree structure
-      const commentMap = new Map();
-      const rootComments: any[] = [];
-
-      // First pass: Create a map of all comments
-      allComments.forEach(comment => {
-        commentMap.set(comment.id, { ...comment, replies: [] });
-      });
-
-      // Second pass: Organize comments into hierarchy
-      allComments.forEach(comment => {
-        const commentWithReplies = commentMap.get(comment.id);
-        if (!comment.parentCommentId) {
-          rootComments.push(commentWithReplies);
-        } else {
-          const parentComment = commentMap.get(comment.parentCommentId);
-          if (parentComment) {
-            parentComment.replies.push(commentWithReplies);
-          }
-        }
-      });
-
-      // Increment view count
+      // Update view count
       await db.update(forumPosts)
         .set({ viewCount: (post.viewCount || 0) + 1 })
-        .where(eq(forumPosts.id, parseInt(postId)));
+        .where(eq(forumPosts.id, postId));
 
-      res.json({
-        ...post,
-        comments: rootComments,
-      });
+      res.json(post);
     } catch (error) {
-      console.error("Failed to fetch forum post:", error);
-      res.status(500).json({ error: "Failed to fetch forum post" });
+      console.error("Failed to fetch post:", error);
+      res.status(500).json({ error: "Failed to fetch post" });
     }
   });
 
-  // Remove the duplicate route handler for POST /api/forum/posts/:postId/comments
+  app.post("/api/forum/posts/:postId/comments", requireAuth, async (req, res) => {
+    try {
+      const { postId } = req.params;
+      const { content, parentCommentId } = req.body;
+      const userId = req.user!.id;
+
+      // Validate input
+      if (!content?.trim()) {
+        return res.status(400).json({ error: "Comment content is required" });
+      }
+
+      // If this is a reply, verify parent comment exists
+      if (parentCommentId) {
+        const parentComment = await db.query.forumComments.findFirst({
+          where: eq(forumComments.id, parentCommentId)
+        });
+
+        if (!parentComment) {
+          return res.status(404).json({ error: "Parent comment not found" });
+        }
+      }
+
+      // Create the comment
+      const [newComment] = await db.insert(forumComments)
+        .values({
+          postId: parseInt(postId),
+          authorId: userId,
+          content,
+          parentCommentId: parentCommentId || null
+        })
+        .returning();
+
+      // Return the comment with author information
+      const commentWithAuthor = await db.query.forumComments.findFirst({
+        where: eq(forumComments.id, newComment.id),
+        with: {
+          author: true
+        }
+      });
+
+      res.json(commentWithAuthor);
+    } catch (error) {
+      console.error("Failed to create comment:", error);
+      res.status(500).json({ error: "Failed to create comment" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

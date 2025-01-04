@@ -109,7 +109,7 @@ function CommentForm({ postId, parentCommentId, onSuccess, onCancel, placeholder
               <FormControl>
                 <Textarea
                   placeholder={placeholder || "Write a comment..."}
-                  className="min-h-[100px] bg-white border border-gray-200"
+                  className="min-h-[100px] bg-white border border-gray-200 rounded-lg"
                   {...field}
                 />
               </FormControl>
@@ -136,7 +136,7 @@ function CommentComponent({ comment, postId, level = 0 }: { comment: Comment; po
 
   return (
     <div className={`${level > 0 ? 'mt-4 ml-12 pl-4 border-l-2 border-gray-100' : 'mt-4'}`}>
-      <div className="bg-white rounded-lg p-4 shadow-sm">
+      <div className="bg-white rounded-lg p-4 border border-gray-100">
         <div className="flex gap-4">
           <Avatar className="h-10 w-10">
             {comment.author.profilePhotoUrl ? (
@@ -152,7 +152,7 @@ function CommentComponent({ comment, postId, level = 0 }: { comment: Comment; po
           </Avatar>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 text-sm">
-              <span className="font-medium">{comment.author.email}</span>
+              <span className="font-medium text-gray-900">{comment.author.email}</span>
               <span className="text-gray-500">•</span>
               <span className="text-gray-500">{format(new Date(comment.createdAt), 'MMM d, yyyy')}</span>
             </div>
@@ -231,7 +231,7 @@ export default function ForumPostPage() {
       <LeftPanel />
       <div className="flex-1 flex flex-col">
         <PageHeader />
-        <div className="flex-1 m-4 bg-background rounded-[30px] overflow-hidden">
+        <div className="flex-1 m-4 bg-white rounded-[30px] overflow-hidden">
           <div className="h-full overflow-auto scrollbar-hide py-14 px-14">
             <div className="max-w-3xl mx-auto">
               <div className="flex items-center gap-4 mb-8">
@@ -255,7 +255,7 @@ export default function ForumPostPage() {
                 </div>
               ) : post ? (
                 <div className="space-y-6">
-                  <div className="bg-white rounded-lg p-6 shadow-sm">
+                  <div className="bg-white rounded-lg p-6 border border-gray-100">
                     <div className="flex gap-4">
                       <Avatar className="h-12 w-12">
                         {post.author.profilePhotoUrl ? (
@@ -300,18 +300,20 @@ export default function ForumPostPage() {
                       Comments ({countTotalComments(post.comments)})
                     </h2>
 
-                    <div className="bg-white rounded-lg p-4 shadow-sm">
+                    <div className="bg-white rounded-lg p-4 border border-gray-100">
                       <CommentForm postId={post.id} />
                     </div>
 
                     <div className="space-y-4">
-                      {post.comments.map((comment) => (
-                        <CommentComponent
-                          key={comment.id}
-                          comment={comment}
-                          postId={post.id}
-                        />
-                      ))}
+                      {[...post.comments]
+                        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                        .map((comment) => (
+                          <CommentComponent
+                            key={comment.id}
+                            comment={comment}
+                            postId={post.id}
+                          />
+                        ))}
                     </div>
                   </div>
                 </div>
