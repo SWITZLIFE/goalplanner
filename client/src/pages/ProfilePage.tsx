@@ -120,14 +120,7 @@ export default function ProfilePage() {
         <div className="flex-1 m-4 bg-background rounded-[30px] overflow-hidden">
           <div className="h-full overflow-auto scrollbar-hide p-16">
             <div className="max-w-2xl mx-auto space-y-6">
-              <div className="flex items-center gap-4 mb-8">
-                <Link href="/">
-                  <Button variant="ghost" size="sm">
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back to Dashboard
-                  </Button>
-                </Link>
-              </div>
+              
               <motion.div
                 variants={{
                   hidden: { opacity: 0, y: 20 },
