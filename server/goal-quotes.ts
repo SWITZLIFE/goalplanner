@@ -3,6 +3,7 @@ import { goalDailyQuotes, goals } from "@db/schema";
 import { eq, and, desc, gte, lte } from "drizzle-orm";
 import OpenAI from "openai";
 import { startOfDay, endOfDay, format } from "date-fns";
+import { z } from "zod";
 
 if (!process.env.OPENAI_API_KEY_2) {
   throw new Error("OPENAI_API_KEY_2 is not set in environment variables");
@@ -10,6 +11,15 @@ if (!process.env.OPENAI_API_KEY_2) {
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY_2,
+  timeout: 30000, // 30 second timeout
+  maxRetries: 3,
+});
+
+// Schema for validating OpenAI response
+const quoteResponseSchema = z.object({
+  quote: z.string().min(1),
+  author: z.string().min(1),
+  context: z.string().optional(),
 });
 
 export async function generateDailyQuote(userId: number, goalId: number) {
@@ -38,8 +48,6 @@ export async function generateDailyQuote(userId: number, goalId: number) {
       totalTasks: goal.totalTasks,
       visionStatement: goal.visionStatement,
     };
-
-    const date = format(new Date(), 'yyyy-MM-dd');
 
     // Get previous quotes for this goal to avoid repetition
     const previousQuotes = await db
@@ -84,67 +92,85 @@ Respond with a JSON object in this format:
       response_format: { type: "json_object" },
     });
 
-    const content = response.choices[0].message.content;
+    const content = response.choices[0]?.message?.content;
     if (!content) {
       throw new Error("No response generated");
     }
 
-    const parsed = JSON.parse(content);
+    try {
+      const parsed = JSON.parse(content);
+      const validatedQuote = quoteResponseSchema.parse(parsed);
 
-    // Create a new quote in the database with the date
-    const [newQuote] = await db
-      .insert(goalDailyQuotes)
-      .values({
-        userId,
-        goalId,
-        quote: `"${parsed.quote}" - ${parsed.author}`,
-        isRead: false,
-        createdAt: new Date(),
-      })
-      .returning();
+      // Create a new quote in the database
+      const [newQuote] = await db
+        .insert(goalDailyQuotes)
+        .values({
+          userId,
+          goalId,
+          quote: `"${validatedQuote.quote}" - ${validatedQuote.author}`,
+          isRead: false,
+          createdAt: new Date(),
+        })
+        .returning();
 
-    return newQuote;
+      return { quote: newQuote.quote, isRead: false };
+    } catch (parseError) {
+      console.error("Failed to parse or validate OpenAI response:", parseError);
+      throw new Error("Failed to generate a valid quote");
+    }
   } catch (error) {
     console.error("Failed to generate daily quote:", error);
-    throw error;
+    throw new Error("Failed to generate quote");
   }
 }
 
 export async function getTodayQuote(userId: number, goalId: number) {
-  const today = startOfDay(new Date());
+  try {
+    const today = startOfDay(new Date());
 
-  // Check if there's a quote for today (using calendar date, not rolling 24 hours)
-  const existingQuote = await db.query.goalDailyQuotes.findFirst({
-    where: and(
-      eq(goalDailyQuotes.userId, userId),
-      eq(goalDailyQuotes.goalId, goalId),
-      gte(goalDailyQuotes.createdAt, startOfDay(today)),
-      lte(goalDailyQuotes.createdAt, endOfDay(today))
-    ),
-    orderBy: (quotes, { desc }) => [desc(quotes.createdAt)],
-  });
-
-  if (existingQuote) {
-    return existingQuote;
-  }
-
-  // Generate a new quote if none exists for today
-  return generateDailyQuote(userId, goalId);
-}
-
-export async function markQuoteAsRead(userId: number, goalId: number) {
-  const today = new Date();
-
-  // Find today's quote and mark it as read
-  await db
-    .update(goalDailyQuotes)
-    .set({ isRead: true })
-    .where(
-      and(
+    // Check if there's a quote for today
+    const existingQuote = await db.query.goalDailyQuotes.findFirst({
+      where: and(
         eq(goalDailyQuotes.userId, userId),
         eq(goalDailyQuotes.goalId, goalId),
         gte(goalDailyQuotes.createdAt, startOfDay(today)),
         lte(goalDailyQuotes.createdAt, endOfDay(today))
-      )
-    );
+      ),
+      orderBy: (quotes, { desc }) => [desc(quotes.createdAt)],
+    });
+
+    if (existingQuote) {
+      return { quote: existingQuote.quote, isRead: existingQuote.isRead };
+    }
+
+    // Generate a new quote if none exists for today
+    return generateDailyQuote(userId, goalId);
+  } catch (error) {
+    console.error("Error getting today's quote:", error);
+    throw new Error("Failed to get today's quote");
+  }
+}
+
+export async function markQuoteAsRead(userId: number, goalId: number) {
+  try {
+    const today = new Date();
+
+    // Find today's quote and mark it as read
+    await db
+      .update(goalDailyQuotes)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(goalDailyQuotes.userId, userId),
+          eq(goalDailyQuotes.goalId, goalId),
+          gte(goalDailyQuotes.createdAt, startOfDay(today)),
+          lte(goalDailyQuotes.createdAt, endOfDay(today))
+        )
+      );
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error marking quote as read:", error);
+    throw new Error("Failed to mark quote as read");
+  }
 }
