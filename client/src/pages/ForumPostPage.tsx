@@ -43,7 +43,7 @@ interface ForumPost {
 }
 
 interface CommentFormProps {
-  postId: string;
+  postId: number;
   parentCommentId?: number;
   onSuccess?: () => void;
   onCancel?: () => void;
@@ -128,12 +128,12 @@ function CommentForm({ postId, parentCommentId, onSuccess, onCancel, placeholder
   );
 }
 
-function CommentComponent({ comment, postId, level = 0 }: { comment: Comment; postId: string; level?: number }) {
+function CommentComponent({ comment, postId, level = 0 }: { comment: Comment; postId: number; level?: number }) {
   const [showReplyForm, setShowReplyForm] = useState(false);
 
   return (
-    <div className={`${level > 0 ? 'ml-8' : ''}`}>
-      <Card>
+    <div className={`${level > 0 ? 'mt-4 ml-8 pl-4 border-l border-border' : 'mt-4'}`}>
+      <Card className="group">
         <CardContent className="p-4">
           <div className="flex gap-4 items-start">
             <Avatar className="h-8 w-8">
@@ -158,7 +158,7 @@ function CommentComponent({ comment, postId, level = 0 }: { comment: Comment; po
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-muted-foreground"
+                  className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
                   onClick={() => setShowReplyForm(!showReplyForm)}
                 >
                   <Reply className="h-4 w-4 mr-2" />
@@ -193,7 +193,29 @@ function CommentComponent({ comment, postId, level = 0 }: { comment: Comment; po
 }
 
 export default function ForumPostPage() {
-  const { slug, postId } = useParams();
+  const { slug, postId: postIdParam } = useParams();
+  const postId = postIdParam ? parseInt(postIdParam) : undefined;
+
+  // Return early if postId is invalid
+  if (!postId || isNaN(postId)) {
+    return (
+      <div className="flex h-screen bg-primary">
+        <LeftPanel />
+        <div className="flex-1 flex flex-col">
+          <PageHeader />
+          <div className="flex-1 m-4 bg-background rounded-[30px] overflow-hidden">
+            <div className="h-full overflow-auto scrollbar-hide py-14 px-14">
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <p className="text-muted-foreground">Invalid post ID</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const { data: post, isLoading } = useQuery<ForumPost>({
     queryKey: [`/api/forum/posts/${postId}`],
@@ -282,15 +304,15 @@ export default function ForumPostPage() {
 
                     <Card>
                       <CardContent className="p-4">
-                        <CommentForm postId={postId} />
+                        <CommentForm postId={post.id} />
                       </CardContent>
                     </Card>
 
                     {post.comments.map((comment) => (
-                      <CommentComponent 
-                        key={comment.id} 
-                        comment={comment} 
-                        postId={postId} 
+                      <CommentComponent
+                        key={comment.id}
+                        comment={comment}
+                        postId={post.id}
                       />
                     ))}
                   </div>
