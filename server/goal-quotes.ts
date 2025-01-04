@@ -88,17 +88,17 @@ Respond with a JSON object in this exact format:
 export async function getTodayQuote(userId: number, goalId: number) {
   const today = new Date();
   
-  // Check if there's already a quote for today
+  // Check if there's already a quote for today that's less than 24 hours old
   const existingQuote = await db.query.goalDailyQuotes.findFirst({
     where: and(
       eq(goalDailyQuotes.userId, userId),
       eq(goalDailyQuotes.goalId, goalId),
-      gte(goalDailyQuotes.createdAt, startOfDay(today)),
-      lte(goalDailyQuotes.createdAt, endOfDay(today))
+      gte(goalDailyQuotes.createdAt, new Date(today.getTime() - 24 * 60 * 60 * 1000))
     ),
+    orderBy: (quotes, { desc }) => [desc(quotes.createdAt)],
   });
 
-  if (existingQuote) {
+  if (existingQuote && existingQuote.createdAt.getTime() > today.getTime() - 24 * 60 * 60 * 1000) {
     return existingQuote;
   }
 
