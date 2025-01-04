@@ -232,15 +232,6 @@ export default function ForumPostPage() {
 
   const { data: post, isLoading } = useQuery<ForumPost>({
     queryKey: [`/api/forum/posts/${postId}`],
-    queryFn: async () => {
-      const response = await fetch(`/api/forum/posts/${postId}`, {
-        credentials: 'include'
-      });
-      if (!response.ok) {
-        throw new Error('Failed to fetch post');
-      }
-      return response.json();
-    }
   });
 
   return (

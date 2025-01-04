@@ -1934,7 +1934,6 @@ Remember to:
         id: forumComments.id,
         content: forumComments.content,
         createdAt: forumComments.createdAt,
-        parentCommentId: forumComments.parentCommentId,
         author: {
           id: users.id,
           email: users.email,
