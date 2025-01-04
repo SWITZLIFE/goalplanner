@@ -942,8 +942,7 @@ Write it in a conversational tone, like you're talking to a friend.`;
           ));
       }
 
-      res.json({ success: true });
-    } catch (error) {
+      res.json({ success: true });    } catch (error) {
       console.error("Error deleting task:", error);
       res.status(500).json({
         error: "Failed to delete task",
@@ -1929,11 +1928,12 @@ Remember to:
         return res.status(404).json({ error: "Post not found" });
       }
 
-      // Get all comments for the post
+      // Get all comments for the post with parent comment info
       const allComments = await db.select({
         id: forumComments.id,
         content: forumComments.content,
         createdAt: forumComments.createdAt,
+        parentCommentId: forumComments.parentCommentId,
         author: {
           id: users.id,
           email: users.email,
@@ -1947,7 +1947,7 @@ Remember to:
 
       // Organize comments into a tree structure
       const commentMap = new Map();
-      const rootComments = [];
+      const rootComments: any[] = [];
 
       // First pass: Create a map of all comments
       allComments.forEach(comment => {
@@ -1957,7 +1957,7 @@ Remember to:
       // Second pass: Organize comments into hierarchy
       allComments.forEach(comment => {
         const commentWithReplies = commentMap.get(comment.id);
-        if (comment.parentCommentId === null) {
+        if (!comment.parentCommentId) {
           rootComments.push(commentWithReplies);
         } else {
           const parentComment = commentMap.get(comment.parentCommentId);
@@ -1982,71 +1982,7 @@ Remember to:
     }
   });
 
-  app.post("/api/forum/posts/:postId/comments", requireAuth, async (req, res) => {
-    try {
-      const { postId } = req.params;
-      const { content, parentCommentId } = req.body;
-      const userId = req.user!.id;
-
-      // Verify the post exists
-      const post = await db.query.forumPosts.findFirst({
-        where: eq(forumPosts.id, parseInt(postId))
-      });
-
-      if (!post) {
-        return res.status(404).json({ error: "Post not found" });
-      }
-
-      if (post.isLocked) {
-        return res.status(403).json({ error: "This post is locked" });
-      }
-
-      // If this is a reply, verify parent comment exists
-      if (parentCommentId) {
-        const parentComment = await db.query.forumComments.findFirst({
-          where: and(
-            eq(forumComments.id, parentCommentId),
-            eq(forumComments.postId, parseInt(postId))
-          )
-        });
-
-        if (!parentComment) {
-          return res.status(404).json({ error: "Parent comment not found" });
-        }
-      }
-
-      // Create the comment
-      const [comment] = await db.insert(forumComments)
-        .values({
-          postId: parseInt(postId),
-          userId,
-          content,
-          parentCommentId: parentCommentId || null,
-        })
-        .returning();
-
-      // Get the complete comment data with author information
-      const [commentWithAuthor] = await db.select({
-        id: forumComments.id,
-        content: forumComments.content,
-        createdAt: forumComments.createdAt,
-        parentCommentId: forumComments.parentCommentId,
-        author: {
-          id: users.id,
-          email: users.email,
-          profilePhotoUrl: users.profilePhotoUrl,
-        },
-      })
-      .from(forumComments)
-      .innerJoin(users, eq(forumComments.userId, users.id))
-      .where(eq(forumComments.id, comment.id));
-
-      res.json(commentWithAuthor);
-    } catch (error) {
-      console.error("Failed to create comment:", error);
-      res.status(500).json({ error: "Failed to create comment" });
-    }
-  });
+  // Remove the duplicate route handler for POST /api/forum/posts/:postId/comments
 
   const httpServer = createServer(app);
   return httpServer;
