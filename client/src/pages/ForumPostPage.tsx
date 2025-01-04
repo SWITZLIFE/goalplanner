@@ -14,6 +14,15 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { useState } from "react";
 
+// Helper function to count total comments including replies
+function countTotalComments(comments: Comment[]): number {
+  return comments.reduce((total, comment) => {
+    // Add 1 for the current comment
+    // Add the count of any replies (recursively)
+    return total + 1 + (comment.replies ? countTotalComments(comment.replies) : 0);
+  }, 0);
+}
+
 interface Comment {
   id: number;
   content: string;
@@ -298,7 +307,7 @@ export default function ForumPostPage() {
                   <div className="space-y-4">
                     <h2 className="text-2xl font-semibold flex items-center gap-2">
                       <MessageSquare className="h-5 w-5" />
-                      Comments ({post.comments.length})
+                      Comments ({countTotalComments(post.comments)})
                     </h2>
 
                     {post.comments.map((comment) => (
