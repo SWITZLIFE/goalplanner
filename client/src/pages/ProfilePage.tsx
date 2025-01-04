@@ -1,4 +1,3 @@
-
 import { useUser } from "@/hooks/use-user";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -118,12 +117,7 @@ export default function ProfilePage() {
       <LeftPanel />
       <div className="flex-1 flex flex-col">
         <PageHeader />
-        <motion.div 
-          className="flex-1 m-4 bg-background rounded-[30px] overflow-hidden"
-          initial={{ x: 300, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-        >
+        <div className="flex-1 m-4 bg-background rounded-[30px] overflow-hidden">
           <div className="h-full overflow-auto scrollbar-hide p-16">
             <div className="max-w-2xl mx-auto space-y-6">
               <div className="flex items-center gap-4 mb-8">
@@ -156,206 +150,206 @@ export default function ProfilePage() {
                     <CardTitle>Account Information</CardTitle>
                     <CardDescription>View and manage your account details</CardDescription>
                   </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-6">
-                    <div className="flex items-center gap-4">
-                      <Avatar className="h-20 w-20">
-                        {user.profilePhotoUrl ? (
-                          <AvatarImage 
-                            src={user.profilePhotoUrl} 
-                            alt="Profile photo"
-                            className="object-cover w-full h-full"
-                          />
-                        ) : (
-                          <AvatarFallback className="bg-primary text-primary-foreground text-xl">
-                            {initials}
-                          </AvatarFallback>
-                        )}
-                      </Avatar>
-                      <div>
-                        <Button
-                          variant="outline"
-                          onClick={() => document.getElementById('photo-upload')?.click()}
-                        >
-                          Change Photo
-                        </Button>
-                        <input
-                          id="photo-upload"
-                          type="file"
-                          className="hidden"
-                          accept="image/*"
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
+                  <CardContent className="space-y-4">
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-4">
+                        <Avatar className="h-20 w-20">
+                          {user.profilePhotoUrl ? (
+                            <AvatarImage 
+                              src={user.profilePhotoUrl} 
+                              alt="Profile photo"
+                              className="object-cover w-full h-full"
+                            />
+                          ) : (
+                            <AvatarFallback className="bg-primary text-primary-foreground text-xl">
+                              {initials}
+                            </AvatarFallback>
+                          )}
+                        </Avatar>
+                        <div>
+                          <Button
+                            variant="outline"
+                            onClick={() => document.getElementById('photo-upload')?.click()}
+                          >
+                            Change Photo
+                          </Button>
+                          <input
+                            id="photo-upload"
+                            type="file"
+                            className="hidden"
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
 
-                            if (!file.type.startsWith('image/')) {
-                              toast({
-                                title: "Error",
-                                description: "Please select an image file",
-                                variant: "destructive",
-                              });
-                              return;
-                            }
-
-                            const formData = new FormData();
-                            formData.append('photo', file);
-
-                            try {
-                              const response = await fetch('/api/user/profile-photo', {
-                                method: 'POST',
-                                body: formData,
-                                credentials: 'include',
-                              });
-
-                              if (!response.ok) {
-                                throw new Error('Failed to upload photo');
+                              if (!file.type.startsWith('image/')) {
+                                toast({
+                                  title: "Error",
+                                  description: "Please select an image file",
+                                  variant: "destructive",
+                                });
+                                return;
                               }
 
-                              const data = await response.json();
-                              toast({
-                                title: "Success",
-                                description: "Profile photo updated successfully",
-                              });
+                              const formData = new FormData();
+                              formData.append('photo', file);
 
-                              window.location.reload();
+                              try {
+                                const response = await fetch('/api/user/profile-photo', {
+                                  method: 'POST',
+                                  body: formData,
+                                  credentials: 'include',
+                                });
+
+                                if (!response.ok) {
+                                  throw new Error('Failed to upload photo');
+                                }
+
+                                const data = await response.json();
+                                toast({
+                                  title: "Success",
+                                  description: "Profile photo updated successfully",
+                                });
+
+                                window.location.reload();
+                              } catch (error) {
+                                toast({
+                                  title: "Error",
+                                  description: "Failed to upload profile photo",
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Email</Label>
+                        <Input value={user.email} disabled />
+                      </div>
+
+                      <div className="pt-4">
+                        <Button 
+                          variant="destructive" 
+                          onClick={async () => {
+                            try {
+                              const response = await fetch('/api/logout', {
+                                method: 'POST',
+                                credentials: 'include'
+                              });
+                              if (!response.ok) throw new Error('Logout failed');
+                              window.location.href = '/';
                             } catch (error) {
                               toast({
                                 title: "Error",
-                                description: "Failed to upload profile photo",
+                                description: "Failed to logout",
                                 variant: "destructive",
                               });
                             }
                           }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Email</Label>
-                      <Input value={user.email} disabled />
-                    </div>
-
-                    <div className="pt-4">
-                      <Button 
-                        variant="destructive" 
-                        onClick={async () => {
-                          try {
-                            const response = await fetch('/api/logout', {
-                              method: 'POST',
-                              credentials: 'include'
-                            });
-                            if (!response.ok) throw new Error('Logout failed');
-                            window.location.href = '/';
-                          } catch (error) {
-                            toast({
-                              title: "Error",
-                              description: "Failed to logout",
-                              variant: "destructive",
-                            });
-                          }
-                        }}
-                      >
-                        Sign Out
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  {!isChangingPassword ? (
-                    <Button 
-                      variant="outline"
-                      onClick={() => setIsChangingPassword(true)}
-                    >
-                      Change Password
-                    </Button>
-                  ) : (
-                    <form onSubmit={handlePasswordChange} className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="currentPassword">Current Password</Label>
-                        <Input
-                          id="currentPassword"
-                          type="password"
-                          value={currentPassword}
-                          onChange={(e) => setCurrentPassword(e.target.value)}
-                          required
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="newPassword">New Password</Label>
-                        <Input
-                          id="newPassword"
-                          type="password"
-                          value={newPassword}
-                          onChange={(e) => setNewPassword(e.target.value)}
-                          required
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                        <Input
-                          id="confirmPassword"
-                          type="password"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          required
-                        />
-                      </div>
-                      
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => {
-                            setIsChangingPassword(false);
-                            setCurrentPassword("");
-                            setNewPassword("");
-                            setConfirmPassword("");
-                          }}
                         >
-                          Cancel
-                        </Button>
-                        <Button type="submit">
-                          Update Password
+                          Sign Out
                         </Button>
                       </div>
-                    </form>
-                  )}
-
-                  <div className="mb-6">
-                    {user?.googleConnected ? (
-                      <p className="text-sm text-green-600">Google Calendar Connected!</p>
+                    </div>
+                    
+                    {!isChangingPassword ? (
+                      <Button 
+                        variant="outline"
+                        onClick={() => setIsChangingPassword(true)}
+                      >
+                        Change Password
+                      </Button>
                     ) : (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="outline" size="sm">
-                            Connect Google Calendar
+                      <form onSubmit={handlePasswordChange} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="currentPassword">Current Password</Label>
+                          <Input
+                            id="currentPassword"
+                            type="password"
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
+                            required
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="newPassword">New Password</Label>
+                          <Input
+                            id="newPassword"
+                            type="password"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            required
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                          <Input
+                            id="confirmPassword"
+                            type="password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            required
+                          />
+                        </div>
+                        
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              setIsChangingPassword(false);
+                              setCurrentPassword("");
+                              setNewPassword("");
+                              setConfirmPassword("");
+                            }}
+                          >
+                            Cancel
                           </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Connect Google Calendar</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will redirect you to Google to grant calendar
-                              permissions. Continue?
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleConnectGoogle}>
-                              Connect
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                          <Button type="submit">
+                            Update Password
+                          </Button>
+                        </div>
+                      </form>
                     )}
-                  </div>
-                </CardContent>
-              </Card>
+
+                    <div className="mb-6">
+                      {user?.googleConnected ? (
+                        <p className="text-sm text-green-600">Google Calendar Connected!</p>
+                      ) : (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              Connect Google Calendar
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Connect Google Calendar</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will redirect you to Google to grant calendar
+                                permissions. Continue?
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={handleConnectGoogle}>
+                                Connect
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
               </motion.div>
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
     </div>
   );
