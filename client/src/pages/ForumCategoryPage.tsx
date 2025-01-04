@@ -217,7 +217,7 @@ export default function ForumCategoryPage() {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-6">
                   {posts?.map((post) => (
                     <Link key={post.id} href={`/forum/${slug}/${post.id}`}>
                       <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
