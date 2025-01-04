@@ -1,8 +1,12 @@
 import { db } from "@db";
 import { goalDailyQuotes, goals } from "@db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc, gte, lte } from "drizzle-orm";
 import OpenAI from "openai";
 import { startOfDay, endOfDay, format } from "date-fns";
+
+if (!process.env.OPENAI_API_KEY_2) {
+  throw new Error("OPENAI_API_KEY_2 is not set in environment variables");
+}
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY_2,
@@ -38,13 +42,14 @@ export async function generateDailyQuote(userId: number, goalId: number) {
     const date = format(new Date(), 'yyyy-MM-dd');
 
     // Get previous quotes for this goal to avoid repetition
-    const previousQuotes = await db.select()
+    const previousQuotes = await db
+      .select()
       .from(goalDailyQuotes)
       .where(and(
         eq(goalDailyQuotes.goalId, goalId),
         eq(goalDailyQuotes.userId, userId)
       ))
-      .orderBy(quotes => desc(quotes.createdAt))
+      .orderBy(desc(goalDailyQuotes.createdAt))
       .limit(5);
 
     const systemPrompt = `You are an AI quote curator, selecting relevant quotes for someone working on their personal goals.
@@ -87,7 +92,8 @@ Respond with a JSON object in this format:
     const parsed = JSON.parse(content);
 
     // Create a new quote in the database with the date
-    const [newQuote] = await db.insert(goalDailyQuotes)
+    const [newQuote] = await db
+      .insert(goalDailyQuotes)
       .values({
         userId,
         goalId,
@@ -130,7 +136,8 @@ export async function markQuoteAsRead(userId: number, goalId: number) {
   const today = new Date();
 
   // Find today's quote and mark it as read
-  await db.update(goalDailyQuotes)
+  await db
+    .update(goalDailyQuotes)
     .set({ isRead: true })
     .where(
       and(
