@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,26 +19,32 @@ interface DailyInspirationProps {
 
 interface Inspiration {
   content: string | null;
+  goalId: number;
 }
 
-export function DailyInspiration({ goalId, goalTitle }: DailyInspirationProps) {
+export function DailyInspiration({ goalId: initialGoalId, goalTitle }: DailyInspirationProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [currentGoalId, setCurrentGoalId] = useState(initialGoalId);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const today = format(new Date(), 'yyyy-MM-dd');
 
   // Query to fetch today's inspiration if it exists
   const { data: inspiration, isLoading } = useQuery<Inspiration>({
-    queryKey: [`/api/goals/${goalId}/inspiration`, today],
+    queryKey: [`/api/goals/${initialGoalId}/inspiration`, today],
     queryFn: async () => {
-      const response = await fetch(`/api/goals/${goalId}/inspiration?date=${today}`, {
+      const response = await fetch(`/api/goals/${initialGoalId}/inspiration?date=${today}`, {
         credentials: 'include'
       });
       if (!response.ok) {
         throw new Error('Failed to fetch inspiration');
       }
-      return response.json();
+      const data = await response.json();
+      if (data.goalId) {
+        setCurrentGoalId(data.goalId);
+      }
+      return data;
     }
   });
 
@@ -48,7 +54,7 @@ export function DailyInspiration({ goalId, goalTitle }: DailyInspirationProps) {
     setIsGenerating(true);
     setIsOpen(true);
     try {
-      const response = await fetch(`/api/goals/${goalId}/inspiration`, {
+      const response = await fetch(`/api/goals/${currentGoalId}/inspiration`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -64,7 +70,7 @@ export function DailyInspiration({ goalId, goalTitle }: DailyInspirationProps) {
 
       // Invalidate the query to refetch the inspiration
       await queryClient.invalidateQueries({ 
-        queryKey: [`/api/goals/${goalId}/inspiration`, today]
+        queryKey: [`/api/goals/${currentGoalId}/inspiration`, today]
       });
     } catch (error) {
       console.error('Failed to generate inspiration:', error);

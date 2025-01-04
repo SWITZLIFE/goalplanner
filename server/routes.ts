@@ -21,6 +21,21 @@ import { registerGoogleOAuthRoutes } from "./google-oauth";
 import { supabase } from './supabase';
 import { format } from 'date-fns';
 
+// Add this function after imports at the top
+function selectDailyGoal(goals: any[], date: string): number | null {
+  if (!goals || goals.length === 0) return null;
+
+  // Convert date string to timestamp for consistent hashing
+  const dateObj = new Date(date);
+  const timestamp = dateObj.getTime();
+
+  // Use the date's timestamp to select a goal index
+  // This ensures the same goal is selected for the same date
+  const selectedIndex = Math.floor((timestamp / (24 * 60 * 60 * 1000)) % goals.length);
+
+  return goals[selectedIndex].id;
+}
+
 // Configure multer for handling file uploads
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -277,30 +292,48 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Daily Inspiration API
+  // Modify the GET inspiration endpoint (around line 280)
   app.get("/api/goals/:goalId/inspiration", requireAuth, async (req, res) => {
     try {
-      const { goalId } = req.params;
-      const { date } = req.query;
       const userId = req.user!.id;
+      const { date } = req.query;
 
-      // Check if inspiration exists for today
+      // Get all goals for the user
+      const userGoals = await db.select()
+        .from(goals)
+        .where(eq(goals.userId, userId))
+        .orderBy(goals.createdAt);
+
+      // Select the goal for today
+      const todayGoalId = selectDailyGoal(userGoals, date as string);
+
+      if (!todayGoalId) {
+        return res.status(404).json({ error: "No goals found" });
+      }
+
+      // Check if inspiration exists for today's selected goal
       const existingInspiration = await db.select()
         .from(dailyInspirations)
         .where(
           and(
             eq(dailyInspirations.userId, userId),
-            eq(dailyInspirations.goalId, parseInt(goalId)),
+            eq(dailyInspirations.goalId, todayGoalId),
             eq(dailyInspirations.date, date as string)
           )
         )
         .limit(1);
 
       if (existingInspiration.length > 0) {
-        return res.json(existingInspiration[0]);
+        return res.json({
+          ...existingInspiration[0],
+          goalId: todayGoalId
+        });
       }
 
-      res.json({ content: null });
+      res.json({ 
+        content: null,
+        goalId: todayGoalId
+      });
     } catch (error) {
       console.error("Failed to fetch inspiration:", error);
       res.status(500).json({ error: "Failed to fetch inspiration" });
@@ -902,8 +935,7 @@ Write it in a conversational tone, like you're talking to a friend.`;
       const remainingTasks = await db.select()
         .from(tasks)
         .where(and(
-          eq(tasks.goalId, taskToDelete.goalId),
-          eq(tasks.userId, userId)
+          eq(tasks.goalId, taskToDelete.goalId),          eq(tasks.userId, userId)
         ));
 
       if (remainingTasks.length > 0) {
