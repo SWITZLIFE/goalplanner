@@ -52,12 +52,7 @@ export default function ProfilePage() {
         <LeftPanel />
         <div className="flex-1 flex flex-col">
           <PageHeader />
-          <motion.div 
-            className="flex-1 m-4 bg-background rounded-[30px] overflow-hidden"
-            initial={{ x: 300, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-          >
+          <div className="flex-1 m-4 bg-background rounded-[30px] overflow-hidden">
             <div className="h-full flex items-center justify-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
             </div>
@@ -139,11 +134,28 @@ export default function ProfilePage() {
                   </Button>
                 </Link>
               </div>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Account Information</CardTitle>
-                  <CardDescription>View and manage your account details</CardDescription>
-                </CardHeader>
+              <motion.div
+                variants={{
+                  hidden: { opacity: 0, y: 20 },
+                  visible: { 
+                    opacity: 1, 
+                    y: 0,
+                    transition: {
+                      type: "spring",
+                      stiffness: 300,
+                      damping: 25,
+                      duration: 0.5
+                    }
+                  }
+                }}
+                initial="hidden"
+                animate="visible"
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Account Information</CardTitle>
+                    <CardDescription>View and manage your account details</CardDescription>
+                  </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-6">
                     <div className="flex items-center gap-4">
@@ -340,6 +352,7 @@ export default function ProfilePage() {
                   </div>
                 </CardContent>
               </Card>
+              </motion.div>
             </div>
           </div>
         </motion.div>
