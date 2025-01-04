@@ -148,7 +148,10 @@ function CommentComponent({ comment, postId, level = 0 }: { comment: Comment; po
             <div className="flex items-center">
               <Avatar className="h-12 w-12">
                 {comment.author.profilePhotoUrl ? (
-                  <AvatarImage src={comment.author.profilePhotoUrl} />
+                  <AvatarImage 
+                    src={comment.author.profilePhotoUrl} 
+                    className="object-cover"
+                  />
                 ) : (
                   <AvatarFallback>
                     {comment.author.email.substring(0, 2).toUpperCase()}
@@ -270,17 +273,22 @@ export default function ForumPostPage() {
                 <div className="space-y-8">
                   <Card>
                     <CardContent className="p-6">
-                      <div className="flex gap-4 items-start">
-                        <Avatar className="h-10 w-10">
-                          {post.author.profilePhotoUrl ? (
-                            <AvatarImage src={post.author.profilePhotoUrl} />
-                          ) : (
-                            <AvatarFallback>
-                              {post.author.email.substring(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          )}
-                        </Avatar>
-                        <div className="flex-1">
+                      <div className="flex gap-4 items-stretch min-h-[4rem]">
+                        <div className="flex items-center">
+                          <Avatar className="h-12 w-12">
+                            {post.author.profilePhotoUrl ? (
+                              <AvatarImage 
+                                src={post.author.profilePhotoUrl} 
+                                className="object-cover"
+                              />
+                            ) : (
+                              <AvatarFallback>
+                                {post.author.email.substring(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            )}
+                          </Avatar>
+                        </div>
+                        <div className="flex-1 min-w-0 pl-2">
                           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
                             <span>{post.author.email}</span>
                             <span>•</span>
