@@ -937,8 +937,7 @@ Write it in a conversational tone, like you're talking to a friend.`;
         await db.update(goals)
           .set({ progress: 0 })
           .where(and(
-            eq(goals.id, taskToDelete.goalId),
-            eq(goals.userId, userId)
+            eq(goals.id, taskToDelete.goalId),            eq(goals.userId, userId)
           ));
       }
 
@@ -1894,7 +1893,7 @@ Remember to:
       .innerJoin(users, eq(forumComments.userId, users.id))
       .where(eq(forumComments.id, comment.id));
 
-      res.json(commentWithAuthor);
+            res.json(commentWithAuthor);
     } catch (error) {
       console.error("Failed to create comment:", error);
       res.status(500).json({ error: "Failed to create comment" });
@@ -1911,10 +1910,10 @@ Remember to:
         id: forumPosts.id,
         title: forumPosts.title,
         content: forumPosts.content,
+        createdAt: forumPosts.createdAt,
+        viewCount: forumPosts.viewCount,
         isPinned: forumPosts.isPinned,
         isLocked: forumPosts.isLocked,
-        viewCount: forumPosts.viewCount,
-        createdAt: forumPosts.createdAt,
         author: {
           id: users.id,
           email: users.email,
@@ -1929,8 +1928,8 @@ Remember to:
         return res.status(404).json({ error: "Post not found" });
       }
 
-      // Get all comments for the post
-      const allComments = await db.select({
+      // Get all comments for this post with author information
+      const comments = await db.select({
         id: forumComments.id,
         content: forumComments.content,
         createdAt: forumComments.createdAt,
@@ -1946,17 +1945,17 @@ Remember to:
       .where(eq(forumComments.postId, parseInt(postId)))
       .orderBy(forumComments.createdAt);
 
-      // Organize comments into a tree structure
+      // Build comment tree
       const commentMap = new Map();
       const rootComments = [];
 
-      // First pass: Create a map of all comments
-      allComments.forEach(comment => {
+      // First pass: Create map of all comments
+      comments.forEach(comment => {
         commentMap.set(comment.id, { ...comment, replies: [] });
       });
 
-      // Second pass: Organize comments into hierarchy
-      allComments.forEach(comment => {
+      // Second pass: Build tree structure
+      comments.forEach(comment => {
         const commentWithReplies = commentMap.get(comment.id);
         if (comment.parentCommentId === null) {
           rootComments.push(commentWithReplies);
@@ -1970,16 +1969,17 @@ Remember to:
 
       // Increment view count
       await db.update(forumPosts)
-        .set({ viewCount: (post.viewCount || 0) + 1 })
+        .set({ viewCount: sql`${forumPosts.viewCount} + 1` })
         .where(eq(forumPosts.id, parseInt(postId)));
 
+      // Return post with comments
       res.json({
         ...post,
-        comments: rootComments,
+        comments: rootComments
       });
     } catch (error) {
-      console.error("Failed to fetch forum post:", error);
-      res.status(500).json({ error: "Failed to fetch forum post" });
+      console.error("Failed to fetch post:", error);
+      res.status(500).json({ error: "Failed to fetch post" });
     }
   });
 
