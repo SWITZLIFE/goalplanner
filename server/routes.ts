@@ -22,7 +22,7 @@ import { supabase } from './supabase';
 import { format } from 'date-fns';
 
 // Add this function after imports at the top
-function selectDailyGoal(goals: any[], date: string): number | null {
+function selectDailyGoal(goals: { id: number }[], date: string): number | null {
   if (!goals || goals.length === 0) return null;
 
   // Convert date string to timestamp for consistent hashing
@@ -292,14 +292,25 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Modify the GET inspiration endpoint (around line 280)
+  // Modify the GET inspiration endpoint
   app.get("/api/goals/:goalId/inspiration", requireAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
       const { date } = req.query;
 
+      if (!date) {
+        return res.status(400).json({ 
+          error: "Date parameter is required",
+          content: null,
+          goalId: null
+        });
+      }
+
       // Get all goals for the user
-      const userGoals = await db.select()
+      const userGoals = await db.select({
+        id: goals.id,
+        title: goals.title,
+      })
         .from(goals)
         .where(eq(goals.userId, userId))
         .orderBy(goals.createdAt);
@@ -308,7 +319,11 @@ export function registerRoutes(app: Express): Server {
       const todayGoalId = selectDailyGoal(userGoals, date as string);
 
       if (!todayGoalId) {
-        return res.status(404).json({ error: "No goals found" });
+        return res.status(404).json({ 
+          error: "No goals found",
+          content: null,
+          goalId: null
+        });
       }
 
       // Check if inspiration exists for today's selected goal
@@ -336,7 +351,11 @@ export function registerRoutes(app: Express): Server {
       });
     } catch (error) {
       console.error("Failed to fetch inspiration:", error);
-      res.status(500).json({ error: "Failed to fetch inspiration" });
+      res.status(500).json({ 
+        error: "Failed to fetch inspiration",
+        content: null,
+        goalId: null
+      });
     }
   });
 
@@ -358,7 +377,7 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ error: "Goal not found" });
       }
 
-      // Generate inspiration using OpenAI with a simpler, more relatable prompt
+      // Generate inspiration using OpenAI
       const prompt = `Write an encouraging message (100-150 words) for someone working on their goals. 
 The message should be:
 - Written at an 8th grade reading level
@@ -417,6 +436,9 @@ Write it in a conversational tone, like you're talking to a friend.`;
       res.status(500).json({ error: "Failed to generate inspiration" });
     }
   });
+
+  // Remove the duplicate inspiration endpoint
+  // app.get("/api/goals/inspiration", requireAuth, async (req, res) => { ... });
 
   // Configure CORS headers for Supabase Storage URLs
   app.use((req, res, next) => {
@@ -924,18 +946,18 @@ Write it in a conversational tone, like you're talking to a friend.`;
         .where(eq(tasks.parentTaskId, taskIdInt));
 
       // Finally delete the main task
-      const [deletedTask] = await db.delete(tasks)
+      await db.delete(tasks)
         .where(and(
           eq(tasks.id, taskIdInt),
           eq(tasks.userId, userId)
-        ))
-        .returning();
+        ));
 
       // Update goal progress
       const remainingTasks = await db.select()
         .from(tasks)
         .where(and(
-          eq(tasks.goalId, taskToDelete.goalId),          eq(tasks.userId, userId)
+          eq(tasks.goalId, taskToDelete.goalId),
+          eq(tasks.userId, userId)
         ));
 
       if (remainingTasks.length > 0) {
@@ -1661,38 +1683,8 @@ Remember to:
     }
   });
 
-  // Daily Inspiration API - REMOVED ORIGINAL, using edited snippet above.
-  // app.post("/api/goals/:goalId/inspiration", requireAuth, async (req, res) => { ... });
-
-  app.get("/api/goals/inspiration", requireAuth, async (req, res) => {
-    try {
-      const { goalId, date } = req.query;
-      const userId = req.user!.id;
-
-      if (!goalId || !date) {
-        return res.status(400).json({ error: "Missing required parameters" });
-      }
-
-      // Get today's inspiration if it exists
-      const [inspiration] = await db.select()
-        .from(dailyInspirations)
-        .where(and(
-          eq(dailyInspirations.goalId, parseInt(goalId as string)),
-          eq(dailyInspirations.userId, userId),
-          eq(dailyInspirations.date, date as string)
-        ))
-        .limit(1);
-
-      if (!inspiration) {
-        return res.json({ content: null });
-      }
-
-      res.json({ content: inspiration.content });
-    } catch (error) {
-      console.error("Failed to fetch inspiration:", error);
-      res.status(500).json({ error: "Failed to fetch inspiration" });
-    }
-  });
+  // Daily Inspiration API 
+  // app.get("/api/goals/inspiration", requireAuth, async (req, res) => { ... });
 
   // Forum API Routes
   app.get("/api/forum/categories", async (req, res) => {
@@ -1912,7 +1904,7 @@ Remember to:
 
       res.json(commentWithAuthor);
     } catch (error) {
-      console.error("Failed to create comment:", error);
+      console.error(""Failed to create comment:", error);
       res.status(500).json({ error: "Failed to create comment" });
     }
   });
