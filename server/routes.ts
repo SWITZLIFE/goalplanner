@@ -325,13 +325,30 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).json({ error: "Goal not found" });
       }
 
-      // Generate inspiration using OpenAI with a simpler, more relatable prompt
-      const prompt = `Write an encouraging message (100-150 words) for someone working on their goals. 
+      // Get all active goals for the user
+      const userGoals = await db.select()
+        .from(goals)
+        .where(eq(goals.userId, userId));
+
+      // Select a random goal from user's goals
+      const randomGoal = userGoals[Math.floor(Math.random() * userGoals.length)];
+
+      // Create a list of all goal titles
+      const allGoalTitles = userGoals.map(g => g.title).join("\n- ");
+
+      // Generate inspiration using OpenAI with a prompt that includes all goals
+      const prompt = `Write an encouraging message (100-150 words) for someone working on multiple goals:
+
+Their goals are:
+- ${allGoalTitles}
+
+For today's message, focus on their goal: "${randomGoal.title}"
+
 The message should be:
 - Written at an 8th grade reading level
 - Warm and friendly, like advice from a mentor
 - Include a specific tip or insight about personal growth
-- Relate to their goal: "${goal.title}"
+- Acknowledge they are working on multiple goals, but focus on the selected goal
 
 Focus on:
 - Using simple, clear language
