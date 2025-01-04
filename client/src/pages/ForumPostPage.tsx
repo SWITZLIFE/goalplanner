@@ -272,7 +272,7 @@ export default function ForumPostPage() {
               ) : post ? (
                 <div className="space-y-8">
                   <Card>
-                    <CardContent className="p-6">
+                    <CardContent className="p-3">
                       <div className="flex gap-4 items-stretch min-h-[4rem]">
                         <div className="flex items-center">
                           <Avatar className="h-12 w-12">
@@ -289,7 +289,7 @@ export default function ForumPostPage() {
                           </Avatar>
                         </div>
                         <div className="flex-1 min-w-0 pl-2">
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
                             <span>{post.author.email}</span>
                             <span>•</span>
                             <span>{format(new Date(post.createdAt), 'MMM d, yyyy')}</span>
