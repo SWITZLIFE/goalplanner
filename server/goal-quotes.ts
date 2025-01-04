@@ -76,49 +76,71 @@ Rules for selecting a quote:
 5. Focus on motivation, wisdom, and practical insights
 6. Ensure the quote has not been used recently for this goal
 
-Respond with a JSON object in this format:
+Format your response exactly like this example:
 {
-  "quote": "the quote text here",
-  "author": "Author Name",
-  "context": "Brief explanation of why this quote fits the goal"
+  "quote": "The only way to do great work is to love what you do.",
+  "author": "Steve Jobs",
+  "context": "This quote resonates with the goal of career development"
 }`;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-3.5-turbo",
       messages: [
         { role: "system", content: systemPrompt }
       ],
       temperature: 0.9, // Increased for more variety
-      response_format: { type: "json_object" },
     });
 
     const content = response.choices[0]?.message?.content;
     if (!content) {
-      throw new Error("No response generated");
+      throw new Error("Empty response from OpenAI");
     }
 
-    try {
-      const parsed = JSON.parse(content);
-      const validatedQuote = quoteResponseSchema.parse(parsed);
+    // Log the raw response for debugging
+    console.log("Raw OpenAI response content:", content);
 
-      // Create a new quote in the database
+    try {
+      // Handle potential non-JSON responses
+      let parsedContent;
+      try {
+        parsedContent = JSON.parse(content);
+      } catch (parseError) {
+        // If content is not valid JSON, try to extract message directly
+        console.warn("Invalid JSON response, attempting to parse as raw message");
+        parsedContent = { message: content.replace(/^"|"$/g, '').trim() };
+      }
+
+      const validatedContent = quoteResponseSchema.parse(parsedContent);
+
+      // Create a new message in the database
       const [newQuote] = await db
         .insert(goalDailyQuotes)
         .values({
           userId,
           goalId,
-          quote: `"${validatedQuote.quote}" - ${validatedQuote.author}`,
+          quote: `"${validatedContent.quote}" - ${validatedContent.author}`,
           isRead: false,
           createdAt: new Date(),
         })
         .returning();
 
       return { quote: newQuote.quote, isRead: false };
-    } catch (parseError) {
-      console.error("Failed to parse or validate OpenAI response:", parseError);
-      throw new Error("Failed to generate a valid quote");
+    } catch (error) {
+      console.error("Message Processing Error:", {
+        error: error.message,
+        content: content?.slice(0, 200),
+        contentType: typeof content
+      });
+      throw new Error("Failed to process the generated message");
     }
   } catch (error) {
+    if (error.response) {
+      console.error("OpenAI API Error:", {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data
+      });
+    }
     console.error("Failed to generate daily quote:", error);
     throw new Error("Failed to generate quote");
   }
@@ -128,7 +150,7 @@ export async function getTodayQuote(userId: number, goalId: number) {
   try {
     const today = startOfDay(new Date());
 
-    // Check if there's a quote for today
+    // Check if there's already a message for today
     const existingQuote = await db.query.goalDailyQuotes.findFirst({
       where: and(
         eq(goalDailyQuotes.userId, userId),
@@ -136,18 +158,20 @@ export async function getTodayQuote(userId: number, goalId: number) {
         gte(goalDailyQuotes.createdAt, startOfDay(today)),
         lte(goalDailyQuotes.createdAt, endOfDay(today))
       ),
-      orderBy: (quotes, { desc }) => [desc(quotes.createdAt)],
     });
 
     if (existingQuote) {
-      return { quote: existingQuote.quote, isRead: existingQuote.isRead };
+      return {
+        quote: existingQuote.quote,
+        isRead: existingQuote.isRead,
+      };
     }
 
     // Generate a new quote if none exists for today
     return generateDailyQuote(userId, goalId);
   } catch (error) {
-    console.error("Error getting today's quote:", error);
-    throw new Error("Failed to get today's quote");
+    console.error("Failed to fetch daily quote:", error);
+    throw new Error("Failed to fetch daily quote");
   }
 }
 
@@ -155,7 +179,7 @@ export async function markQuoteAsRead(userId: number, goalId: number) {
   try {
     const today = new Date();
 
-    // Find today's quote and mark it as read
+    // Find today's message and mark it as read
     await db
       .update(goalDailyQuotes)
       .set({ isRead: true })
