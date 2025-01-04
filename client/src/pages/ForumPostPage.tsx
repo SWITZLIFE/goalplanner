@@ -114,8 +114,8 @@ function CommentForm({ postId, parentCommentId, onSuccess, onCancel, placeholder
             <FormItem>
               <FormControl>
                 <Textarea
-                  placeholder={placeholder || "Write a comment..."}
-                  className="min-h-[100px]"
+                  placeholder={placeholder || "What are your thoughts?"}
+                  className="min-h-[100px] resize-none border-0 focus-visible:ring-0 p-0"
                   {...field}
                 />
               </FormControl>
@@ -129,7 +129,7 @@ function CommentForm({ postId, parentCommentId, onSuccess, onCancel, placeholder
             </Button>
           )}
           <Button type="submit" disabled={commentMutation.isPending}>
-            {commentMutation.isPending ? "Posting..." : parentCommentId ? "Post Reply" : "Post Comment"}
+            {commentMutation.isPending ? "Posting..." : parentCommentId ? "Post Reply" : "Post"}
           </Button>
         </div>
       </form>
@@ -142,44 +142,42 @@ function CommentComponent({ comment, postId, level = 0 }: { comment: Comment; po
 
   return (
     <div className={`${level > 0 ? 'mt-3 ml-8 pl-4 border-l border-border' : 'mt-3'}`}>
-      <Card className="group relative">
-        <CardContent className="p-3">
-          <div className="flex gap-4 items-stretch min-h-[4rem]">
-            <div className="flex items-center">
-              <Avatar className="h-12 w-12">
-                {comment.author.profilePhotoUrl ? (
-                  <AvatarImage 
-                    src={comment.author.profilePhotoUrl} 
-                    className="object-cover"
-                  />
-                ) : (
-                  <AvatarFallback>
-                    {comment.author.email.substring(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                )}
-              </Avatar>
-            </div>
-            <div className="flex-1 min-w-0 pl-2">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                <span>{comment.author.email}</span>
-                <span>•</span>
-                <span>{format(new Date(comment.createdAt), 'MMM d, yyyy')}</span>
-              </div>
-              <div className="prose prose-sm max-w-none">
-                {comment.content}
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity absolute top-2 right-2"
-              onClick={() => setShowReplyForm(!showReplyForm)}
-            >
-              <Reply className="h-4 w-4" />
-            </Button>
+      <div className="group relative py-4">
+        <div className="flex gap-4 items-stretch min-h-[4rem]">
+          <div className="flex items-center">
+            <Avatar className="h-12 w-12">
+              {comment.author.profilePhotoUrl ? (
+                <AvatarImage 
+                  src={comment.author.profilePhotoUrl} 
+                  className="object-cover"
+                />
+              ) : (
+                <AvatarFallback>
+                  {comment.author.email.substring(0, 2).toUpperCase()}
+                </AvatarFallback>
+              )}
+            </Avatar>
           </div>
-        </CardContent>
-      </Card>
+          <div className="flex-1 min-w-0 pl-2">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+              <span>{comment.author.email}</span>
+              <span>•</span>
+              <span>{format(new Date(comment.createdAt), 'MMM d, yyyy')}</span>
+            </div>
+            <div className="prose prose-sm max-w-none">
+              {comment.content}
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity absolute top-2 right-2"
+            onClick={() => setShowReplyForm(!showReplyForm)}
+          >
+            <Reply className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
 
       {showReplyForm && (
         <div className="mt-2">
@@ -271,48 +269,46 @@ export default function ForumPostPage() {
                 </div>
               ) : post ? (
                 <div className="space-y-8">
-                  <Card>
-                    <CardContent className="p-6">
-                      <div className="flex gap-4 items-stretch min-h-[4rem]">
-                        <div className="flex items-center">
-                          <Avatar className="h-12 w-12">
-                            {post.author.profilePhotoUrl ? (
-                              <AvatarImage 
-                                src={post.author.profilePhotoUrl} 
-                                className="object-cover"
-                              />
-                            ) : (
-                              <AvatarFallback>
-                                {post.author.email.substring(0, 2).toUpperCase()}
-                              </AvatarFallback>
-                            )}
-                          </Avatar>
+                  <div className="border-b pb-8">
+                    <div className="flex gap-4 items-stretch min-h-[4rem]">
+                      <div className="flex items-center">
+                        <Avatar className="h-12 w-12">
+                          {post.author.profilePhotoUrl ? (
+                            <AvatarImage 
+                              src={post.author.profilePhotoUrl} 
+                              className="object-cover"
+                            />
+                          ) : (
+                            <AvatarFallback>
+                              {post.author.email.substring(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          )}
+                        </Avatar>
+                      </div>
+                      <div className="flex-1 min-w-0 pl-2">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                          <span>{post.author.email}</span>
+                          <span>•</span>
+                          <span>{format(new Date(post.createdAt), 'MMM d, yyyy')}</span>
+                          {post.viewCount > 0 && (
+                            <>
+                              <span>•</span>
+                              <span>{post.viewCount} views</span>
+                            </>
+                          )}
+                          {post.isPinned && (
+                            <>
+                              <span>•</span>
+                              <span className="text-primary">Pinned</span>
+                            </>
+                          )}
                         </div>
-                        <div className="flex-1 min-w-0 pl-2">
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-                            <span>{post.author.email}</span>
-                            <span>•</span>
-                            <span>{format(new Date(post.createdAt), 'MMM d, yyyy')}</span>
-                            {post.viewCount > 0 && (
-                              <>
-                                <span>•</span>
-                                <span>{post.viewCount} views</span>
-                              </>
-                            )}
-                            {post.isPinned && (
-                              <>
-                                <span>•</span>
-                                <span className="text-primary">Pinned</span>
-                              </>
-                            )}
-                          </div>
-                          <div className="prose prose-sm max-w-none">
-                            {post.content}
-                          </div>
+                        <div className="prose prose-sm max-w-none">
+                          {post.content}
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
 
                   <div className="space-y-4">
                     <h2 className="text-2xl font-semibold flex items-center gap-2">
@@ -328,11 +324,9 @@ export default function ForumPostPage() {
                       />
                     ))}
 
-                    <Card>
-                      <CardContent className="p-4">
-                        <CommentForm postId={post.id} />
-                      </CardContent>
-                    </Card>
+                    <div className="mt-8 border-t pt-4">
+                      <CommentForm postId={post.id} />
+                    </div>
                   </div>
                 </div>
               ) : (
