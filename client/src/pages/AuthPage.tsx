@@ -55,13 +55,6 @@ export default function AuthPage() {
         });
         return;
       }
-
-      toast({
-        title: "Success",
-        description: isLogin 
-          ? "Logged in successfully" 
-          : "Account created successfully! You are now logged in.",
-      });
     } catch (error: any) {
       toast({
         variant: "destructive",
