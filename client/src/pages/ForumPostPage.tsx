@@ -301,12 +301,6 @@ export default function ForumPostPage() {
                       Comments ({post.comments.length})
                     </h2>
 
-                    <Card>
-                      <CardContent className="p-4">
-                        <CommentForm postId={post.id} />
-                      </CardContent>
-                    </Card>
-
                     {post.comments.map((comment) => (
                       <CommentComponent
                         key={comment.id}
@@ -314,6 +308,12 @@ export default function ForumPostPage() {
                         postId={post.id}
                       />
                     ))}
+
+                    <Card>
+                      <CardContent className="p-4">
+                        <CommentForm postId={post.id} />
+                      </CardContent>
+                    </Card>
                   </div>
                 </div>
               ) : (
