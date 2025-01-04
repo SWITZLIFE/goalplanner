@@ -938,1116 +938,158 @@ Write it in a conversational tone, like you're talking to a friend.`;
           .set({ progress: 0 })
           .where(and(
             eq(goals.id, taskToDelete.goalId),
-            eq(goals.userId, userId)
-          ));
-      }
-
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error deleting task:", error);
-      res.status(500).json({
-        error: "Failed to delete task",
-        details: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // Vision Statement Generation API
-  app.post("/api/goals/:goalId/vision", requireAuth, async (req, res) => {
-    try {
-      const { goalId } = req.params;
-      const { answers } = req.body;
-      const userId = req.user!.id;
-
-      // Get the goal details first and verify ownership
-      const goal = await db.query.goals.findFirst({
-        where: and(
-          eq(goals.id, parseInt(goalId)),
-          eq(goals.userId, userId)
-        )
-      });
-
-      if (!goal) {
-        return res.status(404).json({ error: "Goal not found or unauthorized" });
-      }
-
-      // Generate vision statement using OpenAI
-      const prompt = `Write a heartfelt letter from my present self to my future self about my goal: "${goal.title}". This letter should remind me of my core motivations and serve as a powerful reminder of why I started this journey. Use these reflections to craft the message:
-My reflections:
-${answers.map((answer: string, index: number) => `${index + 1}. ${answer}`).join('\n')}
-
-Write the letter like this:
-1. Start with "Dear future me," (on its own line)
-2. Begin with why this goal deeply matters to me and what inspired me to start
-3. Include specific details about:
-   - The meaningful impact this will have on my life
-   - The growth and learning I'll experience along the way
-   - The positive changes I'll see as I make progress
-4. End with a powerful reminder of my inner strength and capability
-5. Sign it with "From, [current date] me"
-
-Keep it personal and authentic, using "I" and "my" throughout. Make it something I can read whenever I need to reconnect with my purpose.
-
-Write the letter like this:
-1. Start with "Dear friend," or something warm like that (on its own line)
-2. Add a short opening paragraph sharing how proud you are to see yourself taking on this goal
-3. Write 2-3 paragraphs from the heart about:
-   - The amazing journey you're on and why it matters so much to you
-   - How you're growing and what you're learning about yourself
-   - The wonderful changes you'll see as you make progress
-4. End with a warm, encouraging closing (on its own line)
-5. Sign it with something like "With love and belief in you," (on its own line)
-
-Make it feel like:
-- A warm hug in letter form (100-200 words)
-- Like chatting with a close friend who really believes in you
-- Something you'd read when you need a boost of motivation
-- Super personal, using "I" and "my" throughout
-
-Remember to:
-- Add line breaks between paragraphs (this is important!)
-- Keep the tone super friendly and caring
-- Share specific little details from your reflections
-- Make it feel like a cozy conversation, not a formal letter`;
-
-      const openaiResponse = await openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [
-          {
-            role: "system",
-            content: "You are a motivational coach who crafts inspiring vision statements. Be concise but impactful."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-      });
-
-      const visionStatement = openaiResponse.choices[0].message.content?.trim();
-
-      if (!visionStatement) {
-        throw new Error("Failed to generate vision statement from OpenAI");
-      }
-
-      console.log('Generated vision statement:', visionStatement);
-
-      try {
-        // Validate vision statement before saving
-        if (!visionStatement || visionStatement.trim().length === 0) {
-          throw new Error("Generated vision statement is empty");
+            eq(goals.userId)
+            ));
         }
 
-        // Update the goal with the new vision statement
-        const [updatedGoal] = await db.update(goals)
-          .set({
-            visionStatement: visionStatement,
-            visionResponses: JSON.stringify(answers)
-          })
-          .where(and(
-            eq(goals.id, parseInt(goalId)),
-            eq(goals.userId, userId)
-          ))
-          .returning();
-
-        if (!updatedGoal) {
-          throw new Error("Failed to update goal with vision statement");
-        }
-
-        // Verify the update was successful
-        const verifiedGoal = await db.query.goals.findFirst({
-          where: and(
-            eq(goals.id, parseInt(goalId)),
-            eq(goals.userId, userId)
-          )
-        });
-
-        if (!verifiedGoal || verifiedGoal.visionStatement !== visionStatement) {
-          throw new Error("Vision statement verification failed");
-        }
-
-        // Return both the vision statement and the updated goal
-        res.json({
-          visionStatement,
-          goal: verifiedGoal
-        });
-      } catch (dbError) {
-        console.error("Failed to update goal in database:", dbError);
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Failed to delete task:", error);
         res.status(500).json({
-          error: "Failed to save vision statement",
-          details: dbError instanceof Error ? dbError.message : "Unknown database error"
+          error: "Failed to delete task",
+          details: error instanceof Error ? error.message : "Unknown error"
         });
       }
-    } catch (error) {
-      console.error("Failed to generate vision statement:", error);
-      res.status(500).json({
-        error: "Failed to generate vision statement",
-        details: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
-
-  // AI Coaching API
-  app.get("/api/goals/:goalId/coaching", requireAuth, async (req, res) => {
-    res.json({
-      message: "Hey! I'm your AI coach. Let me know if you need help with anything!",
-      type: "welcome"
     });
-  });
 
-  app.post("/api/goals/:goalId/coaching/chat", requireAuth, async (req, res) => {
-    try{
-      const { goalId } = req.params;
-      const { message } = req.body;
-      const userId = req.user!.id;
+    app.get("/api/forum/posts/:postId", requireAuth, async (req, res) => {
+      try {
+        const { postId } = req.params;
+        const userId = req.user!.id;
 
-      const goal = await db.query.goals.findFirst({
-        where: and(
-          eq(goals.id, parseInt(goalId)),
-          eq(goals.userId, userId)
-        ),
-        with: {
-          tasks: true,
-        },
-      });
-
-      if (!goal) {
-        return res.status(404).json({ error: "Goal not found or unauthorized" });
-      }
-
-      const response = await getCoachingAdvice(goal, goal.tasks || [], message);
-
-      // Ensure we always return an array of messages
-      const messages = Array.isArray(response.messages) ? response.messages : [response.messages];
-      res.json({
-        messages,
-        type: "response"
-      });
-    } catch (error) {
-      console.error("Failed to get coaching advice:", error);
-      res.status(500).json({ error: "Failed to get coaching advice" });
-    }
-  });
-
-  // Daily Goal Quote API
-  app.get("/api/goals/:goalId/quote", requireAuth, async (req, res) => {
-    try {
-      const { goalId } = req.params;
-      const userId = req.user!.id;
-
-      const quote = await getTodayQuote(userId, parseInt(goalId));
-      res.json(quote);
-    } catch (error) {
-      console.error("Failed to fetch daily quote:", error);
-      res.status(500).json({ error: "Failed to fetch daily quote" });
-    }
-  });
-
-  app.post("/api/goals/:goalId/quote/read", requireAuth, async (req, res) => {
-    try {
-      const { goalId } = req.params;
-      const userId = req.user!.id;
-
-      await markQuoteAsRead(userId, parseInt(goalId));
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Failed to mark quote as read:", error);
-      res.status(500).json({ error: "Failed to mark quote as read" });
-    }
-  });
-
-
-  // Coin History API
-  app.get("/api/rewards/history", requireAuth, async (req, res) => {
-    try {
-      const userId = req.user!.id;
-      const history = await db.select({
-        amount: coinHistory.amount,
-        balance: coinHistory.balance,
-        timestamp: coinHistory.timestamp,
-        reason: coinHistory.reason
-      })
-        .from(coinHistory)
-        .where(eq(coinHistory.userId, userId))
-        .orderBy(coinHistory.timestamp);
-
-      res.json(history);
-    } catch (error) {
-      console.error("Failed to fetch coin history:", error);
-      res.status(500).json({ error: "Failed to fetch coin history" });
-    }
-  });
-
-  // Timer Current Status API
-  app.get("/api/timer/current", requireAuth, async (req, res) => {
-    try {
-      const userId = req.user!.id;
-
-      const activeTimer = await db.query.timeTracking.findFirst({
-        where: and(
-          eq(timeTracking.userId, userId),
-          eq(timeTracking.isActive, true)
-        ),
-      });
-
-      res.json(activeTimer || null);
-    } catch (error) {
-      console.error("Failed to get current timer:", error);
-      res.status(500).json({ error: "Failed to get current timer status" });
-    }
-  });
-
-  // Time Tracking API
-  app.post("/api/tasks/:taskId/timer/start", requireAuth, async (req, res) => {
-    try {
-      const { taskId } = req.params;
-      const userId = req.user!.id;
-
-      // Check if there's already an active timer
-      const activeTimer = await db.query.timeTracking.findFirst({
-        where: and(
-          eq(timeTracking.userId, userId),
-          eq(timeTracking.isActive, true)
-        ),
-      });
-
-      if (activeTimer) {
-        return res.status(400).json({ error: "Another timer is already active" });
-      }
-
-      // Start new timer
-      const [timer] = await db.insert(timeTracking)
-        .values({
-          userId,
-          taskId: parseInt(taskId),
-          startTime: new Date(),
-          isActive: true,
-        })
-        .returning();
-
-      res.json(timer);
-    } catch (error) {
-      console.error("Failed to start timer:", error);
-      res.status(500).json({ error: "Failed to start timer" });
-    }
-  });
-
-  app.post("/api/tasks/:taskId/timer/stop", requireAuth, async (req, res) => {
-    try {
-      const { taskId } = req.params;
-      const userId = req.user!.id;
-
-      // Find active timer
-      const activeTimer = await db.query.timeTracking.findFirst({
-        where: and(
-          eq(timeTracking.userId, userId),
-          eq(timeTracking.taskId, parseInt(taskId)),
-          eq(timeTracking.isActive, true)
-        ),
-      });
-
-      if (!activeTimer) {
-        return res.status(404).json({ error: "No active timer found" });
-      }
-
-      // Calculate coins earned (1 coin per minute)
-      const endTime = new Date();
-      const minutesWorked = Math.floor((endTime.getTime() - activeTimer.startTime.getTime()) / 60000);
-      const coinsEarned = Math.max(1, minutesWorked); // Minimum 1 coin
-
-      // Update timer
-      const [updatedTimer] = await db.update(timeTracking)
-        .set({
-          endTime,
-          isActive: false,
-          coinsEarned,
-        })
-        .where(eq(timeTracking.id, activeTimer.id))
-        .returning();
-
-      // Update task's total time
-      const [updatedTask] = await db.update(tasks)
-        .set({
-          totalMinutesSpent: sql`${tasks.totalMinutesSpent} + ${minutesWorked}`,
-        })
-        .where(eq(tasks.id, parseInt(taskId)))
-        .returning();
-
-      // Update user's coins - ensure the rewards record exists first
-      const [userRewards] = await db.select()
-        .from(rewards)
-        .where(eq(rewards.userId, userId))
-        .limit(1);
-
-      let currentBalance = 0;
-      if (!userRewards) {
-        // Create initial rewards record if it doesn't exist
-        const [newRewards] = await db.insert(rewards)
-          .values({
-            userId,
-            coins: coinsEarned,
-            lastUpdated: new Date(),
-          })
-          .returning();
-        currentBalance = coinsEarned;
-      } else {
-        // Update existing rewards
-        const [updatedRewards] = await db.update(rewards)
-          .set({
-            coins: sql`${rewards.coins} + ${coinsEarned}`,
-            lastUpdated: new Date(),
-          })
-          .where(eq(rewards.userId, userId))
-          .returning();
-        currentBalance = updatedRewards.coins;
-      }
-
-      // Record coin history
-      await db.insert(coinHistory)
-        .values({
-          userId,
-          amount: coinsEarned,
-          balance: currentBalance,
-          reason: `Earned from working ${minutesWorked} minutes on task`,
-          timestamp: new Date(),
+        // Get the post with author details
+        const post = await db.query.forumPosts.findFirst({
+          where: eq(forumPosts.id, parseInt(postId)),
+          with: {
+            author: true,
+          },
         });
 
-      res.json({
-        timer: updatedTimer,
-        task: updatedTask,
-        coinsEarned,
-      });
-    } catch (error) {
-      console.error("Failed to stop timer:", error);
-      res.status(500).json({ error: "Failed to stop timer" });
-    }
-  });
-
-  // Rewards API
-  app.get("/api/rewards", requireAuth, async (req, res) => {
-    try {
-      const userId = req.user!.id;
-      const [userRewards] = await db.select()
-        .from(rewards)
-        .where(eq(rewards.userId, userId))
-        .limit(1);
-      res.json(userRewards || { coins: 0 });
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch rewards" });
-    }
-  });
-
-  app.get("/api/rewards/items", async (req, res) => {
-    try {
-      const items = await db.query.rewardItems.findMany({
-        orderBy: (rewardItems, { asc }) => [asc(rewardItems.cost)],
-      });
-      console.log('Fetched reward items:', items);
-      res.json(items);
-    } catch (error) {
-      console.error('Error fetching reward items:', error);
-      res.status(500).json({ error: "Failed to fetch reward items" });
-    }
-  });
-  // Get purchased rewards
-  app.get("/api/rewards/purchased", requireAuth, async (req, res) => {
-    try {
-      const userId = req.user!.id;
-
-      const purchasedItems = await db.query.purchasedRewards.findMany({
-        where: eq(purchasedRewards.userId, userId),
-        with: {
-          rewardItem: true,
-        },
-        orderBy: (purchasedRewards, { desc }) => [desc(purchasedRewards.purchasedAt)],
-      });
-
-      console.log('Fetched purchased items:', JSON.stringify(purchasedItems, null, 2));
-      res.json(purchasedItems);
-    } catch (error) {
-      console.error('Error fetching purchased rewards:', error);
-      console.error('Error details:', error instanceof Error ? error.message : error);
-      res.status(500).json({ error: "Failed to fetch purchased rewards" });
-    }
-  });
-
-  app.post("/api/rewards/purchase/:itemId", requireAuth, async (req, res) => {
-    try {
-      const itemId = parseInt(req.params.itemId);
-      const userId = req.user!.id;
-
-      // Get the reward item with error handling
-      const items = await db.select()
-        .from(rewardItems)
-        .where(eq(rewardItems.id, itemId));
-
-      const item = items[0];
-      if (!item) {
-        return res.status(404).json({
-          error: "Reward item not found",
-          message: "The requested reward item could not be found"
-        });
-      }
-
-      // Get user's current coins with error handling
-      const userRewardsResult = await db.select()
-        .from(rewards)
-        .where(eq(rewards.userId, userId));
-
-      const userRewards = userRewardsResult[0];
-      if (!userRewards) {
-        return res.status(404).json({
-          error: "User rewards not found",
-          message: "Could not find rewards record for user"
-        });
-      }
-
-      if (userRewards.coins < item.cost) {
-        return res.status(400).json({
-          error: "Insufficient coins",
-          message: `You need ${item.cost} coins but only have ${userRewards.coins}`,
-          required: item.cost,
-          available: userRewards.coins
-        });
-      }
-
-      // Update user's coins with validation
-      const [updatedRewards] = await db.update(rewards)
-        .set({
-          coins: userRewards.coins - item.cost,
-          lastUpdated: new Date()
-        })
-        .where(eq(rewards.userId, userId))
-        .returning();
-
-      if (!updatedRewards) {
-        throw new Error("Failed to update user rewards");
-      }
-
-      // Record the purchase
-      const [purchaseRecord] = await db.insert(purchasedRewards)
-        .values({
-          userId,
-          rewardItemId: itemId,
-          purchasedAt: new Date()
-        })
-        .returning();
-
-      res.json({
-        message: "Purchase successful",
-        item: {
-          name: item.name,
-          cost: item.cost
-        },
-        newBalance: updatedRewards.coins,
-        purchaseRecord
-      });
-    } catch (error) {
-      console.error("Purchase error:", error);
-      res.status(500).json({
-        error: "Failed to process purchase",
-        message: error instanceof Error ? error.message : "An unexpected error occurred"
-      });
-    }
-  });
-
-  // Add new endpoint for leaderboard
-  app.get("/api/rewards/leaderboard", requireAuth, async (req, res) => {
-    try {
-      // Get top 10 users by coin balance
-      const leaderboard = await db.select({
-        id: users.id,
-        email: users.email,
-        coins: rewards.coins,
-        lastUpdated: rewards.lastUpdated,
-      })
-      .from(rewards)
-      .innerJoin(users, eq(rewards.userId, users.id))
-      .orderBy(desc(rewards.coins))
-      .limit(10);
-
-      // Map the response to use email as username
-      const mappedLeaderboard = leaderboard.map(entry => ({
-        id: entry.id,
-        username: entry.email.split('@')[0], // Show only the part before @ for privacy
-        coins: entry.coins,
-        lastUpdated: entry.lastUpdated,
-      }));
-
-      res.json(mappedLeaderboard);
-    } catch (error) {
-      console.error("Failed to fetch leaderboard:", error);
-      res.status(500).json({ error: "Failed to fetch leaderboard" });
-    }
-  });
-
-  // Notes API
-  app.get("/api/goals/:goalId/notes", requireAuth, async (req, res) => {
-    try {
-      const { goalId } = req.params;
-      const userId = req.user!.id;
-
-      // Verify user has access to this goal
-      const goal = await db.query.goals.findFirst({
-        where: and(
-          eq(goals.id, parseInt(goalId)),
-          eq(goals.userId, userId)
-        ),
-      });
-
-      if (!goal) {
-        return res.status(404).json({ error: "Goal not found or unauthorized" });
-      }
-
-      // Fetch all notes for this goal, including task-specific notes
-      const goalNotes = await db.select({
-        id: notes.id,
-        title: notes.title,
-        content: notes.content,
-        taskId: notes.taskId,
-        createdAt: notes.createdAt,
-        updatedAt: notes.updatedAt,
-      })
-      .from(notes)
-      .where(and(
-        eq(notes.userId, userId),
-        eq(notes.goalId, parseInt(goalId))
-      ))
-      .orderBy(desc(notes.createdAt));
-
-      res.json(goalNotes);
-    } catch (error) {
-      console.error("Failed to fetch notes:", error);
-      res.status(500).json({ error: "Failed to fetch notes" });
-    }
-  });
-
-  app.post("/api/goals/:goalId/notes", requireAuth, async (req, res) => {
-    try {
-      const { goalId } = req.params;
-      const userId = req.user!.id;
-      const { title, content, taskId } = req.body;
-
-      // Verify user has access to this goal
-      const goal = await db.query.goals.findFirst({
-        where: and(
-          eq(goals.id, parseInt(goalId)),
-          eq(goals.userId, userId)
-        ),
-      });
-
-      if (!goal) {
-        return res.status(404).json({ error: "Goal not found or unauthorized" });
-      }
-
-      // If taskId is provided, verify it belongs to this goal
-      if (taskId) {
-        const task = await db.query.tasks.findFirst({
-          where: and(
-            eq(tasks.id, taskId),
-            eq(tasks.goalId, parseInt(goalId)),
-            eq(tasks.userId, userId)
-          ),
-        });
-
-        if (!task) {
-          return res.status(404).json({ error: "Task not found or unauthorized" });
+        if (!post) {
+          return res.status(404).json({ error: "Post not found" });
         }
-      }
 
-      const [note] = await db.insert(notes)
-        .values({
-          userId,
-          goalId: parseInt(goalId),
-          taskId: taskId || null,
-          title,
-          content,
-          createdAt: new Date(),
-          updatedAt: new Date(),
+        // Increment view count
+        await db.update(forumPosts)
+          .set({ viewCount: sql`${forumPosts.viewCount} + 1` })
+          .where(eq(forumPosts.id, parseInt(postId)));
+
+        // Get all comments for this post
+        const comments = await db.select({
+          id: forumComments.id,
+          content: forumComments.content,
+          parentCommentId: forumComments.parentCommentId,
+          createdAt: forumComments.createdAt,
+          author: {
+            id: users.id,
+            email: users.email,
+            profilePhotoUrl: users.profilePhotoUrl,
+          },
         })
-        .returning();
+          .from(forumComments)
+          .where(eq(forumComments.postId, parseInt(postId)))
+          .leftJoin(users, eq(forumComments.userId, users.id))
+          .orderBy(forumComments.createdAt);
 
-      res.json(note);
-    } catch (error) {
-      console.error("Failed to create note:", error);
-      res.status(500).json({ error: "Failed to create note" });
-    }
-  });
+        // Build comment tree
+        const commentMap = new Map();
+        const rootComments: any[] = [];
 
-  app.patch("/api/goals/:goalId/notes/:noteId", requireAuth, async (req, res) => {
-    try {
-      const { goalId, noteId } = req.params;
-      const userId = req.user!.id;
-      const { title, content, taskId } = req.body;
-
-      // Verify note exists and belongs to user
-      const existingNote = await db.query.notes.findFirst({
-        where: and(
-          eq(notes.id, parseInt(noteId)),
-          eq(notes.userId, userId),
-          eq(notes.goalId, parseInt(goalId))
-        ),
-      });
-
-      if (!existingNote) {
-        return res.status(404).json({ error: "Note not found or unauthorized" });
-      }
-
-      const [updatedNote] = await db.update(notes)
-        .set({
-          title,
-          content,
-          taskId: taskId || null,
-          updatedAt: new Date(),
-        })
-        .where(and(
-          eq(notes.id, parseInt(noteId)),
-          eq(notes.userId, userId)
-        ))
-        .returning();
-
-      res.json(updatedNote);
-    } catch (error) {
-      console.error("Failed to update note:", error);
-      res.status(500).json({ error: "Failed to update note" });
-    }
-  });
-
-  app.delete("/api/goals/:goalId/notes/:noteId", requireAuth, async (req, res) => {
-    try {
-      const { goalId, noteId } = req.params;
-      const userId = req.user!.id;
-
-      // Verify note exists and belongs to user
-      const note = await db.query.notes.findFirst({
-        where: and(
-          eq(notes.id, parseInt(noteId)),
-          eq(notes.userId, userId),
-          eq(notes.goalId, parseInt(goalId))
-        ),
-      });
-
-      if (!note) {
-        return res.status(404).json({ error: "Note not found or unauthorized" });
-      }
-
-      await db.delete(notes)
-        .where(and(
-          eq(notes.id, parseInt(noteId)),
-          eq(notes.userId, userId)
-        ));
-
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Failed to delete note:", error);
-      res.status(500).json({ error: "Failed to delete note" });
-    }
-  });
-
-  // Daily Inspiration API - REMOVED ORIGINAL, using edited snippet above.
-  // app.post("/api/goals/:goalId/inspiration", requireAuth, async (req, res) => { ... });
-
-  app.get("/api/goals/inspiration", requireAuth, async (req, res) => {
-    try {
-      const { goalId, date } = req.query;
-      const userId = req.user!.id;
-
-      if (!goalId || !date) {
-        return res.status(400).json({ error: "Missing required parameters" });
-      }
-
-      // Get today's inspiration if it exists
-      const [inspiration] = await db.select()
-        .from(dailyInspirations)
-        .where(and(
-          eq(dailyInspirations.goalId, parseInt(goalId as string)),
-          eq(dailyInspirations.userId, userId),
-          eq(dailyInspirations.date, date as string)
-        ))
-        .limit(1);
-
-      if (!inspiration) {
-        return res.json({ content: null });
-      }
-
-      res.json({ content: inspiration.content });
-    } catch (error) {
-      console.error("Failed to fetch inspiration:", error);
-      res.status(500).json({ error: "Failed to fetch inspiration" });
-    }
-  });
-
-  // Forum API Routes
-  app.get("/api/forum/categories", async (req, res) => {
-    try {
-      const categories = await db.select({
-        id: forumCategories.id,
-        name: forumCategories.name,
-        description: forumCategories.description,
-        slug: forumCategories.slug,
-        icon: forumCategories.icon,
-        order: forumCategories.order,
-      })
-      .from(forumCategories)
-      .orderBy(forumCategories.order);
-
-      res.json(categories);
-    } catch (error) {
-      console.error("Failed to fetch forum categories:", error);
-      res.status(500).json({ error: "Failed to fetch forum categories" });
-    }
-  });
-
-  app.get("/api/forum/categories/:slug", requireAuth, async (req, res) => {
-    try {
-      const { slug } = req.params;
-      const [category] = await db.select()
-        .from(forumCategories)
-        .where(eq(forumCategories.slug, slug))
-        .limit(1);
-
-      if (!category) {
-        return res.status(404).json({ error: "Category not found" });
-      }
-
-      res.json(category);
-    } catch (error) {
-      console.error("Failed to fetch forum category:", error);
-      res.status(500).json({ error: "Failed to fetch forum category" });
-    }
-  });
-
-  app.get("/api/forum/categories/:slug/posts", requireAuth, async (req, res) => {
-    try {
-      const { slug } = req.params;
-      const category = await db.query.forumCategories.findFirst({
-        where: eq(forumCategories.slug, slug),
-      });
-
-      if (!category) {
-        return res.status(404).json({ error: "Category not found" });
-      }
-
-      // Get posts with author information and comment counts
-      const posts = await db.select({
-        id: forumPosts.id,
-        title: forumPosts.title,
-        content: forumPosts.content,
-        isPinned: forumPosts.isPinned,
-        isLocked: forumPosts.isLocked,
-        viewCount: forumPosts.viewCount,
-        createdAt: forumPosts.createdAt,
-        author: {
-          id: users.id,
-          email: users.email,
-          profilePhotoUrl: users.profilePhotoUrl,
-        },
-        commentCount: sql<number>`CAST(COUNT(DISTINCT ${forumComments.id}) AS integer)`,
-      })
-      .from(forumPosts)
-      .innerJoin(users, eq(forumPosts.userId, users.id))
-      .leftJoin(forumComments, eq(forumComments.postId, forumPosts.id))
-      .where(eq(forumPosts.categoryId, category.id))
-      .groupBy(forumPosts.id, users.id, users.email, users.profilePhotoUrl)
-      .orderBy(desc(forumPosts.isPinned), desc(forumPosts.createdAt));
-
-      res.json(posts);
-    } catch (error) {
-      console.error("Failed to fetch forum posts:", error);
-      res.status(500).json({ error: "Failed to fetch forum posts" });
-    }
-  });
-
-  app.post("/api/forum/categories/:slug/posts", requireAuth, async (req, res) => {
-    try {
-      const { slug } = req.params;
-      const { title, content } = req.body;
-      const userId = req.user!.id;
-
-      // Validate input
-      if (!title || !content) {
-        return res.status(400).json({ error: "Title and content are required" });
-      }
-
-      // Find category
-      const category = await db.query.forumCategories.findFirst({
-        where: eq(forumCategories.slug, slug),
-      });
-
-      if (!category) {
-        return res.status(404).json({ error: "Category not found" });
-      }
-
-      // Create post
-      const [post] = await db.insert(forumPosts)
-        .values({
-          categoryId: category.id,
-          userId,
-          title,
-          content,
-          isPinned: false,
-          isLocked: false,
-          viewCount: 0,
-        })
-        .returning();
-
-      // Return post with author information
-      const postWithAuthor = await db.query.forumPosts.findFirst({
-        where: eq(forumPosts.id, post.id),
-        with: {
-          author: true,
-        },
-      });
-
-      res.json(postWithAuthor);
-    } catch (error) {
-      console.error("Failed to create forum post:", error);
-      res.status(500).json({ error: "Failed to create forum post" });
-    }
-  });
-
-  app.get("/api/forum/posts/:postId/comments", requireAuth, async (req, res) => {
-    try {
-      const { postId } = req.params;
-      const userId = req.user!.id;
-
-      const comments = await db.select({
-        id: forumComments.id,
-        content: forumComments.content,
-        createdAt: forumComments.createdAt,
-        updatedAt: forumComments.updatedAt,
-        author: {
-          id: users.id,
-          email: users.email,
-          profilePhotoUrl: users.profilePhotoUrl,
-        },
-      })
-      .from(forumComments)
-      .innerJoin(users, eq(forumComments.userId, users.id))
-      .where(eq(forumComments.postId, parseInt(postId)))
-      .orderBy(forumComments.createdAt);
-
-      res.json(comments);
-    } catch (error) {
-      console.error("Failed to fetch post comments:", error);
-      res.status(500).json({ error: "Failed to fetch post comments" });
-    }
-  });
-
-  app.post("/api/forum/posts/:postId/comments", requireAuth, async (req, res) => {
-    try {
-      const { postId } = req.params;
-      const { content, parentCommentId } = req.body;
-      const userId = req.user!.id;
-
-      // Verify the post exists
-      const post = await db.query.forumPosts.findFirst({
-        where: eq(forumPosts.id, parseInt(postId))
-      });
-
-      if (!post) {
-        return res.status(404).json({ error: "Post not found" });
-      }
-
-      if (post.isLocked) {
-        return res.status(403).json({ error: "This post is locked" });
-      }
-
-      // If this is a reply, verify parent comment exists
-      if (parentCommentId) {
-        const parentComment = await db.query.forumComments.findFirst({
-          where: and(
-            eq(forumComments.id, parentCommentId),
-            eq(forumComments.postId, parseInt(postId))
-          )
+        comments.forEach(comment => {
+          comment.replies = [];
+          commentMap.set(comment.id, comment);
         });
 
-        if (!parentComment) {
-          return res.status(404).json({ error: "Parent comment not found" });
+        comments.forEach(comment => {
+          if (comment.parentCommentId) {
+            const parentComment = commentMap.get(comment.parentCommentId);
+            if (parentComment) {
+              parentComment.replies.push(comment);
+            }
+          } else {
+            rootComments.push(comment);
+          }
+        });
+
+        // Return post with nested comments
+        const response = {
+          ...post,
+          comments: rootComments,
+        };
+
+        res.json(response);
+      } catch (error) {
+        console.error("Failed to fetch forum post:", error);
+        res.status(500).json({ error: "Failed to fetch forum post" });
+      }
+    });
+
+    app.post("/api/forum/posts/:postId/comments", requireAuth, async (req, res) => {
+      try {
+        const { postId } = req.params;
+        const { content, parentCommentId } = req.body;
+        const userId = req.user!.id;
+
+        // Verify the post exists and is not locked
+        const post = await db.query.forumPosts.findFirst({
+          where: eq(forumPosts.id, parseInt(postId))
+        });
+
+        if (!post) {
+          return res.status(404).json({ error: "Post not found" });
         }
-      }
 
-      // Create the comment
-      const [comment] = await db.insert(forumComments)
-        .values({
-          postId: parseInt(postId),
-          userId,
-          content,
-          parentCommentId: parentCommentId || null,
-        })
-        .returning();
+        if (post.isLocked) {
+          return res.status(403).json({ error: "This post is locked" });
+        }
 
-      // Get the complete comment data with author information
-      const [commentWithAuthor] = await db.select({
-        id: forumComments.id,
-        content: forumComments.content,
-        createdAt: forumComments.createdAt,
-        parentCommentId: forumComments.parentCommentId,
-        author: {
-          id: users.id,
-          email: users.email,
-          profilePhotoUrl: users.profilePhotoUrl,
-        },
-      })
-      .from(forumComments)
-      .innerJoin(users, eq(forumComments.userId, users.id))
-      .where(eq(forumComments.id, comment.id));
+        // If this is a reply, verify parent comment exists
+        if (parentCommentId) {
+          const parentComment = await db.query.forumComments.findFirst({
+            where: and(
+              eq(forumComments.id, parentCommentId),
+              eq(forumComments.postId, parseInt(postId))
+            )
+          });
 
-      res.json(commentWithAuthor);
-    } catch (error) {
-      console.error("Failed to create comment:", error);
-      res.status(500).json({ error: "Failed to create comment" });
-    }
-  });
-
-  app.get("/api/forum/posts/:postId", requireAuth, async (req, res) => {
-    try {
-      const { postId } = req.params;
-      const userId = req.user!.id;
-
-      // Get the post with author information
-      const [post] = await db.select({
-        id: forumPosts.id,
-        title: forumPosts.title,
-        content: forumPosts.content,
-        isPinned: forumPosts.isPinned,
-        isLocked: forumPosts.isLocked,
-        viewCount: forumPosts.viewCount,
-        createdAt: forumPosts.createdAt,
-        author: {
-          id: users.id,
-          email: users.email,
-          profilePhotoUrl: users.profilePhotoUrl,
-        },
-      })
-      .from(forumPosts)
-      .innerJoin(users, eq(forumPosts.userId, users.id))
-      .where(eq(forumPosts.id, parseInt(postId)));
-
-      if (!post) {
-        return res.status(404).json({ error: "Post not found" });
-      }
-
-      // Get all comments for the post
-      const allComments = await db.select({
-        id: forumComments.id,
-        content: forumComments.content,
-        createdAt: forumComments.createdAt,
-        author: {
-          id: users.id,
-          email: users.email,
-          profilePhotoUrl: users.profilePhotoUrl,
-        },
-      })
-      .from(forumComments)
-      .innerJoin(users, eq(forumComments.userId, users.id))
-      .where(eq(forumComments.postId, parseInt(postId)))
-      .orderBy(forumComments.createdAt);
-
-      // Organize comments into a tree structure
-      const commentMap = new Map();
-      const rootComments = [];
-
-      // First pass: Create a map of all comments
-      allComments.forEach(comment => {
-        commentMap.set(comment.id, { ...comment, replies: [] });
-      });
-
-      // Second pass: Organize comments into hierarchy
-      allComments.forEach(comment => {
-        const commentWithReplies = commentMap.get(comment.id);
-        if (comment.parentCommentId === null) {
-          rootComments.push(commentWithReplies);
-        } else {
-          const parentComment = commentMap.get(comment.parentCommentId);
-          if (parentComment) {
-            parentComment.replies.push(commentWithReplies);
+          if (!parentComment) {
+            return res.status(404).json({ error: "Parent comment not found" });
           }
         }
-      });
 
-      // Increment view count
-      await db.update(forumPosts)
-        .set({ viewCount: (post.viewCount || 0) + 1 })
-        .where(eq(forumPosts.id, parseInt(postId)));
+        // Create the comment
+        const [comment] = await db.insert(forumComments)
+          .values({
+            postId: parseInt(postId),
+            userId,
+            content,
+            parentCommentId: parentCommentId || null,
+          })
+          .returning();
 
-      res.json({
-        ...post,
-        comments: rootComments,
-      });
-    } catch (error) {
-      console.error("Failed to fetch forum post:", error);
-      res.status(500).json({ error: "Failed to fetch forum post" });
-    }
-  });
-
-  app.post("/api/forum/posts/:postId/comments", requireAuth, async (req, res) => {
-    try {
-      const { postId } = req.params;
-      const { content, parentCommentId } = req.body;
-      const userId = req.user!.id;
-
-      // Verify the post exists
-      const post = await db.query.forumPosts.findFirst({
-        where: eq(forumPosts.id, parseInt(postId))
-      });
-
-      if (!post) {
-        return res.status(404).json({ error: "Post not found" });
-      }
-
-      if (post.isLocked) {
-        return res.status(403).json({ error: "This post is locked" });
-      }
-
-      // If this is a reply, verify parent comment exists
-      if (parentCommentId) {
-        const parentComment = await db.query.forumComments.findFirst({
-          where: and(
-            eq(forumComments.id, parentCommentId),
-            eq(forumComments.postId, parseInt(postId))
-          )
-        });
-
-        if (!parentComment) {
-          return res.status(404).json({ error: "Parent comment not found" });
-        }
-      }
-
-      // Create the comment
-      const [comment] = await db.insert(forumComments)
-        .values({
-          postId: parseInt(postId),
-          userId,
-          content,
-          parentCommentId: parentCommentId || null,
+        // Get the complete comment data with author information
+        const [commentWithAuthor] = await db.select({
+          id: forumComments.id,
+          content: forumComments.content,
+          parentCommentId: forumComments.parentCommentId,
+          createdAt: forumComments.createdAt,
+          author: {
+            id: users.id,
+            email: users.email,
+            profilePhotoUrl: users.profilePhotoUrl,
+          },
         })
-        .returning();
+          .from(forumComments)
+          .innerJoin(users, eq(forumComments.userId, users.id))
+          .where(eq(forumComments.id, comment.id));
 
-      // Get the complete comment data with author information
-      const [commentWithAuthor] = await db.select({
-        id: forumComments.id,
-        content: forumComments.content,
-        createdAt: forumComments.createdAt,
-        parentCommentId: forumComments.parentCommentId,
-        author: {
-          id: users.id,
-          email: users.email,
-          profilePhotoUrl: users.profilePhotoUrl,
-        },
-      })
-      .from(forumComments)
-      .innerJoin(users, eq(forumComments.userId, users.id))
-      .where(eq(forumComments.id, comment.id));
+        res.json(commentWithAuthor);
+      } catch (error) {
+        console.error("Failed to create comment:", error);
+        res.status(500).json({ error: "Failed to create comment" });
+      }
+    });
 
-      res.json(commentWithAuthor);
-    } catch (error) {
-      console.error("Failed to create comment:", error);
-      res.status(500).json({ error: "Failed to create comment" });
-    }
-  });
-
-  const httpServer = createServer(app);
-  return httpServer;
-}
+    const httpServer = createServer(app);
+    return httpServer;
+  }
