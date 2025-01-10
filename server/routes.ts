@@ -326,12 +326,22 @@ export function registerRoutes(app: Express): Server {
       }
 
       // Get all active goals for the user
-      const userGoals = await db.select()
-        .from(goals)
-        .where(eq(goals.userId, userId));
+      // Get all goals with their tasks
+      const userGoals = await db.query.goals.findMany({
+        where: eq(goals.userId, userId),
+        with: {
+          tasks: true
+        }
+      });
 
-      // Select a random goal from user's goals
-      const randomGoal = userGoals[Math.floor(Math.random() * userGoals.length)];
+      // Select a goal based on the day of the year
+      const dayOfYear = Math.floor((new Date().getTime() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (24 * 60 * 60 * 1000));
+      const selectedGoalIndex = dayOfYear % userGoals.length;
+      const selectedGoal = userGoals[selectedGoalIndex];
+
+      // Get completed and outstanding tasks for the selected goal
+      const completedTasks = selectedGoal.tasks.filter(t => t.completed).map(t => t.title);
+      const outstandingTasks = selectedGoal.tasks.filter(t => !t.completed).map(t => t.title);
 
       // Create a list of all goal titles
       const allGoalTitles = userGoals.map(g => g.title).join("\n- ");
@@ -342,10 +352,16 @@ export function registerRoutes(app: Express): Server {
 Their goals are:
 - ${allGoalTitles}
 
-For today's message, focus on their goal: "${randomGoal.title}"
+For today's message, focus on their goal: "${selectedGoal.title}"
 
-The message should be:
-- Written at an 8th grade reading level
+Context for this goal:
+${completedTasks.length > 0 ? `\nCompleted tasks:\n- ${completedTasks.join('\n- ')}` : '\nNo tasks completed yet.'}
+${outstandingTasks.length > 0 ? `\nOutstanding tasks:\n- ${outstandingTasks.join('\n- ')}` : '\nAll tasks completed!'}
+
+The message should:
+- Acknowledge their progress on completed tasks (if any)
+- Encourage them to tackle outstanding tasks
+- Be written at an 8th grade reading level
 - Warm and friendly, like advice from a mentor
 - Include a specific tip or insight about personal growth
 
