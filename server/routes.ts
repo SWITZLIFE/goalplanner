@@ -19,8 +19,7 @@ import { uploadFileToSupabase } from './supabase';
 import { getTodayQuote, markQuoteAsRead } from "./goal-quotes";
 import { registerGoogleOAuthRoutes } from "./google-oauth";
 import { supabase } from './supabase';
-import { format } from 'date-fns';
-import { startOfWeek, endOfWeek, addWeeks, isWithinInterval } from 'date-fns';
+import { format, startOfWeek, endOfWeek, addWeeks, isWithinInterval } from 'date-fns';
 
 // Configure multer for handling file uploads
 const upload = multer({
@@ -927,7 +926,7 @@ Write it in a conversational tone, like you're talking to a friend.`;
       const [deletedTask] = await db.delete(tasks)
         .where(and(
           eq(tasks.id, taskIdInt),
-                    eq(tasks.userId, userId)
+          eq(tasks.userId, userId)
         ))
         .returning();
 
@@ -2113,6 +2112,100 @@ Keep the tone encouraging but analytical. Focus on actionable insights.`;
   });
 
   // Remove the duplicate route handler for POST /api/forum/posts/:postId/comments
+
+  // Weekly Summary API
+  app.get("/api/goals/:goalId/weekly-data", requireAuth, async (req, res) => {
+    try {
+      const { goalId } = req.params;
+      const userId = req.user!.id;
+
+      // Get date ranges for current week
+      const now = new Date();
+      const weekStart = startOfWeek(now);
+      const weekEnd = endOfWeek(now);
+      const nextWeekStart = addWeeks(weekStart, 1);
+      const nextWeekEnd = addWeeks(weekEnd, 1);
+
+      // Get the goal with its tasks and notes
+      const goal = await db.query.goals.findFirst({
+        where: and(
+          eq(goals.id, parseInt(goalId)),
+          eq(goals.userId, userId)
+        ),
+        with: {
+          tasks: true,
+          notes: true
+        }
+      });
+
+      if (!goal) {
+        return res.status(404).json({ error: "Goal not found or unauthorized" });
+      }
+
+      // Aggregate this week's data
+      const thisWeekTasks = goal.tasks?.filter(task => 
+        task.plannedDate && isWithinInterval(new Date(task.plannedDate), { start: weekStart, end: weekEnd })
+      ) || [];
+
+      const nextWeekTasks = goal.tasks?.filter(task => 
+        task.plannedDate && isWithinInterval(new Date(task.plannedDate), { start: nextWeekStart, end: nextWeekEnd })
+      ) || [];
+
+      const thisWeekNotes = goal.notes?.filter(note =>
+        note.updatedAt && isWithinInterval(new Date(note.updatedAt), { start: weekStart, end: weekEnd })
+      ) || [];
+
+      // Calculate statistics
+      const completedTasksCount = thisWeekTasks.filter(task => task.completed).length;
+      const totalTasksCount = thisWeekTasks.length;
+      const completionRate = totalTasksCount > 0 ? (completedTasksCount / totalTasksCount) * 100 : 0;
+
+      // Format dates for output
+      const weekRange = {
+        start: format(weekStart, 'MMM d, yyyy'),
+        end: format(weekEnd, 'MMM d, yyyy')
+      };
+
+      const response = {
+        weekRange,
+        currentWeek: {
+          tasks: {
+            completed: completedTasksCount,
+            total: totalTasksCount,
+            completionRate,
+            items: thisWeekTasks.map(task => ({
+              id: task.id,
+              title: task.title,
+              completed: task.completed,
+              plannedDate: task.plannedDate,
+              estimatedMinutes: task.estimatedMinutes,
+              totalMinutesSpent: task.totalMinutesSpent
+            }))
+          },
+          notes: thisWeekNotes.map(note => ({
+            id: note.id,
+            title: note.title,
+            content: note.content,
+            updatedAt: note.updatedAt
+          }))
+        },
+        nextWeek: {
+          totalTasks: nextWeekTasks.length,
+          tasks: nextWeekTasks.map(task => ({
+            id: task.id,
+            title: task.title,
+            plannedDate: task.plannedDate,
+            estimatedMinutes: task.estimatedMinutes
+          }))
+        }
+      };
+
+      res.json(response);
+    } catch (error) {
+      console.error("Failed to fetch weekly data:", error instanceof Error ? error.message : "Unknown error");
+      res.status(500).json({ error: "Failed to fetch weekly data" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

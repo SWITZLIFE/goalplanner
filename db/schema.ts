@@ -120,8 +120,8 @@ export type SelectUser = typeof users.$inferSelect;
 export const insertGoalSchema = createInsertSchema(goals);
 export const selectGoalSchema = createSelectSchema(goals);
 export type Goal = typeof goals.$inferSelect & {
-  tasks?: typeof tasks.$inferSelect[];
-  notes?: typeof notes.$inferSelect[];
+  tasks?: Array<typeof tasks.$inferSelect>;
+  notes?: Array<typeof notes.$inferSelect>;
 };
 export type NewGoal = typeof goals.$inferInsert;
 
