@@ -330,8 +330,10 @@ export function registerRoutes(app: Express): Server {
         .from(goals)
         .where(eq(goals.userId, userId));
 
-      // Select a random goal from user's goals
-      const randomGoal = userGoals[Math.floor(Math.random() * userGoals.length)];
+      // Select a goal based on the day of the year
+      const dayOfYear = Math.floor((new Date().getTime() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (24 * 60 * 60 * 1000));
+      const selectedGoalIndex = dayOfYear % userGoals.length;
+      const selectedGoal = userGoals[selectedGoalIndex];
 
       // Create a list of all goal titles
       const allGoalTitles = userGoals.map(g => g.title).join("\n- ");
@@ -342,7 +344,7 @@ export function registerRoutes(app: Express): Server {
 Their goals are:
 - ${allGoalTitles}
 
-For today's message, focus on their goal: "${randomGoal.title}"
+For today's message, focus on their goal: "${selectedGoal.title}"
 
 The message should be:
 - Written at an 8th grade reading level
