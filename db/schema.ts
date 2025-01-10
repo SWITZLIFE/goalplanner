@@ -70,6 +70,7 @@ export const goalsRelations = relations(goals, ({ one, many }) => ({
     references: [users.id],
   }),
   tasks: many(tasks),
+  notes: many(notes),
   dailyInspirations: many(dailyInspirations),
 }));
 
@@ -118,7 +119,10 @@ export type SelectUser = typeof users.$inferSelect;
 
 export const insertGoalSchema = createInsertSchema(goals);
 export const selectGoalSchema = createSelectSchema(goals);
-export type Goal = typeof goals.$inferSelect & { tasks?: typeof tasks.$inferSelect[] };
+export type Goal = typeof goals.$inferSelect & {
+  tasks?: typeof tasks.$inferSelect[];
+  notes?: typeof notes.$inferSelect[];
+};
 export type NewGoal = typeof goals.$inferInsert;
 
 export const insertTaskSchema = createInsertSchema(tasks);

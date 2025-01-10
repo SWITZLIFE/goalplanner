@@ -20,6 +20,7 @@ import { getTodayQuote, markQuoteAsRead } from "./goal-quotes";
 import { registerGoogleOAuthRoutes } from "./google-oauth";
 import { supabase } from './supabase';
 import { format } from 'date-fns';
+import { startOfWeek, endOfWeek, addWeeks, isWithinInterval } from 'date-fns';
 
 // Configure multer for handling file uploads
 const upload = multer({
@@ -926,7 +927,7 @@ Write it in a conversational tone, like you're talking to a friend.`;
       const [deletedTask] = await db.delete(tasks)
         .where(and(
           eq(tasks.id, taskIdInt),
-          eq(tasks.userId, userId)
+                    eq(tasks.userId, userId)
         ))
         .returning();
 
@@ -1707,6 +1708,105 @@ Remember to:
     }
   });
 
+  // Weekly Summary API
+  app.post("/api/goals/:goalId/weekly-summary", requireAuth, async (req, res) => {
+    try {
+      const { goalId } = req.params;
+      const userId = req.user!.id;
+
+      // Get the goal with its tasks and notes
+      const goal = await db.query.goals.findFirst({
+        where: and(
+          eq(goals.id, parseInt(goalId)),
+          eq(goals.userId, userId)
+        ),
+        with: {
+          tasks: true,
+          notes: true
+        }
+      });
+
+      if (!goal) {
+        return res.status(404).json({ error: "Goal not found or unauthorized" });
+      }
+
+      // Get date ranges
+      const now = new Date();
+      const weekStart = startOfWeek(now);
+      const weekEnd = endOfWeek(now);
+      const nextWeekStart = addWeeks(weekStart, 1);
+      const nextWeekEnd = addWeeks(weekEnd, 1);
+
+      // Filter tasks and ensure all required properties exist
+      const thisWeekTasks = goal.tasks?.filter(task => 
+        task.plannedDate && isWithinInterval(new Date(task.plannedDate), { start: weekStart, end: weekEnd })
+      ) || [];
+
+      const nextWeekTasks = goal.tasks?.filter(task => 
+        task.plannedDate && isWithinInterval(new Date(task.plannedDate), { start: nextWeekStart, end: nextWeekEnd })
+      ) || [];
+
+      const completedTasks = thisWeekTasks.filter(task => task.completed);
+
+      // Get edited notes from this week
+      const thisWeekNotes = goal.notes?.filter(note =>
+        note.updatedAt && isWithinInterval(new Date(note.updatedAt), { start: weekStart, end: weekEnd })
+      ) || [];
+
+      // Generate summary using OpenAI
+      const prompt = `Generate a comprehensive weekly summary for a goal titled "${goal.title}". Here's the context:
+
+Completed Tasks This Week (${completedTasks.length}/${thisWeekTasks.length}):
+${completedTasks.map(task => `- ${task.title}`).join('\n')}
+
+Incomplete Tasks This Week:
+${thisWeekTasks.filter(task => !task.completed).map(task => `- ${task.title}`).join('\n')}
+
+Notes Updated This Week:
+${thisWeekNotes.map(note => `- ${note.title}: ${note.content}`).join('\n')}
+
+Tasks Planned for Next Week (${nextWeekTasks.length}):
+${nextWeekTasks.map(task => `- ${task.title}`).join('\n')}
+
+Please provide:
+1. A brief overview of the week's progress
+2. Key achievements and challenges
+3. Suggestions for next week's focus areas
+4. Any patterns or insights from the task completion data
+
+Keep the tone encouraging but analytical. Focus on actionable insights.`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: "You are an AI assistant specialized in analyzing goal progress and providing actionable insights."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+      });
+
+      const summary = response.choices[0].message.content;
+
+      // Return the summary data
+      res.json({
+        summary,
+        completedTasks: completedTasks.length,
+        totalTasks: thisWeekTasks.length,
+        nextWeekTasks: nextWeekTasks.length
+      });
+
+    } catch (error) {
+      console.error("Failed to generate weekly summary:", error instanceof Error ? error.message : "Unknown error");
+      res.status(500).json({ error: "Failed to generate weekly summary" });
+    }
+  });
+
   // Forum API Routes
   app.get("/api/forum/categories", async (req, res) => {
     try {
@@ -1772,14 +1872,14 @@ Remember to:
           email: users.email,
           profilePhotoUrl: users.profilePhotoUrl,
         },
-        commentCount: sql<number>`CAST(COUNT(DISTINCT ${forumComments.id}) AS integer)`,
+        commentCount: sql<number>`CAST(COUNT(DISTINCT${forumComments.id}) AS integer)`,
       })
-      .from(forumPosts)
-      .innerJoin(users, eq(forumPosts.userId, users.id))
-      .leftJoin(forumComments, eq(forumComments.postId, forumPosts.id))
-      .where(eq(forumPosts.categoryId, category.id))
-      .groupBy(forumPosts.id, users.id, users.email, users.profilePhotoUrl)
-      .orderBy(desc(forumPosts.isPinned), desc(forumPosts.createdAt));
+        .from(forumPosts)
+        .innerJoin(users, eq(forumPosts.userId, users.id))
+        .leftJoin(forumComments, eq(forumComments.postId, forumPosts.id))
+        .where(eq(forumPosts.categoryId, category.id))
+        .groupBy(forumPosts.id, users.id, users.email, users.profilePhotoUrl)
+        .orderBy(desc(forumPosts.isPinned), desc(forumPosts.createdAt));
 
       res.json(posts);
     } catch (error) {
