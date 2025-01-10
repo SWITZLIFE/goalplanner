@@ -1183,8 +1183,8 @@ Remember to:
     try {
       const userId = req.user!.id;
 
-      // Check if any timer has been active for more than 12 hours (likely stuck)
-      const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
+      // Check if any timer has been active for more than 2 hours (likely stuck)
+      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
       
       const activeTimer = await db.query.timeTracking.findFirst({
         where: and(
@@ -1194,7 +1194,7 @@ Remember to:
       });
 
       // Auto-stop timer if it's been running too long
-      if (activeTimer && new Date(activeTimer.startTime) < twelveHoursAgo) {
+      if (activeTimer && new Date(activeTimer.startTime) < twoHoursAgo) {
         await db.update(timeTracking)
           .set({ 
             isActive: false,
