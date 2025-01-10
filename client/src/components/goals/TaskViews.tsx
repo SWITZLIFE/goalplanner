@@ -18,7 +18,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { NoteList } from "./NoteList";
 import { useUser } from "@/hooks/use-user";
 import { motion, AnimatePresence } from "framer-motion";
-import { WeeklySummary } from "./WeeklySummary"; // Import WeeklySummary
 
 // Extend the Task type to include properties needed for the task list dialog
 interface Task extends BaseTask {
@@ -560,19 +559,19 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                         const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
                         const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
                         const dayTasks = tasksForDate(date);
-                        
-                        // Check if we need to advance to next month based on calendar grid layout
-                        const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
-                        const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-                        const firstDayPosition = firstDayOfMonth.getDay(); // 0 = Sunday
-                        const adjustedPosition = firstDayPosition === 0 ? 6 : firstDayPosition - 1;
-                        
-                        // If the total cells needed exceeds 35 (5 weeks * 7 days), advance to next month
-                        if (adjustedPosition + daysInMonth > 35) {
-                          const nextMonth = new Date(currentMonth);
-                          nextMonth.setMonth(nextMonth.getMonth() + 1);
-                          setCurrentMonth(nextMonth);
-                        }
+                      
+                      // Check if we need to advance to next month based on calendar grid layout
+                      const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
+                      const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+                      const firstDayPosition = firstDayOfMonth.getDay(); // 0 = Sunday
+                      const adjustedPosition = firstDayPosition === 0 ? 6 : firstDayPosition - 1;
+                      
+                      // If the total cells needed exceeds 35 (5 weeks * 7 days), advance to next month
+                      if (adjustedPosition + daysInMonth > 35) {
+                        const nextMonth = new Date(currentMonth);
+                        nextMonth.setMonth(nextMonth.getMonth() + 1);
+                        setCurrentMonth(nextMonth);
+                      }
 
                         return (
                           <div
@@ -648,13 +647,6 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                       </p>
                     </div>
                   )}
-
-                  {/* Add Weekly Summary Component */}
-                  <div className="pt-4">
-                    <h2 className="text-lg font-medium mb-2">Weekly Progress</h2>
-                    <WeeklySummary goalId={goalId} goalTitle={goal.title} />
-                  </div>
-
                   <VisionGenerator
                     goalId={goalId}
                     onVisionGenerated={async (vision) => {
