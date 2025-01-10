@@ -269,7 +269,7 @@ export function TaskList({ tasks, goalId, readOnly = false, onUpdateTaskDate }: 
     try {
       const newSubtask = await createTask({
         goalId,
-        title: "",
+        title: "New Subtask",
         isSubtask: true,
         parentTaskId,
       });
