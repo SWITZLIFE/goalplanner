@@ -395,29 +395,3 @@ export const insertForumReactionSchema = createInsertSchema(forumReactions);
 export const selectForumReactionSchema = createSelectSchema(forumReactions);
 export type ForumReaction = typeof forumReactions.$inferSelect;
 export type NewForumReaction = typeof forumReactions.$inferInsert;
-
-export const weeklyGoalSummaries = pgTable("weekly_goal_summaries", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  goalId: integer("goal_id").notNull().references(() => goals.id, { onDelete: "cascade" }),
-  content: text("content").notNull(),
-  weekStartDate: timestamp("week_start_date").notNull(),
-  weekEndDate: timestamp("week_end_date").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export const weeklyGoalSummariesRelations = relations(weeklyGoalSummaries, ({ one }) => ({
-  user: one(users, {
-    fields: [weeklyGoalSummaries.userId],
-    references: [users.id],
-  }),
-  goal: one(goals, {
-    fields: [weeklyGoalSummaries.goalId],
-    references: [goals.id],
-  }),
-}));
-
-export const insertWeeklyGoalSummarySchema = createInsertSchema(weeklyGoalSummaries);
-export const selectWeeklyGoalSummarySchema = createSelectSchema(weeklyGoalSummaries);
-export type WeeklyGoalSummary = typeof weeklyGoalSummaries.$inferSelect;
-export type NewWeeklyGoalSummary = typeof weeklyGoalSummaries.$inferInsert;

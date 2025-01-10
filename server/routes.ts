@@ -4,7 +4,7 @@ import {
   notes, users, rewards, rewardItems, purchasedRewards,
   goals, tasks, timeTracking, visionBoardImages, 
   dailyInspirations, coinHistory, forumCategories, forumPosts,
-  forumComments, forumReactions, weeklyGoalSummaries
+  forumComments, forumReactions
 } from "@db/schema";
 import { getTodayMessage, markMessageAsRead, generateDailyMessage } from "./future-message";
 import { createServer, type Server } from "http";
@@ -19,8 +19,7 @@ import { uploadFileToSupabase } from './supabase';
 import { getTodayQuote, markQuoteAsRead } from "./goal-quotes";
 import { registerGoogleOAuthRoutes } from "./google-oauth";
 import { supabase } from './supabase';
-import { format, subDays, addDays, startOfWeek, endOfWeek } from 'date-fns';
-import Anthropic from '@anthropic-ai/sdk';
+import { format } from 'date-fns';
 
 // Configure multer for handling file uploads
 const upload = multer({
@@ -47,23 +46,31 @@ const upload = multer({
   }
 });
 
-// Authentication middleware
+// Authentication middleware with proper session handling
 function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "You must be logged in to access this resource" });
   }
 
-  if (!req.user || !req.user.id) {
-    return res.status(401).json({ error: "Invalid user session" });
+  // Add session timestamp
+  if (req.session && !req.session.createdAt) {
+    (req.session as any).createdAt = new Date();
+  }
+
+  // Session expiry check
+  if (req.session && (req.session as any).createdAt) {
+    const sessionStart = new Date((req.session as any).createdAt);
+    const sessionAge = Date.now() - sessionStart.getTime();
+    if (sessionAge > 24 * 60 * 60 * 1000) {
+      req.session.destroy((err) => {
+        if (err) console.error("Session destruction failed:", err);
+      });
+      return res.status(401).json({ error: "Session expired" });
+    }
   }
 
   next();
 }
-
-// Initialize Anthropic client
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
 
 export function registerRoutes(app: Express): Server {
   // Setup authentication middleware and routes first
@@ -465,7 +472,7 @@ Write it in a conversational tone, like you're talking to a friend.`;
   });
 
   // Goals API
-  app.get("/api/goals", requireAuth, async (req, res) => {
+  app.get("/api/goals", async (req, res) => {
     try {
       const userId = res.locals.userId; // Get userId from middleware
       console.log('Fetching goals for user:', userId);
@@ -951,8 +958,7 @@ Write it in a conversational tone, like you're talking to a friend.`;
           ));
       }
 
-      res.json({ success: true });
-    } catch (error) {
+      res.json({ success: true });    } catch (error) {
       console.error("Error deleting task:", error);
       res.status(500).json({
         error: "Failed to delete task",
@@ -1195,7 +1201,7 @@ Remember to:
 
       // Check if any timer has been active for more than 2 hours (likely stuck)
       const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
-
+      
       const activeTimer = await db.query.timeTracking.findFirst({
         where: and(
           eq(timeTracking.userId, userId),
@@ -1877,260 +1883,137 @@ Remember to:
         return res.status(403).json({ error: "This post is locked" });
       }
 
-      // If this is a reply, verify parent commentexists
-1869:        const parentComment = await db.query.forumComments.findFirst({
-1870:          where: and(
-1871:            eq(forumComments.id, parentCommentId),
-1872:            eq(forumComments.postId, parseInt(postId))
-1873:          )
-1874:        });
-1875:
-1876:        if (!parentComment) {
-1877:          return res.status(404).json({ error: "Parent comment not found" });
-1878:        }
-1879:      }
-1880:
-1881:      // Create the comment
-1882:      const [comment] = await db.insert(forumComments)
-1883:        .values({
-1884:          postId: parseInt(postId),
-1885:          userId,
-1886:          content,
-1887:          parentCommentId: parentCommentId || null,
-1888:        })
-1889:        .returning();
-1890:
-1891:      // Get the complete comment data with author information
-1892:      const [commentWithAuthor] = await db.select({
-1893:        id: forumComments.id,
-1894:        content: forumComments.content,
-1895:        createdAt: forumComments.createdAt,
-1896:        parentCommentId: forumComments.parentCommentId,
-1897:        author: {
-1898:          id: users.id,
-1899:          email: users.email,
-1900:          profilePhotoUrl: users.profilePhotoUrl,
-1901:        },
-1902:      })
-1903:      .from(forumComments)
-1904:      .innerJoin(users, eq(forumComments.userId, users.id))
-1905:      .where(eq(forumComments.id, comment.id));
-1906:
-1907:      res.json(commentWithAuthor);
-1908:    } catch (error) {
-1909:      console.error("Failed to create comment:", error);
-1910:      res.status(500).json({ error: "Failed to create comment" });
-1911:    }
-1912:  });
-1913:
-1914:  app.get("/api/forum/posts/:postId", requireAuth, async (req, res) => {
-1915:    try {
-1916:      const { postId } = req.params;
-1917:      const userId = req.user!.id;
-1918:
-1919:      // Get the post with author information
-1920:      const [post] = await db.select({
-1921:        id: forumPosts.id,
-1922:        title: forumPosts.title,
-1923:        content: forumPosts.content,
-1924:        isPinned: forumPosts.isPinned,
-1925:        isLocked: forumPosts.isLocked,
-1926:        viewCount: forumPosts.viewCount,
-1927:        createdAt: forumPosts.createdAt,
-1928:        author: {
-1929:          id: users.id,
-1930:          email: users.email,
-1931:          profilePhotoUrl: users.profilePhotoUrl,
-1932:        },
-1933:      })
-1934:      .from(forumPosts)
-1935:      .innerJoin(users, eq(forumPosts.userId, users.id))
-1936:      .where(eq(forumPosts.id, parseInt(postId)));
-1937:
-1938:      if (!post) {
-1939:        return res.status(404).json({ error: "Post not found" });
-1940:      }
-1941:
-1942:      // Get all comments for the post with parent comment info
-1943:      const allComments = await db.select({
-1944:        id: forumComments.id,
-1945:        content: forumComments.content,
-1946:        createdAt: forumComments.createdAt,
-1947:        parentCommentId: forumComments.parentCommentId,
-1948:        author: {
-1949:          id: users.id,
-1950:          email: users.email,
-1951:          profilePhotoUrl: users.profilePhotoUrl,
-1952:        },
-1953:      })
-1954:      .from(forumComments)
-1955:      .innerJoin(users, eq(forumComments.userId, users.id))
-1956:      .where(eq(forumComments.postId, parseInt(postId)))
-1957:      .orderBy(forumComments.createdAt);
-1958:
-1959:      // Organize comments into a tree structure
-1960:      const commentMap = new Map();
-1961:      const rootComments: any[] = [];
-1962:
-1963:      // First pass: Create a map of all comments
-1964:      allComments.forEach(comment => {
-1965:        commentMap.set(comment.id, { ...comment, replies: [] });
-1966:      });
-1967:
-1968:      // Second pass: Organize comments into hierarchy
-1969:      allComments.forEach(comment => {
-1970:        const commentWithReplies = commentMap.get(comment.id);
-1971:        if (!comment.parentCommentId) {
-1972:          rootComments.push(commentWithReplies);
-1973:        } else {
-1974:          const parentComment = commentMap.get(comment.parentCommentId);
-1975:          if (parentComment) {
-1976:            parentComment.replies.push(commentWithReplies);
-1977:          }
-1978:        }
-1979:      });
-1980:
-1981:      // Increment view count
-1982:      await db.update(forumPosts)
-1983:        .set({ viewCount: (post.viewCount || 0) + 1 })
-1984:        .where(eq(forumPosts.id, parseInt(postId)));
-1985:
-1986:      res.json({
-1987:        ...post,
-1988:        comments: rootComments,
-1989:      });
-1990:    } catch (error) {
-1991:      console.error("Failed to fetch forum post:", error);
-1992:      res.status(500).json({ error: "Failed to fetch forum post" });
-1993:    }
-1994:  });
-1995:
-1996:  // Remove the duplicate route handler for POST /api/forum/posts/:postId/comments
-1997:
-1998:  // Weekly Summary Generation API
-1999:  app.post("/api/goals/:goalId/summary", requireAuth, async (req, res) => {
-2000:    try {
-2001:      const { goalId } = req.params;
-2002:      const userId = req.user!.id;
-2003:
-2004:      // Get the goal details with tasks
-2005:      const goal = await db.query.goals.findFirst({
-2006:        where: and(
-2007:          eq(goals.id, parseInt(goalId)),
-2008:          eq(goals.userId, userId)
-2009:        ),
-2010:        with: {
-2011:          tasks: true
-2012:        }
-2013:      });
-2014:
-2015:      if (!goal) {
-2016:        return res.status(404).json({ error: "Goal not found" });
-2017:      }
-2018:
-2019:      // Get current week's start and end dates
-2020:      const today = new Date();
-2021:      const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Monday
-2022:      const weekEnd = endOfWeek(today, { weekStartsOn: 1 }); // Sunday
-2023:
-2024:      // Get tasks completed this week, safely handling missing updatedAt
-2025:      const completedTasks = goal.tasks.filter(task => {
-2026:        if (!task.completed) return false;
-2027:        const updateDate = task.updatedAt ? new Date(task.updatedAt) : null;
-2028:        return updateDate && updateDate >= weekStart && updateDate <= weekEnd;
-2029:      });
-2030:
-2031:      // Get tasks planned for next week, safely handling missing plannedDate
-2032:      const nextWeekStart = addDays(weekEnd, 1);
-2033:      const nextWeekEnd = addDays(nextWeekStart, 6);
-2034:      const plannedTasks = goal.tasks.filter(task => {
-2035:        if (task.completed) return false;
-2036:        const plannedDate = task.plannedDate ? new Date(task.plannedDate) : null;
-2037:        return plannedDate && plannedDate >= nextWeekStart && plannedDate <= nextWeekEnd;
-2038:      });
-2039:
-2040:      // Get notes from this week
-2041:      const weeklyNotes = await db.select()
-2042:        .from(notes)
-2043:        .where(
-2044:          and(
-2045:            eq(notes.goalId, parseInt(goalId)),
-2046:            eq(notes.userId, userId),
-2047:            sql`${notes.updatedAt} >= ${weekStart.toISOString()}`,
-2048:            sql`${notes.updatedAt} <= ${weekEnd.toISOString()}`
-2049:          )
-2050:        )
-2051:        .orderBy(desc(notes.updatedAt));
-2052:
-2053:      // Format dates for the summary
-2054:      const weekStartStr = format(weekStart, 'MMM d, yyyy');
-2055:      const weekEndStr = format(weekEnd, 'MMM d, yyyy');
-2056:
-2057:      // Create a comprehensive prompt for Anthropic
-2058:      const prompt = `Generate a thorough weekly progress summary for a goal titled "${goal.title}" covering the week of ${weekStartStr} to ${weekEndStr}.
-2059:
-2060:Context:
-2061:${completedTasks.length > 0 ? `
-2062:Completed Tasks This Week:
-2063:${completedTasks.map(task => `- ${task.title}`).join('\n')}` : '\nNo tasks were completed this week.'}
-2064:
-2065:${weeklyNotes.length > 0 ? `
-2066:Notes & Reflections Made This Week:
-2067:${weeklyNotes.map(note => `- ${note.title}: ${note.content}`).join('\n')}` : '\nNo notes were recorded this week.'}
-2068:
-2069:${plannedTasks.length > 0 ? `
-2070:Tasks Planned for Next Week:
-2071:${plannedTasks.map(task => `- ${task.title}`).join('\n')}` : '\nNo tasks are currently planned for next week.'}
-2072:
-2073:Overall Goal Progress: ${goal.progress}%
-2074:
-2075:Please provide a summary that includes:
-2076:1. A brief overview of the week's achievements
-2077:2. Key insights from the notes and reflections
-2078:3. Progress evaluation and momentum assessment
-2079:4. Recommendations for next week based on planned tasks
-2080:5. Suggestions for improvement or areas needing attention
-2081:
-2082:Make the summary encouraging but honest, focusing on both achievements and areas for growth. Keep it concise but thorough.`;
-2083:
-2084:      console.log('Generating summary with prompt:', prompt);
-2085:
-2086:      // Generate summary using Anthropic's Claude
-2087:      // the newest Anthropic model is "claude-3-5-sonnet-20241022" which was released October 22, 2024
-2088:      const response = await anthropic.messages.create({
-2089:        model: "claude-3-5-sonnet-20241022",
-2090:        max_tokens: 1000,
-2091:        messages: [{ 
-2092:          role: "user", 
-2093:          content: prompt 
-2094:        }],
-2095:      });
-2096:
-2097:      const summary = response.content[0].text;
-2098:
-2099:      console.log('Generated summary:', summary);
-2100:
-2101:      // Save the summary in the database for future reference
-2102:      const [savedSummary] = await db.insert(weeklyGoalSummaries)
-2103:        .values({
-2104:          userId,
-2105:          goalId: parseInt(goalId),
-2106:          content: summary,
-2107:          weekStartDate: weekStart,
-2108:          weekEndDate: weekEnd,
-2109:        })
-2110:        .returning();
-2111:
-2112:      res.json({ summary });
-2113:    } catch (error) {
-2114:      console.error("Failed to generate weekly summary:", error);
-2115:      res.status(500).json({ 
-2116:        error: "Failed to generate weekly summary",
-2117:        details: error instanceof Error ? error.message : "Unknown error"
-2118:      });
-2119:    }
-2120:  });
-2121:
-2122:  const httpServer = createServer(app);
-2123:  return httpServer;
-2124:}
+      // If this is a reply, verify parent comment exists
+      if (parentCommentId) {
+        const parentComment = await db.query.forumComments.findFirst({
+          where: and(
+            eq(forumComments.id, parentCommentId),
+            eq(forumComments.postId, parseInt(postId))
+          )
+        });
+
+        if (!parentComment) {
+          return res.status(404).json({ error: "Parent comment not found" });
+        }
+      }
+
+      // Create the comment
+      const [comment] = await db.insert(forumComments)
+        .values({
+          postId: parseInt(postId),
+          userId,
+          content,
+          parentCommentId: parentCommentId || null,
+        })
+        .returning();
+
+      // Get the complete comment data with author information
+      const [commentWithAuthor] = await db.select({
+        id: forumComments.id,
+        content: forumComments.content,
+        createdAt: forumComments.createdAt,
+        parentCommentId: forumComments.parentCommentId,
+        author: {
+          id: users.id,
+          email: users.email,
+          profilePhotoUrl: users.profilePhotoUrl,
+        },
+      })
+      .from(forumComments)
+      .innerJoin(users, eq(forumComments.userId, users.id))
+      .where(eq(forumComments.id, comment.id));
+
+      res.json(commentWithAuthor);
+    } catch (error) {
+      console.error("Failed to create comment:", error);
+      res.status(500).json({ error: "Failed to create comment" });
+    }
+  });
+
+  app.get("/api/forum/posts/:postId", requireAuth, async (req, res) => {
+    try {
+      const { postId } = req.params;
+      const userId = req.user!.id;
+
+      // Get the post with author information
+      const [post] = await db.select({
+        id: forumPosts.id,
+        title: forumPosts.title,
+        content: forumPosts.content,
+        isPinned: forumPosts.isPinned,
+        isLocked: forumPosts.isLocked,
+        viewCount: forumPosts.viewCount,
+        createdAt: forumPosts.createdAt,
+        author: {
+          id: users.id,
+          email: users.email,
+          profilePhotoUrl: users.profilePhotoUrl,
+        },
+      })
+      .from(forumPosts)
+      .innerJoin(users, eq(forumPosts.userId, users.id))
+      .where(eq(forumPosts.id, parseInt(postId)));
+
+      if (!post) {
+        return res.status(404).json({ error: "Post not found" });
+      }
+
+      // Get all comments for the post with parent comment info
+      const allComments = await db.select({
+        id: forumComments.id,
+        content: forumComments.content,
+        createdAt: forumComments.createdAt,
+        parentCommentId: forumComments.parentCommentId,
+        author: {
+          id: users.id,
+          email: users.email,
+          profilePhotoUrl: users.profilePhotoUrl,
+        },
+      })
+      .from(forumComments)
+      .innerJoin(users, eq(forumComments.userId, users.id))
+      .where(eq(forumComments.postId, parseInt(postId)))
+      .orderBy(forumComments.createdAt);
+
+      // Organize comments into a tree structure
+      const commentMap = new Map();
+      const rootComments: any[] = [];
+
+      // First pass: Create a map of all comments
+      allComments.forEach(comment => {
+        commentMap.set(comment.id, { ...comment, replies: [] });
+      });
+
+      // Second pass: Organize comments into hierarchy
+      allComments.forEach(comment => {
+        const commentWithReplies = commentMap.get(comment.id);
+        if (!comment.parentCommentId) {
+          rootComments.push(commentWithReplies);
+        } else {
+          const parentComment = commentMap.get(comment.parentCommentId);
+          if (parentComment) {
+            parentComment.replies.push(commentWithReplies);
+          }
+        }
+      });
+
+      // Increment view count
+      await db.update(forumPosts)
+        .set({ viewCount: (post.viewCount || 0) + 1 })
+        .where(eq(forumPosts.id, parseInt(postId)));
+
+      res.json({
+        ...post,
+        comments: rootComments,
+      });
+    } catch (error) {
+      console.error("Failed to fetch forum post:", error);
+      res.status(500).json({ error: "Failed to fetch forum post" });
+    }
+  });
+
+  // Remove the duplicate route handler for POST /api/forum/posts/:postId/comments
+
+  const httpServer = createServer(app);
+  return httpServer;
+}

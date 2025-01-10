@@ -199,9 +199,6 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
   const { user } = useUser();
   const [currentTab, setCurrentTab] = useState("tasks");
   const [direction, setDirection] = useState(0);
-  const [isSummaryLoading, setIsSummaryLoading] = useState(false);
-  const [summary, setSummary] = useState<string | null>(null);
-
 
   // Function to determine slide direction
   const determineDirection = (newTab: string) => {
@@ -562,19 +559,19 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                         const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
                         const isCurrentMonth = date.getMonth() === currentMonth.getMonth();
                         const dayTasks = tasksForDate(date);
-                        
-                        // Check if we need to advance to next month based on calendar grid layout
-                        const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
-                        const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-                        const firstDayPosition = firstDayOfMonth.getDay(); // 0 = Sunday
-                        const adjustedPosition = firstDayPosition === 0 ? 6 : firstDayPosition - 1;
-                        
-                        // If the total cells needed exceeds 35 (5 weeks * 7 days), advance to next month
-                        if (adjustedPosition + daysInMonth > 35) {
-                          const nextMonth = new Date(currentMonth);
-                          nextMonth.setMonth(nextMonth.getMonth() + 1);
-                          setCurrentMonth(nextMonth);
-                        }
+                      
+                      // Check if we need to advance to next month based on calendar grid layout
+                      const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
+                      const firstDayOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+                      const firstDayPosition = firstDayOfMonth.getDay(); // 0 = Sunday
+                      const adjustedPosition = firstDayPosition === 0 ? 6 : firstDayPosition - 1;
+                      
+                      // If the total cells needed exceeds 35 (5 weeks * 7 days), advance to next month
+                      if (adjustedPosition + daysInMonth > 35) {
+                        const nextMonth = new Date(currentMonth);
+                        nextMonth.setMonth(nextMonth.getMonth() + 1);
+                        setCurrentMonth(nextMonth);
+                      }
 
                         return (
                           <div
@@ -650,64 +647,6 @@ export function TaskViews({ tasks: initialTasks, goalId, goal }: TaskViewsProps)
                       </p>
                     </div>
                   )}
-
-                  {/* Add Weekly Summary Section */}
-                  <div className="mt-8">
-                    <div className="flex justify-between items-center mb-4">
-                      <h2 className="text-lg font-medium">Weekly Progress Summary</h2>
-                      <Button 
-                        onClick={async () => {
-                          try {
-                            setIsSummaryLoading(true);
-                            const response = await fetch(`/api/goals/${goalId}/summary`, {
-                              method: 'POST',
-                              credentials: 'include',
-                            });
-
-                            if (!response.ok) {
-                              throw new Error('Failed to generate summary');
-                            }
-
-                            const data = await response.json();
-                            setSummary(data.summary);
-                            toast({
-                              title: "Summary Generated",
-                              description: "Your weekly progress summary has been generated successfully.",
-                            });
-                          } catch (error) {
-                            console.error('Failed to generate summary:', error);
-                            toast({
-                              title: "Error",
-                              description: "Failed to generate weekly summary. Please try again.",
-                              variant: "destructive",
-                            });
-                          } finally {
-                            setIsSummaryLoading(false);
-                          }
-                        }}
-                        disabled={isSummaryLoading}
-                      >
-                        {isSummaryLoading ? (
-                          <>
-                            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                            Generating...
-                          </>
-                        ) : (
-                          <>
-                            <RefreshCw className="mr-2 h-4 w-4" />
-                            Summary of the Week
-                          </>
-                        )}
-                      </Button>
-                    </div>
-
-                    {summary && (
-                      <div className="bg-primary/5 p-6 rounded-lg">
-                        <p className="whitespace-pre-wrap">{summary}</p>
-                      </div>
-                    )}
-                  </div>
-
                   <VisionGenerator
                     goalId={goalId}
                     onVisionGenerated={async (vision) => {
