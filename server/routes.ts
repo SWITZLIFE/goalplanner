@@ -933,7 +933,7 @@ Write it in a conversational tone, like you're talking to a friend.`;
       // Update goal progress
       const remainingTasks = await db.select()
         .from(tasks)
-        .where(and(
+        .whereand(
           eq(tasks.goalId, taskToDelete.goalId),
           eq(tasks.userId, userId)
         ));
@@ -1201,7 +1201,7 @@ Remember to:
 
       // Check if any timer has been active for more than 2 hours (likely stuck)
       const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
-      
+
       const activeTimer = await db.query.timeTracking.findFirst({
         where: and(
           eq(timeTracking.userId, userId),
@@ -1855,7 +1855,7 @@ Remember to:
       .from(forumComments)
       .innerJoin(users, eq(forumComments.userId, users.id))
       .where(eq(forumComments.postId, parseInt(postId)))
-      .orderBy(forumComments.createdAt);
+      .orderBy(desc(forumComments.createdAt));
 
       res.json(comments);
     } catch (error) {
@@ -1973,7 +1973,7 @@ Remember to:
       .from(forumComments)
       .innerJoin(users, eq(forumComments.userId, users.id))
       .where(eq(forumComments.postId, parseInt(postId)))
-      .orderBy(forumComments.createdAt);
+      .orderBy(desc(forumComments.createdAt));
 
       // Organize comments into a tree structure
       const commentMap = new Map();
