@@ -923,7 +923,8 @@ Write it in a conversational tone, like you're talking to a friend.`;
         .where(eq(tasks.parentTaskId, taskIdInt));
 
       // Finally delete the main task
-      const[deletedTask] = await db.delete(tasks)        .where(and(
+      const [deletedTask] = await db.delete(tasks)
+        .where(and(
           eq(tasks.id, taskIdInt),
           eq(tasks.userId, userId)
         ))
@@ -1749,60 +1750,41 @@ Remember to:
   app.get("/api/forum/categories/:slug/posts", requireAuth, async (req, res) => {
     try {
       const { slug } = req.params;
-      const userId = req.user!.id;
-
-      // Get the category id from the slug
       const category = await db.query.forumCategories.findFirst({
-        where: eq(forumCategories.slug, slug)
+        where: eq(forumCategories.slug, slug),
       });
 
       if (!category) {
         return res.status(404).json({ error: "Category not found" });
       }
 
-      // Get posts with their latest activity timestamp
+      // Get posts with author information and comment counts
       const posts = await db.select({
         id: forumPosts.id,
         title: forumPosts.title,
         content: forumPosts.content,
-        createdAt: forumPosts.createdAt,
-        viewCount: forumPosts.viewCount,
         isPinned: forumPosts.isPinned,
         isLocked: forumPosts.isLocked,
-        commentCount: sql<number>`COUNT(DISTINCT ${forumComments.id})::integer`,
-        lastActivityAt: sql<string>`COALESCE(MAX(${forumComments.createdAt}), ${forumPosts.createdAt})`,
+        viewCount: forumPosts.viewCount,
+        createdAt: forumPosts.createdAt,
         author: {
           id: users.id,
           email: users.email,
           profilePhotoUrl: users.profilePhotoUrl,
         },
+        commentCount: sql<number>`CAST(COUNT(DISTINCT ${forumComments.id}) AS integer)`,
       })
-        .from(forumPosts)
-        .leftJoin(users, eq(forumPosts.userId, users.id))
-        .leftJoin(forumComments, eq(forumComments.postId, forumPosts.id))
-        .where(eq(forumPosts.categoryId, category.id))
-        .groupBy(
-          forumPosts.id,
-          forumPosts.title,
-          forumPosts.content,
-          forumPosts.createdAt,
-          forumPosts.viewCount,
-          forumPosts.isPinned,
-          forumPosts.isLocked,
-          users.id,
-          users.email,
-          users.profilePhotoUrl
-        )
-        .orderBy(
-          desc(sql`CASE WHEN ${forumPosts.isPinned} THEN 1 ELSE 0 END`),
-          desc(sql`COALESCE(MAX(${forumComments.createdAt}), ${forumPosts.createdAt})`),
-          desc(forumPosts.id)
-        );
+      .from(forumPosts)
+      .innerJoin(users, eq(forumPosts.userId, users.id))
+      .leftJoin(forumComments, eq(forumComments.postId, forumPosts.id))
+      .where(eq(forumPosts.categoryId, category.id))
+      .groupBy(forumPosts.id, users.id, users.email, users.profilePhotoUrl)
+      .orderBy(desc(forumPosts.isPinned), desc(forumPosts.createdAt));
 
       res.json(posts);
     } catch (error) {
-      console.error("Failed to fetch posts:", error);
-      res.status(500).json({ error: "Failed to fetch posts" });
+      console.error("Failed to fetch forum posts:", error);
+      res.status(500).json({ error: "Failed to fetch forum posts" });
     }
   });
 
@@ -1872,7 +1854,7 @@ Remember to:
       })
       .from(forumComments)
       .innerJoin(users, eq(forumComments.userId, users.id))
-.where(eq(forumComments.postId, parseInt(postId)))
+      .where(eq(forumComments.postId, parseInt(postId)))
       .orderBy(forumComments.createdAt);
 
       res.json(comments);

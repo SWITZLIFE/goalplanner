@@ -21,7 +21,6 @@ interface ForumPost {
   title: string;
   content: string;
   createdAt: string;
-  lastActivityAt: string;
   viewCount: number;
   isPinned: boolean;
   isLocked: boolean;
@@ -238,7 +237,7 @@ export default function ForumCategoryPage() {
                               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 <span>{post.author.email}</span>
                                 <span>•</span>
-                                <span>Last activity: {format(new Date(post.lastActivityAt), 'MMM d, yyyy')}</span>
+                                <span>{format(new Date(post.createdAt), 'MMM d, yyyy')}</span>
                                 <span>•</span>
                                 <span className="flex items-center gap-1">
                                   <MessageSquare className="h-4 w-4" />
