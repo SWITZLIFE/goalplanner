@@ -933,7 +933,7 @@ Write it in a conversational tone, like you're talking to a friend.`;
       // Update goal progress
       const remainingTasks = await db.select()
         .from(tasks)
-        .whereand(
+        .where(and(
           eq(tasks.goalId, taskToDelete.goalId),
           eq(tasks.userId, userId)
         ));
