@@ -1779,7 +1779,7 @@ Remember to:
       .leftJoin(forumComments, eq(forumComments.postId, forumPosts.id))
       .where(eq(forumPosts.categoryId, category.id))
       .groupBy(forumPosts.id, users.id, users.email, users.profilePhotoUrl)
-      .orderBy(desc(forumPosts.isPinned), desc(forumPosts.createdAt));
+      .orderBy(desc(forumPosts.isPinned), desc(forumPosts.createdAt)) // Pinned posts first, then newest to oldest
 
       res.json(posts);
     } catch (error) {
